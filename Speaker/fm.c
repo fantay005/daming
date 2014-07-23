@@ -66,8 +66,8 @@ typedef enum SEEK_MODE {
 #define READ_ADDR 0xC7
 
 #define RST_PIN			GPIO_Pin_5
-#define SDIO_PIN		GPIO_Pin_11
-#define SCLK_PIN		GPIO_Pin_10
+#define SDIO_PIN		GPIO_Pin_7
+#define SCLK_PIN		GPIO_Pin_6
 
 #define RST_LOW		GPIO_ResetBits(GPIOB, RST_PIN)			
 #define RST_HIGH	GPIO_SetBits(GPIOB, RST_PIN)
