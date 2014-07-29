@@ -28,6 +28,9 @@
 
 #define  RING_PIN  GPIO_Pin_15
 
+#define AMP   (1<<12)  // PB12-AMP												    
+#define AMP_SET(x)  GPIOB->ODR=(GPIOB->ODR&~AMP)|(x ? AMP:0)
+
 #if defined(__SPEAKER_V1__)
 #  define RESET_GPIO_GROUP           GPIOA
 #  define RESET_GPIO                 GPIO_Pin_11
@@ -370,6 +373,7 @@ static char isCSQ = 0;
 static char CELLloc = 0;
 static char GSMloc = 0;
 static char isCops = 0;
+static char CardisEXIST = 1;
 static int lenIPD;
 
 static inline void __gmsReceiveIPDData(unsigned char data) {
@@ -584,6 +588,11 @@ void USART2_IRQHandler(void) {
 			bufferIndex = 0;
 			isCops = 1;
 		}
+		
+		if (strncmp(buffer, "+CME ERROR: 3517", 16) == 0) {
+			bufferIndex = 0;
+			CardisEXIST = 0;
+		}
 	}
 }
 
@@ -606,6 +615,48 @@ void __gsmModemStart() {
 /// \return true   When the GSM modem has connect to a TCP server.
 /// \return false  When the GSM modem dose not connect to a TCP server.
 
+static  char stamp = 0;			 
+
+bool sound_Prompt(void) {
+	char prompt[53] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '2', '2', '5',//sound225
+                     0xBB, 0xB6,  0xD3, 0xAD,  0xC4, 0xFA,  0xCA, 0xB9,  0xD3, 0xC3,  ',', 0xB0, 0xB2,  0xBB, 0xD5, 
+                     0xD6, 0xD0,  0xBF, 0xC6,  0xBD, 0xF0,  0xB3, 0xCF,  ',', 0xD6, 0xC7,  0xC4, 0xDC,  0xCE, 0xDE, 
+		                 0xCF, 0xDF,  0xB9, 0xE3,  0xB2, 0xA5,  0xB2, 0xFA,  0xC6, 0xB7 }; //欢迎您使用,安徽中科金诚,智能无线广播产品
+  if(stamp != 1) return false;
+  SMS_Prompt(prompt, sizeof(prompt));
+	return true;
+}
+
+bool sound1_Prompt(void) {
+	char prompt[25] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '3', '1', '2', //sound312
+		                 0xCA,0xD6,  0xBB,0xFA,  0xBF,0xA8,  0xCE,0xB4,  0xB2,0xE5,  0xC8,0xEB}; //手机卡未插入
+	if(CardisEXIST == 1) return false;
+  SMS_Prompt(prompt, sizeof(prompt));
+	return true;
+}
+
+bool sound2_Prompt(void) {
+	char prompt[31] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '3', '0', '8',//sound308 
+		0xCE,0xB4,  0xC4,0xDC,  0xBD,0xD3,  0xC8,0xEB,  0xB7,0xFE,  0xCE,0xF1,  0xC6,0xF7,  0xC6,0xBD,  0xCC,0xA8}; //未能接入服务器平台
+  SMS_Prompt(prompt, sizeof(prompt));
+	return true;
+}
+
+bool sound3_Prompt(void) {
+	char prompt[31] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '2', '1', '8',//sound218
+		       0xCA,0xD6,  0xBB,0xFA,  0xC4,0xA3,  0xBF,0xE9,  0xB3,0xF5,  0xCA,0xBC,  0xBB,0xAF,  0xB3,0xC9,  0xB9,0xA6}; //手机模块初始化成功
+  SMS_Prompt(prompt, sizeof(prompt));
+	return true;
+}
+
+bool sound4_Prompt(void) {
+	char prompt[31] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '3', '0', '4',//sound304
+		0xCE,0xB4,  0xC4,0xDC,  0xD3,0xEB,  0xCA,0xD6,  0xBB,0xFA,  0xC4,0xA3,  0xBF,0xE9,  0xCD,0xA8, 0xD1,0xB6}; //不能与手机模块通讯
+  SMS_Prompt(prompt, sizeof(prompt));
+	return true;
+}
+
+
 static char Count = 0;
 static unsigned char Dflag = 0;
 
@@ -618,6 +669,9 @@ bool __gsmIsTcpConnected() {
 			return false;
 		}
 		if (strncmp(&reply[7], "CONNECT OK", 10) == 0) {
+			stamp++;
+			if (stamp == 1) stamp = 5;
+			sound_Prompt();
 			AtCommandDropReplyLine(reply);
 			return true;
 		}
@@ -708,6 +762,7 @@ static char hitch[] = {0x78, 0x46C, 0x4E, 0x4F6, 0x65, 0x445, 0x96, 0x49C, 0x8B,
 bool __initGsmRuntime() {
 	int i, k = 0;
 	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800};
+  sound1_Prompt();
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);
@@ -722,6 +777,7 @@ bool __initGsmRuntime() {
 	if (i >= ARRAY_MEMBER_NUMBER(bauds)) {
 		printf("All baud error\n");
 		k++;
+		sound4_Prompt();
 		if (k > 3) {
 			SMS_Prompt(hitch, sizeof(hitch));
 		}
@@ -819,6 +875,7 @@ bool __initGsmRuntime() {
 // 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
 // 		printf("AT+QGSMLOC error\r");
 // 	}
+	sound3_Prompt();
 	
 	printf("GSM init OK.\r");
 	return true;
@@ -1295,6 +1352,9 @@ static void __gsmTask(void *parameter) {
 			}
 			
 			if(__gsmRuntimeParameter.isonTCP == 0){
+				 stamp++;
+				 if (stamp > 5) stamp =5;
+				 sound_Prompt();
 			   continue;
 			}								
 			
@@ -1321,6 +1381,7 @@ static void __gsmTask(void *parameter) {
 				if(Count > 5) {
 					Dflag = 1;
 					Count = 0;
+					sound2_Prompt();
 					continue;
 				}
 				printf("Gsm: Connect TCP error\n");

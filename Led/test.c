@@ -11,22 +11,27 @@
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 
-#define LED_INDEX_HUMI_L 5
-#define LED_INDEX_HUMI_H 6
-#define LED_INDEX_TEMP_L 7
-#define LED_INDEX_TEMP_H 8
-#define LED_INDEX_WEEK 9
-#define LED_INDEX_YEAR_H 10
-#define LED_INDEX_YEAR_L 11
-#define LED_INDEX_MONTH_H 12
-#define LED_INDEX_MONTH_L 13
-#define LED_INDEX_DATE_H 14
-#define LED_INDEX_DATE_L 15
-#define LED_INDEX_HOUR_H 16
-#define LED_INDEX_HOUR_L 17
-#define LED_INDEX_MINUTE_H 18
-#define LED_INDEX_MINUTE_L 19
+void BKUI_Prompt(char para) {
+	int i;
+	char prompt[36] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
+		                 0xD5,0xFB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1,  ',',  0xB1,0xBB,  0xBE,0xA9,  0xCA,0xB1,  0xBC,0xE4, 
+                     ',',  '8',  0xB5,0xE3,  0xD5,0xFB,}; //整点报时，北京时间八点整
+	if(para >= 0x0A){
+		prompt[35] = 0x31;
+		prompt[36] = para + 0x27;
+	}	else {	
+	  prompt[36] = para + 0x31;	
+	}		
+  SMS_Prompt(prompt, sizeof(prompt));
+}
 
+void HALF_Prompt(void) {
+	int i;
+	char prompt[21] = {'[', 'm', '5', '3', ']',  's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
+		                 0xB0,0xEB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1};  //半点报时
+
+  SMS_Prompt(prompt, sizeof(prompt));
+}
 static void __ledTestTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
@@ -44,6 +49,14 @@ static void __ledTestTask(void *nouse) {
 				  vTaskDelay(configTICK_RATE_HZ * 5);
 	        NVIC_SystemReset();
 		   }
+			 
+			 if ((dateTime.hour >= 0x08) && (dateTime.hour <= 0x12) && (dateTime.minute == 0x3B) && (dateTime.second == 0x36)){
+				  BKUI_Prompt(dateTime.hour);
+			 }
+			 
+			 if ((dateTime.hour >= 0x08) && (dateTime.hour < 0x12) && (dateTime.minute == 0x1D) && (dateTime.second == 0x36)){
+				  HALF_Prompt();
+			 }
 	}
 }
 

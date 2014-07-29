@@ -107,15 +107,25 @@ void SoundControlSetChannel(uint32_t channels, bool isOn) {
 	}
 	__takeEffect();
 	if (__channelsEnable != 0) {
-	  MUTE_DIR_IN;
-		if (GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) {
+		if ((GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) && (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == 0)){
 			// 打开功放电源
-	  		GPIO_SetBits(GPIOC, AP_PIN);			
-			  vTaskDelay(configTICK_RATE_HZ * 5);
+			MUTE_DIR_IN;
+	    GPIO_SetBits(GPIOC, AP_PIN);
+			vTaskDelay(configTICK_RATE_HZ * 5);
+		} else if ((GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 0) && (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == 1)) {
+			MUTE_DIR_OUT;
+		} else if ((GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 1) && (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == 0)) {
+			MUTE_DIR_IN;		
+		} else if ((GPIO_ReadInputDataBit(GPIOC, AP_PIN) == 1) && (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == 1)) {
+			MUTE_DIR_IN;
+			GPIO_ResetBits(GPIOB, GPIO_Pin_12);
 		}
 	} else {
 		MUTE_DIR_OUT;
 	  GPIO_ResetBits(GPIOC, AP_PIN);
 	} 
+	
+	if (GPIO_ReadInputDataBit(GPIOB, GPIO_Pin_12) == 1) {
+	}
 	xSemaphoreGive(__semaphore);
 }

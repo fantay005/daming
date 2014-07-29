@@ -12,6 +12,9 @@
 
 #define	SMS_PIN  GPIO_Pin_14
 
+#define AMP   (1<<12)  // PB12-AMP												    
+#define AMP_SET(x)  GPIOB->ODR=(GPIOB->ODR&~AMP)|(x ? AMP:0)
+
 static xQueueHandle __uartQueue;
 static xQueueHandle __speakQueue;
 
@@ -131,14 +134,16 @@ void SMS_Prompt(char *p, int len) {
 	char size;
 	int i;
 	size = len + 6;
+	AMP_SET(1);
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 	__xfsSendByte(0xFD);
 	__xfsSendByte(size >> 8);
 	__xfsSendByte(size & 0xFF);
   __xfsSendByte(0x01);
-  __xfsSendByte(TYPE_MSG_UCS2);
+  __xfsSendByte(TYPE_MSG_GB2312);
 	__xfsSendByte('[');
 	__xfsSendByte('v');
-	__xfsSendByte('1');
+	__xfsSendByte('8');
 	__xfsSendByte(']');
 	
 
@@ -146,6 +151,12 @@ void SMS_Prompt(char *p, int len) {
 		USART_SendData(USART3, *p++);
 		while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
 	}
+	do {
+		vTaskDelay(configTICK_RATE_HZ / 2);
+	} while (__xfsQueryState() != 0x4F);
+	
+	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 0);
+	AMP_SET(0);
 	
 	recover();
 }
@@ -283,6 +294,11 @@ static void __initHardware() {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOC, &GPIO_InitStructure);					  //—∂∑…”Ô“Ùƒ£øÈµƒRESET
+	
+	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIOB, &GPIO_InitStructure);            /*AMP_MUTEΩ≈£¨øÿ÷∆–°¿Æ∞»“Ù∆µ ‰≥ˆ*/
 
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_9;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
