@@ -34,7 +34,7 @@
 #if defined(__SPEAKER_V1__)
 #  define RESET_GPIO_GROUP           GPIOA
 #  define RESET_GPIO                 GPIO_Pin_11
-#elif defined(__SPEAKER_V2__)|| defined (__SPEAKER_V3__)
+#elif defined(__SPEAKER_V2__) || defined (__SPEAKER_V3__) || (__SPEAKER_V4__)
 #  define RESET_GPIO_GROUP           GPIOG
 #  define RESET_GPIO                 GPIO_Pin_10
 #elif defined(__LED__)
@@ -45,7 +45,7 @@
 #define __gsmAssertResetPin()        GPIO_SetBits(RESET_GPIO_GROUP, RESET_GPIO)
 #define __gsmDeassertResetPin()      GPIO_ResetBits(RESET_GPIO_GROUP, RESET_GPIO)
 
-#if defined (__SPEAKER_V3__)
+#if defined (__SPEAKER_V3__) || (__SPEAKER_V4__)
 #define __gsmPowerSupplyOn()         GPIO_ResetBits(GPIOB, GPIO_Pin_0)
 #define __gsmPowerSupplyOff()        GPIO_SetBits(GPIOB, GPIO_Pin_0)
 
@@ -321,7 +321,7 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //__gsmPowerSupplyOn,29302
 
-#if defined(__SPEAKER_V3__)
+#if defined(__SPEAKER_V3__) || (__SPEAKER_V4__)
 	GPIO_ResetBits(GPIOG, GPIO_Pin_14);
 	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_14;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;

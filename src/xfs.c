@@ -369,7 +369,7 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 
 #endif
 
-#if defined(__SPEAKER_V3__)
+#if defined(__SPEAKER_V3__) || (__SPEAKER_V4__)
 static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 	int ret;
 	portBASE_TYPE rc;
