@@ -757,7 +757,7 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 	return false;
 }
 
-static char hitch[] = {0x78, 0x46C, 0x4E, 0x4F6, 0x65, 0x445, 0x96, 0x49C, 0x8B, 0x4F7, 0x62, 0x4A5, 0x4F, 0x4EE};  /*Ó²¼þ¹ÊÕÏÇë±¨ÐÞ*/
+static char hitch[] = {0x78, 0x6C, 0x4E, 0xF6, 0x65, 0x45, 0x96, 0x9C, 0x8B, 0xF7, 0x62, 0xA5, 0x4F, 0xEE};  /*Ó²¼þ¹ÊÕÏÇë±¨ÐÞ*/
 
 bool __initGsmRuntime() {
 	int i, k = 0;
@@ -898,7 +898,6 @@ void __handleSMS(GsmTaskMessage *p) {
 	SMSInfo *sms;
 	uint32_t second;
 	DateTime dateTime;
-	char *pcontent;
 	const char *dat = __gsmGetMessageData(p);
 	if(__gsmRuntimeParameter.isonQUIET){
 	   second = RtcGetTime();
@@ -927,7 +926,6 @@ void __handleSMS(GsmTaskMessage *p) {
 		return;
 	}		
   
-	pcontent = sms->content;
 	*oflen() = 0;
 	ProtocolHandlerSMS(sms);
 	__gsmPortFree(sms);
@@ -960,6 +958,24 @@ int __gsmGetImeiFromModem() {
 	strcpy(__imei, reply);
 	AtCommandDropReplyLine(reply);
 	return 1;
+}
+
+static unsigned char Vcsq = 0;
+static unsigned char __csq[3];
+
+char __gsmGetCSQFromModem() {
+	char *reply;	
+	reply = ATCommand("AT+CSQ\r", ATCMD_ANY_REPLY_PREFIX, configTICK_RATE_HZ / 2);
+	if (reply == NULL) {
+		return 0;
+	}
+	strcpy(__csq, reply);
+	AtCommandDropReplyLine(reply);
+	return 1;
+}
+
+const char *GsmGetCSQ(void) {
+	return __csq;
 }
 
 void __handleProtocol(GsmTaskMessage *msg) {
@@ -1163,8 +1179,6 @@ void __handleNightQuiet(GsmTaskMessage *msg) {
 	__gsmRuntimeParameter.isonQUIET = (*dat != 0x30);
 	__storeGsmRuntimeParameter();
 }
-
-static unsigned char Vcsq = 0;
 
 void __handleCSQ(GsmTaskMessage *msg) {
     char *dat = __gsmGetMessageData(msg);

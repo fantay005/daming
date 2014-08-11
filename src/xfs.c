@@ -444,7 +444,7 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 
 static char off = 0;
 
-char *playOff(){
+char *playOff(void){
 	return &off;
 }
 static int __xfsSpeakLowLevelWithTimes(const char *p, int len, char type) {

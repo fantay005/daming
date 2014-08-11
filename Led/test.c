@@ -12,21 +12,31 @@
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 
 void BKUI_Prompt(char para) {
-	int i;
-	char prompt[36] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
+// 	struct{
+// 		char type[5];
+// 		char class[8];
+// 		char p[9];
+// 		char t[14];
+// 	} prompt = {
+// 		{'[', 'm', '5', '3', ']'},
+// 		{'s', 'o', 'u', 'n', 'd', '1', '2', '3'},
+// 		{0xD5,0xFB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1, ','},
+// 		{0xB1,0xBB,  0xBE,0xA9,  0xCA,0xB1,  0xBC,0xE4}, ','},  
+//     {'8',  0xB5,0xE3,  0xD5,0xFB}
+// 	};
+  char prompt[36] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
 		                 0xD5,0xFB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1,  ',',  0xB1,0xBB,  0xBE,0xA9,  0xCA,0xB1,  0xBC,0xE4, 
-                     ',',  '8',  0xB5,0xE3,  0xD5,0xFB,}; //整点报时，北京时间八点整
+                     ',',  '8',  0xB5,0xE3,  0xD5,0xFB,}; //整点报时，北京时间八点整   
 	if(para >= 0x0A){
-		prompt[35] = 0x31;
-		prompt[36] = para + 0x27;
+		prompt[30] = 0x31;
+		prompt[31] = para + 0x27;
 	}	else {	
-	  prompt[36] = para + 0x31;	
+	  prompt[31] = para + 0x31;	
 	}		
   SMS_Prompt(prompt, sizeof(prompt));
 }
 
 void HALF_Prompt(void) {
-	int i;
 	char prompt[21] = {'[', 'm', '5', '3', ']',  's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
 		                 0xB0,0xEB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1};  //半点报时
 

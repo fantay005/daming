@@ -34,6 +34,7 @@ typedef enum {
 	ParaSetup = 0x32,
 	QueryPara = 0x33,
 	Mp3File = 0x34,
+	FmOperate = 0x35,
 	TypeChooseReply = 0x39,
 } TypeChoose;
 
@@ -54,21 +55,31 @@ typedef enum {
 
 	basic =	0x31,
 	Coordinate = 0x32,
+	FMfreq = 0x33,
+	CSQsignal = 0x34,
 
 	Record	= 0x31,
 	SMSPrompt = 0x32,
 	RecordPrompt = 0x33,
 	Mp3Music = 0x34,
 	LongSMS = 0x35,
-
+	
+	FmOpen = 0x31,
+	FmClose = 0x32,
+	FmAuto = 0x33,
+	FmLast = 0x34,
+	FmNext = 0x35,
+	FmPlay = 0x36,
+	FmSNR = 0x37,
+	FmRSSI = 0x38,
 } Classific;
 
 typedef struct {
 	unsigned char header[2];
 	unsigned char lenH;
 	unsigned char lenL;
-	unsigned char type;
-	unsigned char class;
+	TypeChoose type;
+	Classific class;
 	unsigned short radom;
 	unsigned short reserve;
 } ProtocolHeader;
@@ -181,6 +192,7 @@ char *TerminalCreateFeedback(const char radom[4], int *size) {
 	r[4] = 0;
 	return ProtocolMessage(TypeChooseReply, ClassificReply, r, size);
 }
+
 
 USERParam  __USERNumber;
 XFSspeakParam __xfsparam;
@@ -624,7 +636,6 @@ static void HandleRecoverFactory(ProtocolHeader *header, char *p) {
 }
 
 static void HandleBasicParameter(ProtocolHeader *header, char *p) {
-	char *dat;
 	int len;
 	flag = 2;
 	p = TerminalFeedback((char *) & (header->type), &len);
@@ -691,6 +702,81 @@ static void HandleLongSMS(ProtocolHeader *header, char *p) {
 	ProtocolDestroyMessage(p);
 }
 
+extern char *search_result(char * ret) ;
+
+static void HandleQueryFMfreq(ProtocolHeader *header, char *p) {
+	char *res;
+	int len;
+	p = ProtocolMessage(header->type, header->class, search_result(res), &len);
+	vPortFree(res);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+extern const char *GsmGetCSQ(void);
+
+static void HandleCSQsignal(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, GsmGetCSQ(), &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMopen(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMclose(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMauto(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMlast(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMnext(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleFMplay(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleSNRsetting(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
+
+static void HandleRSSIsetting(ProtocolHeader *header, char *p) {
+	int len;
+	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	GsmTaskSendTcpData(p, len);	
+	ProtocolDestroyMessage(p);
+}
 
 void ProtocolHandler(char *p) {
 	int i;
@@ -708,11 +794,21 @@ void ProtocolHandler(char *p) {
 		{'2', '8', HandleRecoverFactory},
 		{'3', '1', HandleBasicParameter},
 		{'3', '2', HandleCoordinate},
+		{'3', '3', HandleQueryFMfreq},
+		{'3', '4', HandleCSQsignal},
 		{'4', '1', HandleRecordMP3},
 		{'4', '2', HandleSMSPromptSound},
 		{'4', '3', HandleRecordPromptSound},
 		{'4', '4', HandleMP3Music},
 		{'4', '5', HandleLongSMS},
+		{'5', '1', HandleFMopen},
+		{'5', '2', HandleFMclose},
+		{'5', '3', HandleFMauto},
+		{'5', '4', HandleFMlast},
+		{'5', '5', HandleFMnext},
+		{'5', '6', HandleFMplay},
+		{'5', '7', HandleSNRsetting},
+		{'5', '8', HandleRSSIsetting},
 	};
 	ProtocolHeader *header = (ProtocolHeader *)p;
 
