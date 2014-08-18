@@ -603,12 +603,17 @@ static T_ERROR_OP Si4731_Set_Property_FM_DEEMPHASIS(void)
 }
 
 
+
+static unsigned char set_SNR;
+static unsigned char set_RSSI;
+
 static T_ERROR_OP Si4731_Set_Property_FM_SNR_Threshold(void)
 {
 	uint16_t loop_counter = 0;
 	uint8_t Si4731_reg_data[32];	
 	uint8_t error_ind = 0;
-	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x03,0x00,0x03};	//SNR threshold = 0x0003 = 3dB
+	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x03,0x00,0x01};	//SNR threshold = 0x0003 = 3dB
+
         //0x1403为FM_SEEK_TUNE_SNR_THERSHOLD的属性；缺省值为0x0003=3db
 	//send CMD
  	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
@@ -637,7 +642,7 @@ static T_ERROR_OP Si4731_Set_Property_FM_RSSI_Threshold(void)
 	uint16_t loop_counter = 0;
 	uint8_t Si4731_reg_data[32];	
 	uint8_t error_ind = 0;
-	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x04,0x00,0x08};	//RSSI threshold = 0x0014 = 20dBuV
+	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x04,0x00,0x01};	//RSSI threshold = 0x0014 = 20dBuV
         //0x1404为FM_SEEK_TUNE_RSSI_TRESHOLD的属性；缺省值为0x0014=20dBuV
 	//send CMD
  	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
@@ -783,6 +788,52 @@ static T_ERROR_OP Si4731_FM_Tune_Status(unsigned short *pChannel_Freq, unsigned 
 
 }
 
+
+/**************************************
+
+static FM_Tune_Status()
+
+***************************************/
+
+static unsigned int real_Channel;
+
+static T_ERROR_OP FM_Tune_Status(void)
+{
+	unsigned short loop_counter = 0;
+	unsigned char Si4731_reg_data[32];	
+	unsigned char error_ind = 0;
+	unsigned char Si4731_fm_tune_status[] = {0x22,0x01};		
+
+	//send CMD
+ 	error_ind = OperationSi4731_2w(WRITE, &(Si4731_fm_tune_status[0]), 2);
+	if(error_ind)
+		return I2C_ERROR;
+
+	//wait CTS = 1
+	do
+	{	
+		error_ind = OperationSi4731_2w(READ, &(Si4731_reg_data[0]), 1);
+		if(error_ind)
+			return I2C_ERROR;	
+		loop_counter++;
+	}
+	while(((Si4731_reg_data[0]) != 0x80) && (loop_counter < 0xff));  //loop_counter limit should guarantee at least 300us
+	
+	if(loop_counter >= 0xff)
+		return LOOP_EXP_ERROR;	
+		
+	//read tune status: you should read out: {0x80,0x01,0x27,0xF6,0x2D,0x33,0x00,0x00} //Freq=0x27F6=10230KHz, RSSI=0x2D=45dBuV, SNR=0x33=51dB
+	error_ind = OperationSi4731_2w(READ, &Si4731_reg_data[0], 8);	
+	if(error_ind)
+		return I2C_ERROR;
+		
+	real_Channel = ((Si4731_reg_data[2] << 8) | Si4731_reg_data[3]);
+
+	return OK;
+
+}
+
+
 /*********************************************
 
 Si4731_FM_Seek()
@@ -834,7 +885,10 @@ T_ERROR_OP Si4731_FM_Seek_All(unsigned short *pChannel_All_Array, unsigned char 
 	
 	while(*pReturn_Length < Max_Length)
 	{
-		if(Si4731_FM_Seek(SEEKUP_WRAP, &Channel_Result, &SeekFail) != OK) return ERROR;
+		vTaskDelay(configTICK_RATE_HZ / 100);
+		if(Si4731_FM_Seek(SEEKUP_WRAP, &Channel_Result, &SeekFail) != OK) 
+			
+			return ERROR;
 			
 		if(SeekFail)
 			return OK;
@@ -921,7 +975,7 @@ void FM_INIT(void){
   Si4731_Set_Property_FM_RSSI_Threshold();
 }
 
-static unsigned short pChannel[30];
+static unsigned short pChannel[20];
 static unsigned char pReturn_Length = 0;
 
 void init_fm(void){
@@ -932,26 +986,24 @@ void init_fm(void){
 	Si4731_Power_Up(FM_RECEIVER);
 	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_Property_GPO_IEN();
-	vTaskDelay(configTICK_RATE_HZ / 10);
   Si4731_Set_Property_FM_DEEMPHASIS();
-  vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_Property_FM_Seek_Band_Bottom();
-	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_Property_FM_Seek_Band_Top();
-	vTaskDelay(configTICK_RATE_HZ / 10);
 	Si4731_Set_Property_FM_Seek_Space();
-	vTaskDelay(configTICK_RATE_HZ / 10);
   Si4731_Set_Property_FM_SNR_Threshold();
-  vTaskDelay(configTICK_RATE_HZ / 10);
   Si4731_Set_Property_FM_RSSI_Threshold();
-	vTaskDelay(configTICK_RATE_HZ / 10);
+}
+
+void closefm(void){
+	Si4731_Power_Down();
+	vTaskDelay(configTICK_RATE_HZ / 5);
 }
 
 void auto_seek_Property(void){
-	memset(pChannel, 0, 30);
-	vTaskDelay(configTICK_RATE_HZ / 10);
+	memset(pChannel, 0, 20);
 	init_fm();
-	Si4731_FM_Seek_All(&(pChannel[0]), 30, &pReturn_Length);
+	Si4731_FM_Seek_All(&(pChannel[0]), 20, &pReturn_Length);
+	vTaskDelay(configTICK_RATE_HZ / 100);
 }
 
 void gprs_openfm(void) {
@@ -961,6 +1013,7 @@ void gprs_openfm(void) {
 char *search_result(char * ret) {
 	int i;
 	char *p, *rc;
+	float a;
 	auto_seek_Property();
 	rc = ret = pvPortMalloc(400);
 	memset(rc, 0, 400);
@@ -972,10 +1025,9 @@ char *search_result(char * ret) {
 
 	for(i = 0; i < pReturn_Length; i++){
 		p = pvPortMalloc(20);	
-		sprintf(p, "%d:%d,", i, pChannel[i]);
-		for(i = 0; i < pReturn_Length; i++) {
-			strcat(rc, p);
-		}
+    a = pChannel[i] / 100;
+		sprintf(p, "%d:%.1f,", i, a);
+		strcat(rc, p);
 		vPortFree(p);
 	}
 	return ret;
@@ -1011,23 +1063,73 @@ void fmopen(int freq) {
 	Si4731_Set_FM_Frequency(freq);
 }
 
-void handlefm(FM_OPRA_TYPE type) {
+void handlefm(FM_OPRA_TYPE type, unsigned int data) {
+	int a[20];
+	int min, i , j = 0;
 	switch(type){
-		case open :			
+		case open :
+      init_fm();			
 			break;
 		case close :
+			closefm();
 			break;
 		case search :
+			auto_seek_Property();
 			break;
 		case last :
+			FM_Tune_Status();
+		  for(i = 0; i < 20; i++) {
+		    if (real_Channel >= pChannel[i]){
+					a[i] = real_Channel - pChannel[i];
+				} else {
+					a[i] =  pChannel[i] - real_Channel;
+				}
+			}
+			for(i = 1; i < 20; i++) {
+				 if	(a[j] <= a[i]){
+					 min = j;
+				 } else {
+					 min = i;
+					 j = i;
+				}		
+			}
+			if ((min - 1) < 0){
+        Si4731_Set_FM_Frequency(pChannel[pReturn_Length]);
+			} else {
+				Si4731_Set_FM_Frequency(pChannel[min - 1]);
+		  }
 			break;
 		case next :
+			FM_Tune_Status();
+		  for(i = 0; i < 20; i++) {
+		    if (real_Channel >= pChannel[i]){
+					a[i] = real_Channel - pChannel[i];
+				} else {
+					a[i] =  pChannel[i] - real_Channel;
+				}
+			}
+			for(i = 1; i < 20; i++) {
+				 if	(a[j] <= a[i]){
+					 min = j;
+				 } else {
+					 min = i;
+					 j = i;
+				}		
+			}
+			if ((min + 1) > pReturn_Length){
+        Si4731_Set_FM_Frequency(pChannel[0]);
+			} else {
+				Si4731_Set_FM_Frequency(pChannel[min + 1]);
+		  }
 			break;
 		case Fmplay :
+			Si4731_Set_FM_Frequency(data);
 			break;
 		case FmSNR :
+			set_SNR = data;
 			break;
 		case FmRSSI :
+			set_RSSI = data;
 			break;
 	}	
 }

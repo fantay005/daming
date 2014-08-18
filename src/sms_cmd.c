@@ -279,7 +279,15 @@ static void __cmd_STAY_Handler(const SMSInfo *p) {
 
 static void __cmd_YSP_Handler(const SMSInfo *p) {            /*ÉèÖÃ²¥±¨ÓïËÙ*/
 	const char *pcontent = (const char *)p->content;
-  char v = atoi(&pcontent[5]) + '0';
+ char v = atoi(&pcontent[5]) + '0';
+	char plen = p->contentLen;
+	if (plen != 6) {
+		return;
+	}
+	if((pcontent[5] > '9') || (pcontent[5] < '0')) {
+		return;
+	}
+
 	if((v < '0')||(v > '9')){
 		return;
 	}
@@ -288,7 +296,15 @@ static void __cmd_YSP_Handler(const SMSInfo *p) {            /*ÉèÖÃ²¥±¨ÓïËÙ*/
 
 static void __cmd_YM_Handler(const SMSInfo *p) {             /*ÉèÖÃ²¥±¨ÉùÒôÀàÐÍ*/
 	const char *pcontent = (const char *)p->content;
+	char plen = p->contentLen;
   char v = atoi(&pcontent[4]) + '0';
+	if (plen != 5) {
+		return;
+	}
+	if((pcontent[4] > '5') || (pcontent[4] < '3')) {
+		return;
+	}
+
 	if((v < '3')||(v > '5')){
 		return;
 	}
@@ -297,7 +313,15 @@ static void __cmd_YM_Handler(const SMSInfo *p) {             /*ÉèÖÃ²¥±¨ÉùÒôÀàÐÍ*
 
 static void __cmd_YD_Handler(const SMSInfo *p) {              /*ÉèÖÃ²¥±¨Óïµ÷*/
 	const char *pcontent = (const char *)p->content;
-  char v = atoi(&pcontent[4]) + '0';
+	char plen = p->contentLen;
+	char v = atoi(&pcontent[4]) + '0';
+	if (plen != 5) {
+		return;
+	}
+	if((pcontent[4] > '9') || (pcontent[4] < '0')) {
+		return;
+	}
+
 	if((v < '0')||(v > '9')){
 		return;
 	}
@@ -306,7 +330,15 @@ static void __cmd_YD_Handler(const SMSInfo *p) {              /*ÉèÖÃ²¥±¨Óïµ÷*/
 
 static void __cmd_VOLUME_Handler(const SMSInfo *p) {          /*ÉèÖÃ²¥·ÅÒôÁ¿*/
 	const char *pcontent = (const char *)p->content;
-  char v = atoi(&pcontent[8]) + '0';
+	char plen = p->contentLen;
+	char v = atoi(&pcontent[8]) + '0';
+	if (plen != 9) {
+		return;
+	}
+	if((pcontent[8] > '9') || (pcontent[8] < '0')) {
+		return;
+	}
+
 	if((v < '0')||(v > '9')){
 		return;
 	}
@@ -316,6 +348,19 @@ static void __cmd_VOLUME_Handler(const SMSInfo *p) {          /*ÉèÖÃ²¥·ÅÒôÁ¿*/
 static void __cmd_INT_Handler(const SMSInfo *p) {               /*ÉèÖÃ²¥±¨Í£¶ÙÊ±¼ä*/
 	const char *pcontent = (const char *)p->content;
   int v = atoi(&pcontent[5]);
+	char plen = p->contentLen;
+	if ((plen > 7) || (plen < 6)){
+		return;
+	}
+	
+	if((pcontent[5] > '9') || (pcontent[5] < '0')) {
+		return;
+	}
+	
+	if((pcontent[6] > '9') || (pcontent[6] < '0')) {
+		return;
+	}
+	
 	if((v < 0)||(v > 99)){
 		return;
 	}
@@ -325,6 +370,19 @@ static void __cmd_INT_Handler(const SMSInfo *p) {               /*ÉèÖÃ²¥±¨Í£¶ÙÊ±
 static void __cmd_YC_Handler(const SMSInfo *p) {                 /*ÉèÖÃ²¥±¨´ÎÊý*/
 	const char *pcontent = (const char *)p->content;
   int v = atoi(&pcontent[4]);
+	char plen = p->contentLen;
+	if ((plen > 6) || (plen < 5)){
+		return;
+	}
+	
+	if((pcontent[4] > '9') || (pcontent[4] < '0')) {
+		return;
+	}
+	
+	if((pcontent[5] > '9') || (pcontent[5] < '0')) {
+		return;
+	}
+	
 	if((v < 0)||(v > 99)){
 		return;
 	}
@@ -341,6 +399,10 @@ static void __cmd_USER_Handler(const SMSInfo *p) {             /*²éÑ¯È¨ÏÞÓÃ»§*/
 	unsigned char *a;
 	char *buf, *pdu;
 	int len;
+	char plen = p->contentLen;
+	if (plen != 6) {
+		return;
+	}
 	buf = pvPortMalloc(90);
 	pdu = pvPortMalloc(128);
 	sprintf(buf, "<USER>%s", USERpara(a));
@@ -364,11 +426,15 @@ static void __cmd_ST_Handler(const SMSInfo *p) {                  /*°²×°Ê±¼ä*/
 	char buf[64];
 	unsigned char len, i = 0;
 	char plen = p->contentLen;
+	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
 	unsigned char TEST[] ={0x89, 0x5B, 0xBD, 0x5F, 0x2D, 0x4E, 0xD1, 0x79, 0xD1, 0x91, 0xDA, 0x8B, 0x7A, 0x66, 0xFD, 0x80, /*°²»ÕÖÐ¿Æ½ð³ÏÖÇÄÜ*/
 	                   0xD1, 0x79, 0x80, 0x62, 0x09, 0x67, 0x50, 0x96, 0x6C, 0x51, 0xF8, 0x53, 0x0C, 0xFF, 0x7A, 0x66, /*¿Æ¼¼ÓÐÏÞ¹«Ë¾£¬ÖÇ*/            
                      0xFD, 0x80, 0xE0, 0x65, 0xBF, 0x7E, 0x0B, 0xF9, 0xED, 0x53, 0xA7, 0x4E, 0xC1, 0x54, 0x0C, 0xFF, /*ÄÜÎÞÏß¹ã²¥²úÆ·£¬*/
-                     0x89, 0x5B, 0xC5, 0x88, 0x4B, 0x6D, 0xD5, 0x8B};             
-	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+                     0x89, 0x5B, 0xC5, 0x88, 0x4B, 0x6D, 0xD5, 0x8B};   
+	if (plen != 4) {
+		return;
+	}										 
+
 	if(t[0] == 0xff){
 	  sprintf(buf, fix());
 		for(i = 0; i < 16; i++){
@@ -388,6 +454,10 @@ static void __cmd_MOUNTER_Handler(const SMSInfo *p) {             /*²éÑ¯°²×°ÈËÔ±
   const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
   char *pdu = pvPortMalloc(64);
 	int len;
+	char plen = p->contentLen;
+	if (plen != 9) {
+		return;
+	}
 	  
   len = SMSEncodePduUCS2(pdu, p->number, &t[8], 32);
   GsmTaskSendSMS(pdu, len);
@@ -395,6 +465,10 @@ static void __cmd_MOUNTER_Handler(const SMSInfo *p) {             /*²éÑ¯°²×°ÈËÔ±
 }
 
 static void __cmd_REST_Handler(const SMSInfo *p){                 /*È¡Ïû°²×°Ê±¼ä*/
+	char plen = p->contentLen;
+	if (plen != 6) {
+		return;
+	}
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(FIX_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -408,6 +482,10 @@ static void __cmd_ADMIN_Handler(const SMSInfo *p) {                 /*²éÑ¯Ò»ºÅÓÃ
 	char buf[24];
 	int len;
 	char *pdu;
+	char plen = p->contentLen;
+	if (plen != 7) {
+		return;
+	}
 	if (NULL == __user(1)) {
 		sprintf(buf, "<USER><1>%s", "EMPTY");
 	} else {
@@ -423,6 +501,10 @@ static void __cmd_IMEI_Handler(const SMSInfo *p) {                    /*²éÑ¯ÊÖ»ú
 	char buf[16];
 	int len;
 	char *pdu;
+	char plen = p->contentLen;
+	if (plen != 6) {
+		return;
+	}
 
 	sprintf(buf, "<IMEI>%s", GsmGetIMEI());
 	pdu = pvPortMalloc(300);
@@ -432,6 +514,10 @@ static void __cmd_IMEI_Handler(const SMSInfo *p) {                    /*²éÑ¯ÊÖ»ú
 }
 
 static void __cmd_REFAC_Handler(const SMSInfo *p) {                    /*»Ö¸´³ö³§ÉèÖÃ*/
+	char plen = p->contentLen;
+	if (plen != 7) {
+		return;
+	}
 	NorFlashMutexLock(configTICK_RATE_HZ * 4);
 	FSMC_NOR_EraseSector(XFS_PARAM_STORE_ADDR);
 	vTaskDelay(configTICK_RATE_HZ / 5);
@@ -449,6 +535,10 @@ static void __cmd_REFAC_Handler(const SMSInfo *p) {                    /*»Ö¸´³ö³
 }
 
 static void __cmd_RST_Handler(const SMSInfo *p) {                  /*ÖØÆô*/
+	char plen = p->contentLen;
+	if (plen != 5) {
+		return;
+	}
    	printf("Reset From Default Configuration\n");
 	NVIC_SystemReset();
 }
@@ -462,6 +552,10 @@ static void __cmd_TEST_Handler(const SMSInfo *p) {                 /*²éÑ¯µ±Ç°ËùÓ
 	char *buf, *pdu, *time;
 	char dat[9] = {0};
 	const char *t = (const char *)(Bank1_NOR2_ADDR + FIX_PARAM_STORE_ADDR);
+	char plen = p->contentLen;
+	if (plen != 6) {
+		return;
+	}
 	time = pvPortMalloc(32);
 	sprintf(time, t);
 	buf = pvPortMalloc(300);
@@ -492,7 +586,7 @@ static void __cmd_QUERYFARE_Handler(const SMSInfo *p) {            /*²éÑ¯µ±Ç°»°·
 	char plen = p->contentLen;
 	int len; 
   char *pdu = pvPortMalloc(64);
-	if(plen > 4){
+	if(plen != 4){
 	  return;
 	}
 	if(*isChina() == 1){
@@ -713,12 +807,20 @@ static void __cmd_UPDATA_Handler(const SMSInfo *p) {              /*Éý¼¶¹Ì¼þ³ÌÐò
 }
 
 static void __cmd_FMC_Handler(const SMSInfo *sms){                  /*¹Ø±ÕFM*/
+	char plen = sms->contentLen;
+	if (plen != 5) {
+		return;
+	}
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_FM, 0);
 }
 
 
 static void __cmd_FMO_Handler(const SMSInfo *sms){                  /*´ò¿ªFMµ÷Æµ*/
 	const char *pcontent = (const char *)sms->content;
+	char plen = sms->contentLen;
+	if (plen > 6) {
+		return;
+	}
 	fmopen(atoi(&pcontent[5]));
 }
 

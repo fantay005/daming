@@ -85,7 +85,7 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 2090, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
 //static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620", 1, 2};
 
@@ -455,11 +455,17 @@ static inline void __gmsReceiveTUDEData(unsigned char data) {
 	}
 }
 
+static unsigned char __csq[8];
+
 static inline void __gmsReceiveCSQData(unsigned char data) {
+	char i;
 	if (data == 0x0A) {
 		GsmTaskMessage *message;
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
 		buffer[bufferIndex++] = 0;
+    for (i = 0; i < 8; i++){
+			__csq[i] = buffer[i];
+		}
 		message = __gsmCreateMessage(TYPE_CSQ_DATA, buffer, bufferIndex);
 		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
@@ -812,28 +818,32 @@ bool __initGsmRuntime() {
 		printf("AT+CMGF=0 error\r");
 		return false;
 	}
+	
 
 	if (!ATCommandAndCheckReply("AT+CNMI=2,2,0,0,0\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CNMI error\r");
 		return false;
 	}
 
-	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 10, 3)) {
+
+	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "OK", configTICK_RATE_HZ * 10, 3)) {
 		printf("AT+CPMS error\r");
 		return false;
-	}
+	}	
 
-	if (!ATCommandAndCheckReply("AT+CMGD=1,4\r", "OK", configTICK_RATE_HZ * 5)) {
-		printf("AT+CMGD error\r");
-		return false;
-	}
 
 	if (!ATCommandAndCheckReply("AT+CSQ\r", "OK", configTICK_RATE_HZ / 5)) {
 		printf("AT+CSQ error\r");
 		return false;
 	}
+	
+	if (!ATCommandAndCheckReply("AT+CMGD=1,4\r", "OK", configTICK_RATE_HZ * 50)) {
+		printf("AT+CMGD error\r");
+		return false;
+	}
+		
 
-	if (!ATCommandAndCheckReply("AT+QIDEACT\r", "DEACT", configTICK_RATE_HZ / 5)) {
+	if (!ATCommandAndCheckReply("AT+QIDEACT\r", "DEACT", configTICK_RATE_HZ * 5)) {
 		printf("AT+QIDEACT error\r");
 		return false;
 	}		   //关闭GPRS场景
@@ -961,7 +971,6 @@ int __gsmGetImeiFromModem() {
 }
 
 static unsigned char Vcsq = 0;
-static unsigned char __csq[3];
 
 char __gsmGetCSQFromModem() {
 	char *reply;	
@@ -969,13 +978,13 @@ char __gsmGetCSQFromModem() {
 	if (reply == NULL) {
 		return 0;
 	}
-	strcpy(__csq, reply);
 	AtCommandDropReplyLine(reply);
 	return 1;
 }
 
 const char *GsmGetCSQ(void) {
-	return __csq;
+	__gsmGetCSQFromModem();
+	return &(__csq[0]);
 }
 
 void __handleProtocol(GsmTaskMessage *msg) {
