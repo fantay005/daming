@@ -785,6 +785,26 @@
             </File>
           </Files>
         </Group>
+        <Group>
+          <GroupName>fatsd</GroupName>
+          <Files>
+            <File>
+              <FileName>ff.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Fatfs\ff.c</FilePath>
+            </File>
+            <File>
+              <FileName>diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Fatfs\diskio.c</FilePath>
+            </File>
+            <File>
+              <FileName>sdcard.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\Fatfs\sdcard.c</FilePath>
+            </File>
+          </Files>
+        </Group>
       </Groups>
     </Target>
   </Targets>

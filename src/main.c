@@ -74,6 +74,7 @@ extern void NorFlashInit(void);
 extern void WatchdogInit(void);
 extern void MP3Init(void);
 extern void SHT10TestInit(void);
+extern void SDInit(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -88,6 +89,7 @@ int main(void) {
 	XfsInit();
 	GSMInit();
 	SHT10TestInit();
+	SDInit();
 //	mp3TestInit();
 
 
