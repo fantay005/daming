@@ -1026,7 +1026,7 @@ char *search_result(char * ret) {
 	for(i = 0; i < pReturn_Length; i++){
 		p = pvPortMalloc(20);	
     a = pChannel[i] / 100;
-		sprintf(p, "%d:%.1f,", i, a);
+		sprintf(p, "%2d:%.1f,", i, a);
 		strcat(rc, p);
 		vPortFree(p);
 	}
