@@ -62,18 +62,6 @@ typedef enum SEEK_MODE {
 	SEEKUP_WRAP = 4
 } T_SEEK_MODE;
 
-
-typedef enum FM_OPRATE {
-	open  = 0x31,
-	close = 0x32,
-	search = 0x33,
-	last = 0x34,
-	next = 0x35,
-	Fmplay = 0x36,
-	FmSNR= 0x37,
-  FmRSSI = 0x38
-}FM_OPRA_TYPE;
-
 #define WRITE_ADDR 0xC6
 #define READ_ADDR 0xC7
 
@@ -1025,8 +1013,8 @@ char *search_result(char * ret) {
 
 	for(i = 0; i < pReturn_Length; i++){
 		p = pvPortMalloc(20);	
-    a = pChannel[i] / 100;
-		sprintf(p, "%2d:%.1f,", i, a);
+    a = (float)pChannel[i] / (float)100;
+		sprintf(p, "%2d:%4.1f,", i, a);
 		strcat(rc, p);
 		vPortFree(p);
 	}
@@ -1063,7 +1051,7 @@ void fmopen(int freq) {
 	Si4731_Set_FM_Frequency(freq);
 }
 
-void handlefm(FM_OPRA_TYPE type, unsigned int data) {
+void handlefm(FM_OPRA_TYPE type, unsigned char *data) {
 	int a[20];
 	int min, i , j = 0;
 	switch(type){
@@ -1123,13 +1111,16 @@ void handlefm(FM_OPRA_TYPE type, unsigned int data) {
 		  }
 			break;
 		case Fmplay :
-			Si4731_Set_FM_Frequency(data);
+			if(*data == 0x30){
+				data++;
+			}
+			Si4731_Set_FM_Frequency(atof(data) * 100);
 			break;
 		case FmSNR :
-			set_SNR = data;
+			set_SNR = atoi(data);
 			break;
 		case FmRSSI :
-			set_RSSI = data;
+			set_RSSI = atoi(data);
 			break;
 	}	
 }

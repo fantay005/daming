@@ -64,14 +64,14 @@ typedef enum {
 	Mp3Music = 0x34,
 	LongSMS = 0x35,
 	
-	FmOpen = 0x31,
-	FmClose = 0x32,
-	FmAuto = 0x33,
-	FmLast = 0x34,
-	FmNext = 0x35,
-	FmPlay = 0x36,
-	FmSNR = 0x37,
-	FmRSSI = 0x38,
+	Fm_Open = 0x31,
+	Fm_Close = 0x32,
+	Fm_Auto = 0x33,
+	Fm_Last = 0x34,
+	Fm_Next = 0x35,
+	Fm_Play = 0x36,
+	Fm_SNR = 0x37,
+	Fm_RSSI = 0x38,
 } Classific;
 
 typedef struct {
@@ -724,6 +724,7 @@ static void HandleCSQsignal(ProtocolHeader *header, char *p) {
 
 static void HandleFMopen(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, NULL);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
@@ -731,20 +732,25 @@ static void HandleFMopen(ProtocolHeader *header, char *p) {
 
 static void HandleFMclose(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, NULL);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
 }
 
 static void HandleFMauto(ProtocolHeader *header, char *p) {
+	char *res;
 	int len;
-	p = ProtocolMessage(header->type, header->class, NULL, &len);
+	handlefm(header->class, NULL);
+	p = ProtocolMessage(header->type, header->class, search_result(res), &len);
+	vPortFree(res);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
 }
 
 static void HandleFMlast(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, NULL);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
@@ -752,6 +758,7 @@ static void HandleFMlast(ProtocolHeader *header, char *p) {
 
 static void HandleFMnext(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, NULL);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
@@ -759,6 +766,7 @@ static void HandleFMnext(ProtocolHeader *header, char *p) {
 
 static void HandleFMplay(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, p);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
@@ -766,6 +774,7 @@ static void HandleFMplay(ProtocolHeader *header, char *p) {
 
 static void HandleSNRsetting(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, p);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
@@ -773,6 +782,7 @@ static void HandleSNRsetting(ProtocolHeader *header, char *p) {
 
 static void HandleRSSIsetting(ProtocolHeader *header, char *p) {
 	int len;
+	handlefm(header->class, p);
 	p = ProtocolMessage(header->type, header->class, NULL, &len);
 	GsmTaskSendTcpData(p, len);	
 	ProtocolDestroyMessage(p);
