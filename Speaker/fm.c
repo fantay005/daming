@@ -592,15 +592,17 @@ static T_ERROR_OP Si4731_Set_Property_FM_DEEMPHASIS(void)
 
 
 
-static unsigned char set_SNR;
-static unsigned char set_RSSI;
+static unsigned char set_SNR = 2;
+static unsigned char set_RSSI = 1;
 
 static T_ERROR_OP Si4731_Set_Property_FM_SNR_Threshold(void)
 {
 	uint16_t loop_counter = 0;
 	uint8_t Si4731_reg_data[32];	
 	uint8_t error_ind = 0;
-	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x03,0x00,0x01};	//SNR threshold = 0x0003 = 3dB
+	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x03,0x00,0x02};	//SNR threshold = 0x0003 = 3dB
+  
+  Si4731_set_property[5] = set_SNR;
 
         //0x1403为FM_SEEK_TUNE_SNR_THERSHOLD的属性；缺省值为0x0003=3db
 	//send CMD
@@ -631,6 +633,8 @@ static T_ERROR_OP Si4731_Set_Property_FM_RSSI_Threshold(void)
 	uint8_t Si4731_reg_data[32];	
 	uint8_t error_ind = 0;
 	uint8_t Si4731_set_property[] = {0x12,0x00,0x14,0x04,0x00,0x01};	//RSSI threshold = 0x0014 = 20dBuV
+
+  Si4731_set_property[5] = set_RSSI;
         //0x1404为FM_SEEK_TUNE_RSSI_TRESHOLD的属性；缺省值为0x0014=20dBuV
 	//send CMD
  	error_ind = OperationSi4731_2w(WRITE, &(Si4731_set_property[0]), 6);
