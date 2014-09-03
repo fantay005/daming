@@ -2,25 +2,27 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "music.h"
 #include "mp3.h"
 
 #define mp3_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
-#define tu 1024
+
+static xQueueHandle __VS1003PlayQueue;
 
 static void __mp3TestTask(void *nouse) {
-
-	   uint32_t i;
-	   int m, n;
-	   m = sizeof(music) / tu;
-	   n = sizeof(music) % tu;
-	   while (1) {
-		   for(i = 0; i < m*tu; i+=tu){
-		   	  VS1003_Play((const unsigned char*)&music[i], tu);
-		   }
-		   VS1003_Play((const unsigned char*)&music[m*tu], n);
-		   vTaskDelay(2 * configTICK_RATE_HZ);
-	 }
+	portBASE_TYPE rc;
+	char *msg;
+	
+	__VS1003PlayQueue = xQueueCreate(5, sizeof(char *));
+	
+	while (1) {
+		rc = xQueueReceive(__VS1003PlayQueue, &msg, portMAX_DELAY);		
+		if (rc == pdTRUE){
+			msg = pvPortMalloc(strlen(msg) +1);
+		  VS1003_Play((const unsigned char*)&msg, strlen(msg));
+			vPortFree(msg);
+			vTaskDelay(configTICK_RATE_HZ / 500);
+		}
+	}
 }
 
 void mp3TestInit(void) {

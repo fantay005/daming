@@ -127,7 +127,7 @@
 
 ---------------------------------------------------------------------------*/
 
-#if _FATFS != 8051	/* Revision ID */
+#if _FATFS != 29000	/* Revision ID */
 #error Wrong include file (ff.h).
 #endif
 

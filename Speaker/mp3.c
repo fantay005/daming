@@ -461,61 +461,6 @@ void vMP3(void *parameter) {
 			vPortFree(msg.dat);			
 		}		
 	}
-
-//	while(1) {
-//			rc = xQueueReceive(__VS1003queue, &msg, configTICK_RATE_HZ * 5);
-//			if (rc != pdTRUE) 
-//			    continue;
-//
-//			if (msg.cmd == VS1003_DATA) {
-//				__appendDataNode(msg.dat);			
-//			}
-//
-//			if (msg.cmd == VS1003_OPEN_IDLE) {
-//				if (first) {
-//					const unsigned char *dat = &(first->dat[first->index]);
-//					unsigned short i;
-//					for (i = 0; i < 32; ++i) {
-//						if (i + first->index >= first->len) {
-//							__removeFirstNode();
-//							break;
-//						}
-//						VS1003_WriteData(*dat++);						
-//					}
-//				}	
-//			}
-
-//			vTaskDelay(configTICK_RATE_HZ / 500);
-//			if (msg.cmd = VS1003_OPEN_IDLE) {
-////		       if(DREQ !=0 ){    /* 等待空闲 */
-//			   TXDCS_SET(0);
-//				or(dat = 0; dat < 32; dat++){
-//		                VS1003_WriteData(music[count++]);
-//					 } 
-//					 TXDCS_SET( 1 );
-//			   }
-//
-//			   if (count >= sizeof(music)){
-//					vTaskDelay(5 * configTICK_RATE_HZ );
-//			   		TXDCS_SET(1);
-//					count = 0;
-//					vTaskDelay(5 * configTICK_RATE_HZ );
-//					Mp3Reset();
-//                	Vs1003SoftReset();
-//			   }
-
-
-//		if ( DREQ != 0 )	      			/* 等待DREQ为高，请求数据输入 */
-//			{
-//             	Delay_us(10);
-//			    TCS_SET(1);
-//				for (dat=0; dat<32; dat++ ) /* VS1003的FIFO只有32个字节的缓冲 */
-//				{										
-//					VS1003_WriteData((uint8_t*)music[count]);										
-//					count++;
-//				}
-//			}
-//	}
 }
 
 

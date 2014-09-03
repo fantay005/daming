@@ -15,7 +15,7 @@
 /----------------------------------------------------------------------------*/
 
 #ifndef _FATFS
-#define _FATFS	8051	/* Revision ID */
+#define _FATFS	29000	/* Revision ID */
 
 #ifdef __cplusplus
 extern "C" {

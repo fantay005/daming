@@ -13,7 +13,9 @@
 #include "sdcard.h"		/* Example: MMC/SDC contorl */
 
 /* Definitions of physical drive number for each media */
-#define BLOCK_SIZE 512
+
+/* Definitions of physical drive number for each media */
+
 
 
 /*-----------------------------------------------------------------------*/
@@ -31,6 +33,7 @@ DSTATUS disk_initialize (
 	
 	Status = SD_Init();
 	if(Status != SD_OK) {
+		printf("SD_Init: %d", Status); 
 		return STA_NOINIT;
 	} else {
 		return RES_OK;
@@ -57,12 +60,17 @@ DRESULT disk_read (
 	DWORD sector,	/* Sector address (LBA) */
 	UINT count		/* Number of sectors to read (1..128) */
 ) {
+	int status;
+	printf("read %d sector at %08x\n", count, sector);
 	if(count > 1) {
-		SD_ReadMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
+		status = SD_ReadMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
 	} else {
-		SD_ReadBlock((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE);
+		status = SD_ReadBlock((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE);
 	}
-	return RES_OK;
+	if (SD_OK == status)
+		return RES_OK;
+	printf("read block error: %d\n", status);
+	return RES_ERROR;
 }
 
 /*-----------------------------------------------------------------------*/
@@ -86,7 +94,6 @@ DRESULT disk_write (
 }
 #endif
 
-
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
@@ -97,6 +104,25 @@ DRESULT disk_ioctl (
 	BYTE cmd,		/* Control code */
 	void *buff		/* Buffer to send/receive control data */
 ) {
+	 DRESULT sta=RES_ERROR;
+	 switch(cmd) {
+      case CTRL_SYNC:
+        sta=RES_OK;
+			  break;                             
+			case GET_SECTOR_COUNT:
+				sta=RES_OK;
+  			break;
+			case GET_SECTOR_SIZE:
+				*(WORD*)buff = 512;
+		  	sta=RES_OK;
+		   	break;
+			case GET_BLOCK_SIZE:
+				sta=RES_OK;
+		  	break;
+			case CTRL_ERASE_SECTOR:
+				sta=RES_OK;
+		  	break;
+		}
 	return RES_OK;
 
 }

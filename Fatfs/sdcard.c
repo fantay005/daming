@@ -28,17 +28,21 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "ff.h"
+#include "misc.h"
 
 
 #define SD_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE + 512)
 
 static xQueueHandle __SDqueue;
 
+SD_CardInfo card_info;
+
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
 #define NULL 0
 #define SDIO_STATIC_FLAGS               ((uint32_t)0x000005FF)
-#define SDIO_CMD0TIMEOUT                ((uint32_t)0x00002710)
+#define SDIO_CMD0TIMEOUT                ((uint32_t)0x00004E20)
 #define SDIO_FIFO_Address               ((uint32_t)0x40018080)
 
 /* Mask for errors Card Status R1 (OCR Register) */
@@ -101,7 +105,7 @@ static xQueueHandle __SDqueue;
 #define SDIO_SEND_IF_COND               ((uint32_t)0x00000008)
 
 #define SDIO_INIT_CLK_DIV                  ((uint8_t)0xB2)
-#define SDIO_TRANSFER_CLK_DIV              ((uint8_t)0x1) 
+#define SDIO_TRANSFER_CLK_DIV              ((uint8_t)0x3) 
 
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -177,13 +181,37 @@ SD_Error SD_Init(void)
 
   /* Configure the SDIO peripheral */
   /* HCLK = 72 MHz, SDIOCLK = 72 MHz, SDIO_CK = HCLK/(2 + 1) = 24 MHz */  
-  SDIO_InitStructure.SDIO_ClockDiv = SDIO_TRANSFER_CLK_DIV; 
+  SDIO_InitStructure.SDIO_ClockDiv = SDIO_TRANSFER_CLK_DIV + 3; 
   SDIO_InitStructure.SDIO_ClockEdge = SDIO_ClockEdge_Rising;
   SDIO_InitStructure.SDIO_ClockBypass = SDIO_ClockBypass_Disable;
   SDIO_InitStructure.SDIO_ClockPowerSave = SDIO_ClockPowerSave_Disable;
   SDIO_InitStructure.SDIO_BusWide = SDIO_BusWide_1b;
   SDIO_InitStructure.SDIO_HardwareFlowControl = SDIO_HardwareFlowControl_Disable;
   SDIO_Init(&SDIO_InitStructure);
+	
+	 if (errorstatus == SD_OK)
+  {
+		/*----------------- 解析 CSD/CID 寄存器(根据其结构) ------------------*/
+     errorstatus = SD_GetCardInfo(&card_info);
+  }
+	
+	if (errorstatus == SD_OK)
+  {
+		/*----------------- 选择卡 --------------------------------*/
+     errorstatus = SD_SelectDeselect((uint32_t)card_info.RCA << 16);
+  }
+	
+	if (errorstatus == SD_OK)
+  {
+		/* 使能宽总线(4位)操作模式 */
+     errorstatus = SD_EnableWideBusOperation(SDIO_BusWide_4b);
+  }
+	
+	  if (errorstatus == SD_OK)
+  {
+    /* 设置设备模式为DMA模式 */
+	errorstatus = SD_SetDeviceMode(SD_DMA_MODE);
+  }
 
   return(errorstatus);
 }
@@ -829,7 +857,6 @@ SD_Error SD_ReadBlock(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize)
     SDIO_SendCommand(&SDIO_CmdInitStructure);
 
     errorstatus = CmdResp1Error(SDIO_SET_BLOCKLEN);
-
     if (SD_OK != errorstatus)
     {
       return(errorstatus);
@@ -2094,6 +2121,11 @@ SD_Error SD_ProcessIRQSrc(void)
 
   return(SD_OK);
 }
+void SDIO_IRQHandler(void)
+{ 
+	/* 处理所有的SDIO中断源 */
+	SD_ProcessIRQSrc();  
+}
 
 /*******************************************************************************
 * Function Name  : CmdError
@@ -2890,6 +2922,11 @@ static void GPIO_Configuration(void)
   /* Configure PD.02 CMD line */
   GPIO_InitStructure.GPIO_Pin = GPIO_Pin_2;
   GPIO_Init(GPIOD, &GPIO_InitStructure);
+	  /* 配置SD卡检测引脚 SD_DETECT_PIN 为上拉输入模式 */
+  /* 注意：根据不同的开发板，该引脚可能会有所不同，因为该引脚不是必须的，芯片上没有留出固定的引脚 */
+  GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+  GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IPU;
+  GPIO_Init(GPIOF, &GPIO_InitStructure);
 }
 
 /*******************************************************************************
@@ -2964,37 +3001,98 @@ static void DMA_RxConfiguration(uint32_t *BufferDST, uint32_t BufferSize)
 
 /*********** (C) COPYRIGHT 2009 STMicroelectronics *****END OF *******/
 
-SD_CardInfo  SDCardInfo;
-SD_CID SD_cid;
+static const char * FR_Table[]= 
+{
+    "FR_OK：成功",                                      /* (0) Succeeded */
+    "FR_DISK_ERR：底层硬件错误",                      /* (1) A hard error occurred in the low level disk I/O layer */
+    "FR_INT_ERR：断言失败",                              /* (2) Assertion failed */
+    "FR_NOT_READY：物理驱动没有工作",                  /* (3) The physical drive cannot work */
+    "FR_NO_FILE：文件不存在",                          /* (4) Could not find the file */
+    "FR_NO_PATH：路径不存在",                          /* (5) Could not find the path */
+    "FR_INVALID_NAME：无效文件名",                      /* (6) The path name format is invalid */
+    "FR_DENIED：由于禁止访问或者目录已满访问被拒绝",  /* (7) Access denied due to prohibited access or directory full */
+    "FR_EXIST：由于访问被禁止访问被拒绝",              /* (8) Access denied due to prohibited access */
+    "FR_INVALID_OBJECT：文件或者目录对象无效",          /* (9) The file/directory object is invalid */
+    "FR_WRITE_PROTECTED：物理驱动被写保护",              /* (10) The physical drive is write protected */
+    "FR_INVALID_DRIVE：逻辑驱动号无效",                  /* (11) The logical drive number is invalid */
+    "FR_NOT_ENABLED：卷中无工作区",                      /* (12) The volume has no work area */
+    "FR_NO_FILESYSTEM：没有有效的FAT卷",              /* (13) There is no valid FAT volume */
+    "FR_MKFS_ABORTED：由于参数错误f_mkfs()被终止",             /* (14) The f_mkfs() aborted due to any parameter error */
+    "FR_TIMEOUT：在规定的时间内无法获得访问卷的许可",         /* (15) Could not get a grant to access the volume within defined period */
+    "FR_LOCKED：由于文件共享策略操作被拒绝",                 /* (16) The operation is rejected according to the file sharing policy */
+    "FR_NOT_ENOUGH_CORE：无法分配长文件名工作区",             /* (17) LFN working buffer could not be allocated */
+    "FR_TOO_MANY_OPEN_FILES：当前打开的文件数大于_FS_SHARE", /* (18) Number of open files > _FS_SHARE */
+    "FR_INVALID_PARAMETER：参数无效"                         /* (19) Given parameter is invalid */
+};
 
 static void __sdTask(void *parameter) {
   SD_Error Status;
 	portBASE_TYPE rc;
+	FIL *fsrc = pvPortMalloc(sizeof(FIL));
 	char *message;
+	FRESULT result;
+	uint16_t count = 0;
+  FATFS fs;
+	UINT br = 1;
+	
 	Status = SD_Init();
-	
-	if(Status == SD_OK) {
-	  printf("SD Init OK.\r");
-		SD_GetCardInfo(&SDCardInfo);
-	} else {
-		printf("SD Init ERROR.\r");
+	if(Status == SD_OK) {                                    //检测初始化是否成功
+	printf( " \r\n SD_Init 初始化成功 \r\n " );
+	}	else {
+	printf("\r\n SD_Init 初始化失败 \r\n" );
+	printf("\r\n 返回的Status的值为： %d \r\n",Status );
 	}
-	
-	printf("CardType is : %d.\r", SDCardInfo.CardType);
-	printf("CardCapacity is : %d.\r", SDCardInfo.CardCapacity);
-	printf("CardBlockSize is : %d.\r", SDCardInfo.CardBlockSize);
-	printf("CardRCA is : %d.\r", SDCardInfo.RCA);
-	printf("ManufacturerID is : %d.\r", SD_cid.ManufacturerID);
+
 	for (;;) {
 		rc = xQueueReceive(__SDqueue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
+		} else {
+			result = f_mount(&fs, "0:", 1);    /* Mount a logical drive */
+			if (result != FR_OK) {
+					printf("挂载文件系统失败 (%s)\r\n", FR_Table[result]);
+			} else {
+					printf("挂载文件系统成功 (%s)\r\n", FR_Table[result]);
+			}
+			result = f_open(fsrc, "play.mp3", FA_OPEN_EXISTING | FA_READ);				
+			for( ; ;) {
+					char *buf = pvPortMalloc(512);
+				  result = f_read(fsrc, buf, sizeof(buf), &br);	 
+          if (result == 0) {
+						 count = 0;
+						 vTaskDelay(configTICK_RATE_HZ / 100);
+             send_mp3_data;	
+					   vPortFree(buf);
+					   vPortFree(fsrc);						
+					}	
+					if (result || br == 0) {
+						 vPortFree(buf);
+					   vPortFree(fsrc);
+						 break;					
+					}				
+				} 
+			}
 		}
-	}
+}
+void  NVIC_Config (void) {
+  NVIC_InitTypeDef NVIC_InitStructure;
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_InitStructure.NVIC_IRQChannel = SDIO_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Channel4_5_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	NVIC_Init(&NVIC_InitStructure);
 }
 
 void SDInit(void) {
-// 	DMA_TxConfiguration();
-// 	DMA_RxConfiguration();
+	NVIC_Config();
 	__SDqueue = xQueueCreate(3, sizeof(char *));
 	xTaskCreate(__sdTask, (signed portCHAR *) "SD", SD_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 8, NULL);
 }

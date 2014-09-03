@@ -14,6 +14,8 @@ extern "C" {
 
 #include "integer.h"
 #include "stdint.h"
+	
+#define BLOCK_SIZE 512
 
 
 /* Status of Disk Functions */
