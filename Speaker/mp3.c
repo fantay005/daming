@@ -383,6 +383,7 @@ typedef struct {
 typedef struct {
 	unsigned char *dat;
 	int len;
+	void (*cb)(void);
 } MusicData;
 
 static xQueueHandle __VS1003queue;
@@ -422,11 +423,21 @@ void EXTI1_IRQHandler(void)
 //	xQueueSend(__VS1003queue, &msg, configTICK_RATE_HZ*5);
 //}
 
+void VS1003_Play_Callbak(const unsigned char *data, int len, void (*cb)(void)) {
+  MusicData music;
+	music.dat = pvPortMalloc(len);
+	memcpy(music.dat, data, len);
+	music.len = len;
+	music.cb = cb;
+	xQueueSend(__VS1003queue, &music, configTICK_RATE_HZ*5);
+}
+
 void VS1003_Play(const unsigned char *data, int len) {
 	MusicData music;
 	music.dat = pvPortMalloc(len);
 	memcpy(music.dat, data, len);
 	music.len = len;
+	music.cb = NULL;
 	xQueueSend(__VS1003queue, &music, configTICK_RATE_HZ*5);	  
 }
 
@@ -448,7 +459,6 @@ void vMP3(void *parameter) {
 	__VS1003queue = xQueueCreate(5, sizeof(MusicData));
 	Mp3Reset();
 	Vs1003SoftReset();
-	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_MP3, 1); 
 	printf("MP3: loop again\n");
 
 	while(1) {
@@ -458,7 +468,10 @@ void vMP3(void *parameter) {
 			for (i = 0; i < msg.len; ++i) {
 				VS1003_WriteDataSafe(msg.dat[i]);
 			}
-			vPortFree(msg.dat);			
+			vPortFree(msg.dat);	
+		  if(msg.cb != NULL) {
+				msg.cb();
+			}
 		}		
 	}
 }

@@ -61,7 +61,7 @@ DRESULT disk_read (
 	UINT count		/* Number of sectors to read (1..128) */
 ) {
 	int status;
-	printf("read %d sector at %08x\n", count, sector);
+//	printf("read %d sector at %08x\n", count, sector);
 	if(count > 1) {
 		status = SD_ReadMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
 	} else {
@@ -69,7 +69,7 @@ DRESULT disk_read (
 	}
 	if (SD_OK == status)
 		return RES_OK;
-	printf("read block error: %d\n", status);
+//	printf("read block error: %d\n", status);
 	return RES_ERROR;
 }
 

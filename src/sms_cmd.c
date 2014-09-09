@@ -824,6 +824,15 @@ static void __cmd_FMO_Handler(const SMSInfo *sms){                  /*打开FM调频
 	fmopen(atoi(&pcontent[5]));
 }
 
+static void __cmd_MP3_Handler(const SMSInfo *sms){
+	const char *pcontent = (const char *)sms->content;
+	char plen = sms->contentLen;
+	if ((plen > 20) || (plen < 5)) {
+		return;
+	}
+	MP3TaskPlay(&pcontent[4]);
+}
+
 static void __cmd_VERSION_Handler(const SMSInfo *sms) {             /*查询当前固件版本*/
   char *pdu;
 	int len;
@@ -933,6 +942,8 @@ const static SMSModifyMap __SMSModifyMap[] = {
    
 	{"<FMO>",  __cmd_FMO_Handler,  UP_ALL}, 
 	{"<FMC>",  __cmd_FMC_Handler,  UP_ALL}, 
+	
+	{"<MP>", __cmd_MP3_Handler, UP_ALL},
 
 	{"<VERSION>", __cmd_VERSION_Handler, UP_ALL},
 	{"<CTCP>",  __cmd_CTCP_Handler, UP_ALL},

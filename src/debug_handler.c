@@ -94,6 +94,16 @@ void __sendAtCommandToGSM(const char *p) {
 	}
 }
 
+void __sendSongToVS1003(const char *p) {
+	printf("SendSongToVS1003: ");
+	MP3TaskPlay(&p[2]);
+}
+
+void __OpenFMFrequency(const char *p) {
+	printf("SendFrequencyToSi4731: ");
+	fmopen(atoi(&p[2]));
+}
+
 #ifdef __LED_HUAIBEI__
 static void __setSoftPWMLed(const char *p) {
 	switch (p[4]) {
@@ -133,6 +143,8 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "SPWM", __setSoftPWMLed },
 #endif
 	{ "AT", __sendAtCommandToGSM },
+  { "MP", __sendSongToVS1003 },
+  { "FM", __OpenFMFrequency },
 	{ NULL, NULL },
 };
 

@@ -3025,54 +3025,6 @@ static const char * FR_Table[]=
     "FR_INVALID_PARAMETER：参数无效"                         /* (19) Given parameter is invalid */
 };
 
-static void __sdTask(void *parameter) {
-  SD_Error Status;
-	portBASE_TYPE rc;
-	FIL *fsrc = pvPortMalloc(sizeof(FIL));
-	char *message;
-	FRESULT result;
-	uint16_t count = 0;
-  FATFS fs;
-	UINT br = 1;
-	
-	Status = SD_Init();
-	if(Status == SD_OK) {                                    //检测初始化是否成功
-	printf( " \r\n SD_Init 初始化成功 \r\n " );
-	}	else {
-	printf("\r\n SD_Init 初始化失败 \r\n" );
-	printf("\r\n 返回的Status的值为： %d \r\n",Status );
-	}
-
-	for (;;) {
-		rc = xQueueReceive(__SDqueue, &message, configTICK_RATE_HZ * 10);
-		if (rc == pdTRUE) {
-		} else {
-			result = f_mount(&fs, "0:", 1);    /* Mount a logical drive */
-			if (result != FR_OK) {
-					printf("挂载文件系统失败 (%s)\r\n", FR_Table[result]);
-			} else {
-					printf("挂载文件系统成功 (%s)\r\n", FR_Table[result]);
-			}
-			result = f_open(fsrc, "play.mp3", FA_OPEN_EXISTING | FA_READ);				
-			for( ; ;) {
-					char *buf = pvPortMalloc(512);
-				  result = f_read(fsrc, buf, sizeof(buf), &br);	 
-          if (result == 0) {
-						 count = 0;
-						 vTaskDelay(configTICK_RATE_HZ / 100);
-             send_mp3_data;	
-					   vPortFree(buf);
-					   vPortFree(fsrc);						
-					}	
-					if (result || br == 0) {
-						 vPortFree(buf);
-					   vPortFree(fsrc);
-						 break;					
-					}				
-				} 
-			}
-		}
-}
 void  NVIC_Config (void) {
   NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -3092,8 +3044,14 @@ void  NVIC_Config (void) {
 }
 
 void SDInit(void) {
+	SD_Error Status;
 	NVIC_Config();
-	__SDqueue = xQueueCreate(3, sizeof(char *));
-	xTaskCreate(__sdTask, (signed portCHAR *) "SD", SD_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 8, NULL);
+	Status = SD_Init();
+	if(Status == SD_OK) {                                    //检测初始化是否成功
+	printf( " \r\n SD_Init 初始化成功 \r\n " );
+	}	else {
+	printf("\r\n SD_Init 初始化失败 \r\n" );
+	printf("\r\n 返回的Status的值为： %d \r\n",Status );
+	}
 }
 
