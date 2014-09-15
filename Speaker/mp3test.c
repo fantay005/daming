@@ -24,7 +24,6 @@ void MP3TaskPlay(char *p) {
 static void __mp3fillcallbak(void) {
 	char *p = (char *)-1;
 	xQueueSend(__VS1003PlayQueue, &p, configTICK_RATE_HZ * 5);	
-
 }
 
 static void __mp3TestTask(void *nouse) {
@@ -41,7 +40,7 @@ static void __mp3TestTask(void *nouse) {
 		rc = xQueueReceive(__VS1003PlayQueue, &msg, configTICK_RATE_HZ);		
 		if (rc == pdTRUE){
 			if (msg == (char *)-1 && fsrc != NULL) {
-				result = f_read(fsrc, buf, 512, &br);
+				result = f_read(fsrc, buf, 64, &br);
 				if (result == FR_OK && br > 0) {
 					 VS1003_Play_Callbak((const unsigned char*)buf, br, __mp3fillcallbak);
 				} else {
@@ -57,6 +56,14 @@ static void __mp3TestTask(void *nouse) {
 					 fsrc = pvPortMalloc(sizeof(*fsrc));
 				}
 				
+				if (strncasecmp(msg, "close", 5) == 0) {
+					if (fsrc != NULL) {
+					  f_close(fsrc);
+				  }
+					SoundControlSetChannel(SOUND_CONTROL_CHANNEL_MP3, 0); 
+					continue;
+				}
+				
         sprintf(song, "%s.mp3", msg);
 				result = f_mount(&fs, "0:", 1);
 				if (result == FR_OK) {
@@ -70,8 +77,8 @@ static void __mp3TestTask(void *nouse) {
 						__mp3fillcallbak();
 				} else {
 					vPortFree(fsrc);
-					fsrc = NULL;				
-				}				
+					fsrc = NULL;
+				}
 				vPortFree(msg);
 			}
 		} 	

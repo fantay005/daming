@@ -229,7 +229,8 @@ char *TerminalFeedback(const char radom[4], int *size) {
     		  __USERNumber.user[j][0] = 0;
        } 
     }
-		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", __USERNumber.user[0], __USERNumber.user[1], __USERNumber.user[2], __USERNumber.user[3], __USERNumber.user[4], __USERNumber.user[5], __xfsparam.speakPause , __xfsparam.speakType, __xfsparam.speakVolume, __xfsparam.speakTimes);
+		sprintf(p, "1,%s2,%s3,%s4,%s5,%s6,%s%02d%c%c%02d", __USERNumber.user[0], __USERNumber.user[1], __USERNumber.user[2], __USERNumber.user[3], 
+		        __USERNumber.user[4], __USERNumber.user[5], __xfsparam.speakPause , __xfsparam.speakType, __xfsparam.speakVolume, __xfsparam.speakTimes);
 	  flag = 0;
   }
   while(*p != 0) {

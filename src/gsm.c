@@ -85,9 +85,9 @@ const char *GsmGetIMEI(void) {
 }
 
 /// Save runtime parameters for GSM task;
-//static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
+static GMSParameter __gsmRuntimeParameter = {"61.190.61.78", 5555, 1, 0, "0620", 1, 1};	  // 老平台服务器及端口："221.130.129.72",5555
 
-static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 0, 0, "0620", 1, 2};
+//static GMSParameter __gsmRuntimeParameter = {"221.130.129.72", 5555, 1, 0, "0620", 1, 2};
 
 /// Basic function for sending AT Command, need by atcmd.c.
 /// \param  c    Char data to send to modem.
@@ -773,8 +773,10 @@ bool __initGsmRuntime() {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);
 		__gsmInitUsart(bauds[i]);
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
-		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ );
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ * 2);
 
 		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ * 2)) {
 			break;
@@ -877,9 +879,9 @@ bool __initGsmRuntime() {
 		printf("AT+COPS error\r");
 	}	
 // #if defined (__SPEAKER_V1__)
-// 	if (!ATCommandAndCheckReply("AT+QCELLLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
-// 		printf("AT+QCELLLOC error\r");
-// 	}
+	if (!ATCommandAndCheckReply("AT+QCELLLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
+		printf("AT+QCELLLOC error\r");
+	}
 // #endif
 
 // 	if (!ATCommandAndCheckReply("AT+QGSMLOC=1\r", "OK", configTICK_RATE_HZ * 10)) {
@@ -1097,12 +1099,12 @@ void __handleReset(GsmTaskMessage *msg) {
 
 void __handleResetNoCarrier(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 0);
-	GPIO_SetBits(GPIOG, RING_PIN);
+	GPIO_ResetBits(GPIOG, RING_PIN);
 }
 
 void __handleRING(GsmTaskMessage *msg) {
 	SoundControlSetChannel(SOUND_CONTROL_CHANNEL_GSM, 1);
-	GPIO_ResetBits(GPIOG, RING_PIN);
+	GPIO_SetBits(GPIOG, RING_PIN);
 }
 
 
