@@ -17,7 +17,7 @@
 /  from the file object (FIL). */
 
 
-#define _FS_READONLY	1	/* 0:Read/Write or 1:Read only */  //设置是否文件只读，0为设置可读写
+#define _FS_READONLY	0	/* 0:Read/Write or 1:Read only */  //设置是否文件只读，0为设置可读写
 /* Setting _FS_READONLY to 1 defines read only configuration. This removes
 /  writing functions, f_write(), f_sync(), f_unlink(), f_mkdir(), f_chmod(),
 /  f_rename(), f_truncate() and useless f_getfree(). */
@@ -36,7 +36,7 @@
 #define	_USE_STRFUNC	1	/* 0:Disable or 1-2:Enable */   //设置是否使用字符串函数，主要有f_gets, f_putc, f_puts, f_printf四个函数
 
 
-#define	_USE_MKFS		0	/* 0:Disable or 1:Enable */   //设置是否实现f_mkfs函数
+#define	_USE_MKFS		1	/* 0:Disable or 1:Enable */   //设置是否实现f_mkfs函数
 /* To enable f_mkfs() function, set _USE_MKFS to 1 and set _FS_READONLY to 0 */
 
 

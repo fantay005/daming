@@ -23,18 +23,11 @@
 #include "stdbool.h"
 #include "integer.h"
 #include "diskio.h"	
-
 #include <stdio.h>
 #include "FreeRTOS.h"
-#include "queue.h"
-#include "task.h"
+#include "semphr.h"
 #include "ff.h"
 #include "misc.h"
-
-
-#define SD_TASK_STACK_SIZE  (configMINIMAL_STACK_SIZE + 512)
-
-static xQueueHandle __SDqueue;
 
 SD_CardInfo card_info;
 
@@ -3052,6 +3045,24 @@ void SDInit(void) {
 	}	else {
 	printf("\r\n SD_Init 初始化失败 \r\n" );
 	printf("\r\n 返回的Status的值为： %d \r\n",Status );
+	}
+}
+
+static xSemaphoreHandle __semaphore = NULL;
+
+void SD_FS_Write(FIL* fp, const void* buff, UINT btw) {
+	UINT* bw;
+	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		f_write(fp, buff, btw, bw);
+		xSemaphoreGive(__semaphore);
+	}
+}
+
+void SD_FS_Read(FIL* fp, void* buff, UINT btr) {
+	UINT* br;
+	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		f_read(fp, buff, btr, br);
+		xSemaphoreGive(__semaphore);
 	}
 }
 

@@ -35,19 +35,20 @@ static void __mp3TestTask(void *nouse) {
   FATFS fs;
 	UINT br;
 	char song[16];
+	int chapter;
 	
 	while (1) {
 		rc = xQueueReceive(__VS1003PlayQueue, &msg, configTICK_RATE_HZ);		
 		if (rc == pdTRUE){
 			if (msg == (char *)-1 && fsrc != NULL) {
-				result = f_read(fsrc, buf, 64, &br);
+				result = f_read(fsrc, buf, 100, &br);
 				if (result == FR_OK && br > 0) {
 					 VS1003_Play_Callbak((const unsigned char*)buf, br, __mp3fillcallbak);
 				} else {
 					SoundControlSetChannel(SOUND_CONTROL_CHANNEL_MP3, 0); 
 					f_close(fsrc);
 					vPortFree(fsrc);
-					fsrc = NULL;						 	
+					fsrc = NULL;					 	
 				}
 			} else if (msg != NULL) {
 				if (fsrc != NULL) {
@@ -64,7 +65,13 @@ static void __mp3TestTask(void *nouse) {
 					continue;
 				}
 				
-        sprintf(song, "%s.mp3", msg);
+				if(strlen(msg) == 1){
+				  chapter = *msg;
+					sprintf(song, "%c.mp3", chapter);
+				} else {
+					chapter = atoi(msg);
+					sprintf(song, "%d.mp3", chapter);
+				}
 				result = f_mount(&fs, "0:", 1);
 				if (result == FR_OK) {
 					printf("File mount success.\n");

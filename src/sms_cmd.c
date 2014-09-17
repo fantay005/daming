@@ -818,7 +818,7 @@ static void __cmd_FMC_Handler(const SMSInfo *sms){                  /*关闭FM*/
 static void __cmd_FMO_Handler(const SMSInfo *sms){                  /*打开FM调频*/
 	const char *pcontent = (const char *)sms->content;
 	char plen = sms->contentLen;
-	if (plen > 6) {
+	if (plen > 9) {
 		return;
 	}
 	fmopen(atoi(&pcontent[5]));

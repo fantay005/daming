@@ -77,7 +77,6 @@ DRESULT disk_read (
 /* Write Sector(s)                                                       */
 /*-----------------------------------------------------------------------*/
 
-#if 0
 DRESULT disk_write (
 	BYTE pdrv,			/* Physical drive nmuber (0..) */
 	const BYTE *buff,	/* Data to be written */
@@ -86,13 +85,13 @@ DRESULT disk_write (
 )
 {
 	if(count > 1) {
-		SD_WriteMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff,, BLOCK_SIZE, count);
+		SD_WriteMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
 	} else {
 		SD_WriteBlock((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE);
 	}
 	return RES_OK;
 }
-#endif
+
 
 /*-----------------------------------------------------------------------*/
 /* Miscellaneous Functions                                               */

@@ -252,9 +252,9 @@ TCHAR* f_gets (TCHAR* buff, int len, FIL* fp);						/* Get a string from the fil
 /* Additional user defined functions                            */
 
 /* RTC function */
-#if !_FS_READONLY
+
 DWORD get_fattime (void);
-#endif
+
 
 /* Unicode support functions */
 #if _USE_LFN							/* Unicode - OEM code conversion */

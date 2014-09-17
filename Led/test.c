@@ -12,18 +12,6 @@
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 64 )
 
 void BKUI_Prompt(char para) {
-// 	struct{
-// 		char type[5];
-// 		char class[8];
-// 		char p[9];
-// 		char t[14];
-// 	} prompt = {
-// 		{'[', 'm', '5', '3', ']'},
-// 		{'s', 'o', 'u', 'n', 'd', '1', '2', '3'},
-// 		{0xD5,0xFB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1, ','},
-// 		{0xB1,0xBB,  0xBE,0xA9,  0xCA,0xB1,  0xBC,0xE4}, ','},  
-//     {'8',  0xB5,0xE3,  0xD5,0xFB}
-// 	};
   char prompt[36] = {'[', 'm', '5', '3', ']', 's', 'o', 'u', 'n', 'd', '1', '2', '3',//sound123
 		                 0xD5,0xFB,  0xB5,0xE3,  0xB1,0xA8,  0xCA,0xB1,  ',',  0xB1,0xBB,  0xBE,0xA9,  0xCA,0xB1,  0xBC,0xE4, 
                      ',',  '8',  0xB5,0xE3,  0xD5,0xFB,}; //整点报时，北京时间八点整   
@@ -45,7 +33,7 @@ void HALF_Prompt(void) {
 static void __ledTestTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
-	
+	int chapter;
 	  
 	while (1) {
 		   if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
@@ -67,6 +55,44 @@ static void __ledTestTask(void *nouse) {
 			 if ((dateTime.hour >= 0x08) && (dateTime.hour < 0x12) && (dateTime.minute == 0x1D) && (dateTime.second == 0x36)){
 				  HALF_Prompt();
 			 }
+			 
+			 if ((dateTime.hour == 0x08) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
+				 	chapter = dateTime.date;
+	        MP3TaskPlay(&chapter);
+			 }
+			 
+			 if ((dateTime.hour == 0x0A) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
+				 	chapter = dateTime.date + 1;
+				 	if(chapter > 31){
+						chapter = chapter - 31;
+					}
+	        MP3TaskPlay(&chapter);
+			 }
+			 
+			 if ((dateTime.hour == 0x0C) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
+				 	chapter = dateTime.date + 2;
+				 	if(chapter > 31){
+						chapter = chapter - 31;
+					}
+	        MP3TaskPlay(&chapter);
+			 }
+			 
+			 if ((dateTime.hour == 0x0F) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
+				 	chapter = dateTime.date + 3;
+				  if(chapter > 31){
+						chapter = chapter - 31;
+					}
+	        MP3TaskPlay(&chapter);
+			 }
+			 
+			 if ((dateTime.hour == 0x11) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
+				 	chapter = dateTime.date +4;
+				  if(chapter > 31){
+						chapter = chapter - 31;
+					}
+	        MP3TaskPlay(&chapter);
+			 }
+
 	}
 }
 

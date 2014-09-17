@@ -117,8 +117,7 @@
 
 #include "ff.h"			/* Declarations of FatFs API */
 #include "diskio.h"		/* Declarations of disk I/O functions */
-
-
+#include "second_datetime.h"
 
 
 /*--------------------------------------------------------------------------
@@ -551,6 +550,16 @@ const BYTE ExCvt[] = _EXCVT;	/* Upper conversion table for extended characters *
    Module Private Functions
 
 ---------------------------------------------------------------------------*/
+
+DWORD get_fattime (void) {	
+  DateTime  dateTime;
+	return   (dateTime.year & 0x7f) << 25
+	       | dateTime.month << 21
+	       | dateTime.date << 16
+	       | dateTime.hour << 11
+	       | dateTime.minute << 5
+	       | dateTime.second >> 1;
+}
 
 
 /*-----------------------------------------------------------------------*/
