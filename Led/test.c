@@ -57,38 +57,38 @@ static void __ledTestTask(void *nouse) {
 			 }
 			 
 			 if ((dateTime.hour == 0x08) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
-				 	chapter = dateTime.date;
+				 	chapter = dateTime.date + 50;
 	        MP3TaskPlay(&chapter);
 			 }
 			 
 			 if ((dateTime.hour == 0x0A) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
-				 	chapter = dateTime.date + 1;
-				 	if(chapter > 31){
-						chapter = chapter - 31;
+				 	chapter = dateTime.date + 51;
+				 	if(chapter > 81){
+						chapter = chapter - 81;
 					}
 	        MP3TaskPlay(&chapter);
 			 }
 			 
 			 if ((dateTime.hour == 0x0C) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
-				 	chapter = dateTime.date + 2;
-				 	if(chapter > 31){
-						chapter = chapter - 31;
+				 	chapter = dateTime.date + 52;
+				 	if(chapter > 81){
+						chapter = chapter - 81;
 					}
 	        MP3TaskPlay(&chapter);
 			 }
 			 
 			 if ((dateTime.hour == 0x0F) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
-				 	chapter = dateTime.date + 3;
-				  if(chapter > 31){
-						chapter = chapter - 31;
+				 	chapter = dateTime.date + 53;
+				  if(chapter > 81){
+						chapter = chapter - 81;
 					}
 	        MP3TaskPlay(&chapter);
 			 }
 			 
 			 if ((dateTime.hour == 0x11) && (dateTime.minute == 0x05) && (dateTime.second == 0x00)){
-				 	chapter = dateTime.date +4;
-				  if(chapter > 31){
-						chapter = chapter - 31;
+				 	chapter = dateTime.date + 54;
+				  if(chapter > 81){
+						chapter = chapter - 81;
 					}
 	        MP3TaskPlay(&chapter);
 			 }

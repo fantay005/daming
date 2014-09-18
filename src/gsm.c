@@ -764,11 +764,16 @@ bool __gsmCheckTcpAndConnect(const char *ip, unsigned short port) {
 }
 
 static char hitch[] = {0x78, 0x6C, 0x4E, 0xF6, 0x65, 0x45, 0x96, 0x9C, 0x8B, 0xF7, 0x62, 0xA5, 0x4F, 0xEE};  /*硬件故障请报修*/
+static char j = 0;
 
 bool __initGsmRuntime() {
 	int i, k = 0;
 	static const int bauds[] = {19200, 9600, 115200, 38400, 57600, 4800};
-  sound1_Prompt();
+  j++;
+  if(j < 3){
+    sound1_Prompt();
+	}
+
 	for (i = 0; i < ARRAY_MEMBER_NUMBER(bauds); ++i) {
 		// 设置波特率
 		printf("Init gsm baud: %d\n", bauds[i]);

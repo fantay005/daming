@@ -375,7 +375,7 @@ static int __xfsSpeakLowLevel(const char *p, int len, char type) {
 	portBASE_TYPE rc;
 	char buf[9] = {'s', 'o', 'u', 'n', 'd', '1', '1', '3', ':'}; 
 	xQueueReset(__uartQueue);
-
+  
 	__xfsSendByte(0xFD);
   if(type == 3){
 		ret = len + 38;
@@ -509,6 +509,8 @@ void __xfsTask(void *parameter) {
 		printf("Xfs: loop again\n");
 		rc = xQueueReceive(__speakQueue, &pmsg, portMAX_DELAY);
 		if (rc == pdTRUE) {
+			MP3TaskPlay("0");
+	    vTaskDelay(configTICK_RATE_HZ * 40);
 			SoundControlSetChannel(SOUND_CONTROL_CHANNEL_XFS, 1);
 			GPIO_SetBits(GPIOG, SMS_PIN);
 			__handleSpeakMessage(pmsg);

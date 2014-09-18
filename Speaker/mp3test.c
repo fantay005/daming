@@ -67,11 +67,16 @@ static void __mp3TestTask(void *nouse) {
 				
 				if(strlen(msg) == 1){
 				  chapter = *msg;
-					sprintf(song, "%c.mp3", chapter);
+					if(chapter < 50){
+					  sprintf(song, "%c.mp3", chapter);
+					} else {
+						sprintf(song, "%d.mp3", (chapter - 50));
+					}
 				} else {
 					chapter = atoi(msg);
 					sprintf(song, "%d.mp3", chapter);
 				}
+				
 				result = f_mount(&fs, "0:", 1);
 				if (result == FR_OK) {
 					printf("File mount success.\n");
