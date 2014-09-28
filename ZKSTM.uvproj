@@ -675,6 +675,11 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>Temp_ADC.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\Temp_ADC.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

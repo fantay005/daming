@@ -75,6 +75,7 @@ extern void WatchdogInit(void);
 extern void MP3Init(void);
 extern void SHT10TestInit(void);
 extern void SDInit(void);
+extern void TMPInit(void);
 int main(void) {
 	PreSetupHardware();
 	NorFlashInit();
@@ -91,6 +92,7 @@ int main(void) {
 	SHT10TestInit();
 	SDInit();
 	mp3TestInit();
+	TMPInit();
 
 	printf("\n=============================================\n");
 	printf("%s", Version());
