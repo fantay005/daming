@@ -25,7 +25,6 @@
 #include "soundcontrol.h"
 #include "sms_cmd.h"
 
-
 USERParam __userParam;
 
 typedef struct{

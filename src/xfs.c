@@ -246,7 +246,7 @@ static int __xfsWoken(void) {
 
 static int __xfsSetup(void) {
 	char xfsCommand[] = {0x01, 0x01, '[', 'v', '5', ']', '[', 't', '5', ']',
-						 '[', 's', '5', ']', '[', 'm', '3', ']'
+						 '[', 's', '5', ']', '[', 'm', '3', ']','[', 'n', '2', ']'
 						};
 	xfsCommand[4] = speakParam.speakVolume;
 	xfsCommand[8] = speakParam.speakTone;
