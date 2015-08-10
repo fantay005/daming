@@ -10,31 +10,18 @@ void ZigbeeConfigDisplay(void)
 	ili9320_Clear(GREEN);
 	
     /************************×ó²àÀ¸*****************************/
-	GUI_Text(30,0,(u8 *)"ZIGBEE Information",MAGENTA,GREEN);		 
 	
-	GUI_Text(10,20,(u8 *)"MAC_Addr :",BLACK,GREEN);			
-
-	GUI_Text(10,36,(u8 *)"Net_ID   :",BLACK,GREEN);
-
-	GUI_Text(10,52,(u8 *)"Channel  :",BLACK,GREEN);
-
-  GUI_Text(10,68,(u8 *)"Node_Type:",BLACK,GREEN);
-
-	GUI_Text(10,84,(u8 *)"Node_Name:",BLACK,GREEN);
-		
-	GUI_Text(10,100,(u8 *)"Net_Type :",BLACK,GREEN);
-
-	GUI_Text(10,116,(u8 *)"Data_Type:",BLACK,GREEN);
-
-	GUI_Text(10,132,(u8 *)"Tx_Type  :",BLACK,GREEN);
-
-	GUI_Text(10,148,(u8 *)"Baud_Rate:",BLACK,GREEN);
-
-	GUI_Text(10,164,(u8 *)"Parity   :",BLACK,GREEN);
-
-	GUI_Text(10,180,(u8 *)"Data_Bit :",BLACK,GREEN);
-
-	GUI_Text(10,196,(u8 *)"Src_Addr :",BLACK,GREEN);
+	GUI_Text(60,0,(u8 *)"Function Select",MAGENTA,GREEN);		
+	
+	GUI_Line(0,20,319,20,BLACK);
+	
+	GUI_Text(10,24,(u8 *)"1: Zigbee Configuration",BLACK,GREEN);	
+	
+	GUI_Text(10,44,(u8 *)"2: Gateway Option",BLACK,GREEN);
+	
+	GUI_Text(10,64,(u8 *)"3: Communication Test",BLACK,GREEN);
+	
+	GUI_Text(10,84,(u8 *)"4: Zigbee Information",BLACK,GREEN);
 	
 
 	/************************·Ö¸ô·û*****************************/
@@ -46,4 +33,3 @@ void ZigbeeConfigDisplay(void)
 	while(1);
 
 }
-

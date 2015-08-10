@@ -707,7 +707,7 @@ void ili9320_Initializtion(void)
     {
 //       printf("\n\r ###### Err: Unknow DeviceCode 0x%x ###### ", DeviceCode);
     }
-    Lcd_Light_ON
+    Lcd_Light_ON;
 
     ili9320_Clear(YELLOW);
     LCD_DisplayWelcomeStr(0x60);
@@ -726,7 +726,7 @@ void ili9320_Initializtion(void)
 			i++;
         }
     }
-    Delay(120);  
+    Delay(1200);  
 }
 
 /****************************************************************************

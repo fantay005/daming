@@ -51,7 +51,7 @@ void GUI_Text(u16 x, u16 y, u8 *str, u16 Color, u16 bkColor)
   
   while(*str!='\0')
   {   
-    ili9320_PutChar_16x24((x+16*i),y,*str++,Color,bkColor);
+    ili9320_PutChar((x+8*i),y,*str++,Color,bkColor);
 	i++;
   }
 }
