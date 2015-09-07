@@ -58,13 +58,20 @@
 #define GPIO_KEY_OK     GPIOF
 #define Pin_Key_OK      GPIO_Pin_6           //确定键
 
+typedef enum{
+	Open_GUI,        //开机界面
+	Main_GUI,        //主界面	
+	Config_GUI,      //配置界面
+	Service_GUI,     //维修界面
+	
+	Close_GUI,       //关机界面
+}Dis_Type;
 
 typedef enum{
 	
 	
-	
-	
-};
+}Conf_Type;
+
 
 void key_init(void)
 {
