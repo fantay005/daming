@@ -652,6 +652,11 @@
                 </FileArmAds>
               </FileOption>
             </File>
+            <File>
+              <FileName>CommZigBee.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\CommZigBee.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
