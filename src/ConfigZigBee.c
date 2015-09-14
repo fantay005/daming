@@ -1,6 +1,15 @@
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+#include <stdbool.h>
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
 #include "misc.h"
+#include "zklib.h"
+#include "shuncom.h"
 
 #define SERx         USART3
 #define SERx_IRQn    USART3_IRQn
@@ -9,7 +18,11 @@
 #define Pin_SERx_RX  GPIO_Pin_11
 #define GPIO_SERx    GPIOB
 
-static void __zigbeeInitUsart(int baud) {
+#define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+
+static xQueueHandle __ConfigQueue;
+
+static void __ConfigInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
@@ -22,7 +35,7 @@ static void __zigbeeInitUsart(int baud) {
 	USART_Cmd(SERx, ENABLE);
 }
 
-static void __gsmInitHardware(void) {
+static void __ConfigInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -49,6 +62,51 @@ static void __gsmInitHardware(void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+typedef enum{
+	CONFIG_RECIEVE_DATA,
+	CONFIG_SEND_DATA,
+	CONFIG_MODIFY_DATA,
+	CONFIG_NONE,
+}ConfigTaskMessageType;
+
+typedef struct {
+	/// Message type.
+	ConfigTaskMessageType type;
+	/// Message lenght.
+	unsigned char length;
+} ConfigTaskMsg;
+
+static ConfigTaskMsg *__ConfigCreateMessage(ConfigTaskMessageType type, const char *dat, unsigned char len) {
+  ConfigTaskMsg *message = pvPortMalloc(ALIGNED_SIZEOF(ConfigTaskMsg) + len);
+	if (message != NULL) {
+		message->type = type;
+		message->length = len;
+		memcpy(&message[1], dat, len);
+	}
+	return message;
+}
+
+static inline void *__ConfigGetMsgData(ConfigTaskMsg *message) {
+	return &message[1];
+}
+
+void __ConfigDestroyMessage(ConfigTaskMsg *message) {
+	vPortFree(message);
+}
+
+static void ConfigComSendChar(char c) {
+	USART_SendData(SERx, c);
+	while (USART_GetFlagStatus(SERx, USART_FLAG_TXE) == RESET);
+}
+
+bool ConfigTaskRecieveModifyData(const char *dat, int len) {
+	ConfigTaskMsg *message = __ConfigCreateMessage(CONFIG_MODIFY_DATA, dat, len);
+	if (pdTRUE != xQueueSend(__ConfigQueue, &message, configTICK_RATE_HZ * 5)) {
+		__ConfigDestroyMessage(message);
+		return true;
+	}
+	return false;
+}
 
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
@@ -87,14 +145,13 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 		LenZIGB = 0;
 	}
-
 	
 	if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
-		ZigbTaskMsg *msg;
+		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		buffer[bufferIndex++] = 0;
-		msg = __ZigbCreateMessage(TYPE_IOT_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
-		if (pdTRUE == xQueueSendFromISR(__ZigbeeQueue, &msg, &xHigherPriorityTaskWoken)) {
+		msg = __ConfigCreateMessage(CONFIG_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				portYIELD();
 			}
@@ -109,3 +166,58 @@ void USART3_IRQHandler(void) {
 		buffer[bufferIndex++] = data;
 	}
 }
+
+static void __TaskHandleRecieve(ConfigTaskMsg *msg){
+	char *p = __ConfigGetMsgData(msg);
+
+}
+
+static void __TaskHandleSend(ConfigTaskMsg *msg){
+	char *p = __ConfigGetMsgData(msg);
+	
+}
+
+static void __TaskHandleModify(ConfigTaskMsg *msg){
+	char *p = __ConfigGetMsgData(msg);
+	
+}
+typedef struct {
+	ConfigTaskMessageType type;
+	void (*handlerFunc)(ConfigTaskMsg *);
+} MessageHandlerMap;
+
+static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ CONFIG_RECIEVE_DATA, __TaskHandleRecieve },
+	{ CONFIG_SEND_DATA, __TaskHandleSend },
+	{ CONFIG_MODIFY_DATA, __TaskHandleModify},
+	{ CONFIG_NONE, NULL },
+};
+
+static void __ConfigTask(void *parameter) {
+	portBASE_TYPE rc;
+	ConfigTaskMsg *message;
+
+	for (;;) {
+		printf("Config: loop again\n");
+		rc = xQueueReceive(__ConfigQueue, &message, configTICK_RATE_HZ * 10);
+		if (rc == pdTRUE) {
+			const MessageHandlerMap *map = __messageHandlerMaps;
+			for (; map->type != CONFIG_NONE; ++map) {
+				if (message->type == map->type) {
+					map->handlerFunc(message);
+					break;
+				}
+			}
+			__ConfigDestroyMessage(message);
+		} 
+	}
+}
+
+
+void ConfigInit(void) {
+	__ConfigInitUsart(38400);
+	__ConfigInitHardware();
+	__ConfigQueue = xQueueCreate(5, sizeof(ConfigTaskMsg *));
+	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+}
+

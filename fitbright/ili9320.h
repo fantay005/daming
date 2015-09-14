@@ -223,6 +223,7 @@ void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bk
 void ili9320_BackLight(u8 status);
 void Lcd_DisplayChinese16(int x, int y, const unsigned char *str);
 void Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
+void ili9320_Darken(u8 Line, u16 Color);
 
 u16 ili9320_BGR2RGB(u16 c);
 

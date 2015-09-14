@@ -31,8 +31,13 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
+#define Font32Color   MAGENTA
+#define Font16Color   BLACK
+
 
 static unsigned char arrayBuffer[128];
+
+static char Exist32Font;
 
 u16 DeviceCode;
 
@@ -510,12 +515,14 @@ __exit:
 
 void Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 16, YELLOW, RED);
+	LedDisplayGB2312String(x, y, str, 16, Font16Color, LIGHTBLUE);
 }
 
 void Lcd_DisplayChinese32(int x, int y, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 32, MAGENTA, LGRAY);
+	LedDisplayGB2312String(x, y, str, 32, Font32Color, LIGHTBLUE);
+	
+	Exist32Font = 1;
 }
 
 void LCD_DisplayWelcomeStr(u8 Line)
@@ -705,6 +712,35 @@ void ili9320_Clear(u16 Color)
    {
      LCD->LCD_RAM=Color;
    }
+	 Exist32Font = 0;
+}
+
+/****************************************************************************
+
+
+
+
+
+******************************************************************************/
+
+void ili9320_Darken(u8 Line, u16 Color)
+{
+	u32 index=0;
+	
+	if(Exist32Font){
+		Line = 24 + Line * 18;
+	} else {
+		Line = 14 + (Line - 1) * 18;
+	}
+	
+  ili9320_SetCursor(Line*320,0); 
+  LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+  for(index=0; index<16*320; index++)
+  {
+		 if(Color != Font16Color){
+			LCD->LCD_RAM=Color;
+		 }
+  }
 }
 
 /****************************************************************************

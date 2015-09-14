@@ -657,6 +657,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\CommZigBee.c</FilePath>
             </File>
+            <File>
+              <FileName>ConfigZigBee.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\ConfigZigBee.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
