@@ -157,42 +157,60 @@
 #define CtrlPin_NWR    GPIO_Pin_15  /* PD.15 */
 
 /* LCD color */
-#ifndef 	WHITE
-#define WHITE          0xFFFF
-#define BLACK          0x0000
-#define GREY           0xF7DE
-#define BLUE           0x001F
-#define BLUE2          0x051F
-#define RED            0xF800
-#define MAGENTA        0xF81F
-#define GREEN          0x07E0
-#define CYAN           0x7FFF
-#define YELLOW         0xFFE0
-#endif
+
+
+//字体颜色
+#define WHITE                  0xFFFF
+#define BLACK                  0x0000          
+#define YELLOW                 0xFFE0
+#define BLUE                   0x001F  
+#define BRED                   0XF81F
+#define GRED                   0XFFE0
+#define GBLUE                  0X07FF
+#define RED                    0xF800
+#define MAGENTA                0xF81F
+#define GREEN                  0x07E0
+#define CYAN                   0x7FFF
+#define BROWN                  0XBC40  //棕色
+#define BRRED                  0XFC07  //棕红色
+#define GRAY                   0X8430  //灰色
+
+//GUI颜色
+#define DARKBLUE               0X01CF  //深蓝色   
+#define LIGHTBLUE              0X7D7C  //浅蓝色
+#define GRAYBLUE               0X5458  //灰蓝色
+//以上三色是PANEL的颜色
+
+#define LIGHTGREEN             0X841F  //浅绿色
+#define LGRAY                  0XC618  //浅灰色(panel)，窗体背景色
+
+#define LGRAYBLUE              0XA651  //浅灰蓝色
+#define LBBLUE                 0X2B12  //浅棕蓝色
 
 #define HyalineBackColor 0x0001  // Lihao 透明背景
 
 #ifndef Line0
-#define Line0          0
-#define Line1          24
-#define Line2          48
-#define Line3          72
-#define Line4          96
-#define Line5          120
-#define Line6          144
-#define Line7          168
-#define Line8          192
-#define Line9          216
+
+	#define Line0          0
+	#define Line1          24
+	#define Line2          48
+	#define Line3          72
+	#define Line4          96
+	#define Line5          120
+	#define Line6          144
+	#define Line7          168
+	#define Line8          192
+	#define Line9          216
 
 
-#define Horizontal     0x00
-#define Vertical       0x01
+	#define Horizontal     0x00
+	#define Vertical       0x01
 #endif
 
 void LCD_DB_AS_InPut(void);
 void LCD_DB_AS_OutPut(void);
 
-void ili9320_Initializtion(void);;;
+void ili9320_Initializtion(void);
 void ili9320_SetCursor(u16 x,u16 y);
 void ili9320_SetWindows(u16 StartX,u16 StartY,u16 EndX,u16 EndY);
 void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic);
@@ -203,6 +221,8 @@ void ili9320_Delay(u32 nCount);
 u16  ili9320_GetCode(void);;
 void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bkColor);
 void ili9320_BackLight(u8 status);
+void Lcd_DisplayChinese16(int x, int y, const unsigned char *str);
+void Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
 
 u16 ili9320_BGR2RGB(u16 c);
 

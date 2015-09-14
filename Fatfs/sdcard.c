@@ -2994,7 +2994,7 @@ static void DMA_RxConfiguration(uint32_t *BufferDST, uint32_t BufferSize)
 
 /*********** (C) COPYRIGHT 2009 STMicroelectronics *****END OF *******/
 
-static const char * FR_Table[]= 
+static const char *FR_Table[]= 
 {
     "FR_OK：成功",                                      /* (0) Succeeded */
     "FR_DISK_ERR：底层硬件错误",                      /* (1) A hard error occurred in the low level disk I/O layer */
@@ -3041,10 +3041,10 @@ void SDInit(void) {
 	NVIC_Config();
 	Status = SD_Init();
 	if(Status == SD_OK) {                                    //检测初始化是否成功
-	printf( " \r\n SD_Init 初始化成功 \r\n " );
+		printf( " \r\n SD_Init 初始化成功 \r\n " );		
 	}	else {
-	printf("\r\n SD_Init 初始化失败 \r\n" );
-	printf("\r\n 返回的Status的值为： %d \r\n",Status );
+		printf("\r\n SD_Init 初始化失败 \r\n" );
+		printf("\r\n 返回的Status的值为： %d \r\n",Status );
 	}
 }
 

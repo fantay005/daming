@@ -351,7 +351,7 @@
               <MiscControls>--preinclude=speaker_v4.h</MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\M35;.\ZKLibs\stm32;.\Speaker;.\Preincludes;.\Led;.\Fatfs</IncludePath>
+              <IncludePath>FreeRTOS/include;.\FreeRTOS\portable\RVDS\ARM_CM3;.\Libraries\CMSIS\CM3\CoreSupport;.\Libraries\CMSIS\CM3\DeviceSupport\ST\STM32F10x;.\Libraries\STM32F10x_StdPeriph_Driver\inc;.\SRC;.\ZKLibs;.\ZKLibs\stm32;.\Preincludes;.\Fatfs;.\fitbright</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -367,7 +367,7 @@
               <MiscControls></MiscControls>
               <Define></Define>
               <Undefine></Undefine>
-              <IncludePath>FreeRTOS/include</IncludePath>
+              <IncludePath>FreeRTOS/include;.\fitbright;.\freertos;.\Fatfs;.\Libraries;.\ZKLibs\stm32;.\ZKLibs;.\Preincludes</IncludePath>
             </VariousControls>
           </Aads>
           <LDads>
@@ -672,6 +672,26 @@
               <FileName>watchdog.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
+            </File>
+            <File>
+              <FileName>font_dot_array.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\font_dot_array.c</FilePath>
+            </File>
+            <File>
+              <FileName>fsmc_nor.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\fsmc_nor.c</FilePath>
+            </File>
+            <File>
+              <FileName>norflash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
+            </File>
+            <File>
+              <FileName>unicode2gbk.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
             </File>
           </Files>
         </Group>

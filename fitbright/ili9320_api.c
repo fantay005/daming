@@ -56,6 +56,15 @@ void GUI_Text(u16 x, u16 y, u8 *str, u16 Color, u16 bkColor)
   }
 }
 
+/*
+void GUI_ChineseText(u16 x, u16 y, u8 *str, u16 Color, u16 bkColor){
+	u8 i = 0;
+	
+	while(*str != '\0'){
+		ili9320_
+	}
+}
+*/
 void GUI_TextNum(u16 x, u16 y, u8 *str, u16 len,u16 Color, u16 bkColor)
 {
   u8 i=0;

@@ -1,35 +1,22 @@
+#include <string.h>
+#include <stdio.h>
 #include "display.h"
 #include "ili9320_api.h"
 #include "ili9320.h"
 #include "key.h"
-#include <string.h>
 
-void ZigbeeConfigDisplay(void)
-{
-	
-	ili9320_Clear(GREEN);
-	
-    /************************左侧栏*****************************/
-	
-	GUI_Text(60,0,(u8 *)"Function Select",MAGENTA,GREEN);		
-	
-	GUI_Line(0,20,319,20,BLACK);
-	
-	GUI_Text(10,24,(u8 *)"1: Zigbee Configuration",BLACK,GREEN);	
-	
-	GUI_Text(10,44,(u8 *)"2: Gateway Option",BLACK,GREEN);
-	
-	GUI_Text(10,64,(u8 *)"3: Communication Test",BLACK,GREEN);
-	
-	GUI_Text(10,84,(u8 *)"4: Zigbee Information",BLACK,GREEN);
-	
 
-	/************************分隔符*****************************/
-//	GUI_Line(0,16,319,16,BLACK);
-//	GUI_Line(0,214,319,214,BLACK);
-//	GUI_Line(200,0,200,214,BLACK);
-	/************************右侧栏*****************************/
+void Boot_Interface(void){
 	
-	while(1);
+	Lcd_DisplayChinese32(60, 116, (const unsigned char *)"精益求精");
+	Lcd_DisplayChinese32(100, 116, (const unsigned char *)"追求卓越");
+	
+	Lcd_DisplayChinese16(192, 80, (const unsigned char *)"合肥大明节能科技股份有限公司");
+	Lcd_DisplayChinese16(216, 80, (const unsigned char *)"www.fitbright.cn");
+}
 
+void Main_Interface(void){
+	Lcd_DisplayChinese32(4, 112, "主选项");
+	GUI_Line(40,16,319,16,BLACK);
+	
 }
