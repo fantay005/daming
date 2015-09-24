@@ -11,8 +11,9 @@ void NorFlashInit(void) {
 	if (__semaphore == NULL) {
 		FSMC_NOR_Init();
 		vSemaphoreCreateBinary(__semaphore);
-	}
+	}	
 }
+
 
 void NorFlashWrite(uint32_t flash, const short *ram, int len) {
 

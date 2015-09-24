@@ -31,8 +31,12 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
-#define Font32Color   MAGENTA
+#define Font32Color   BLACK
 #define Font16Color   BLACK
+
+#define BackColor     CYAN
+
+#define LED_DOT_WIDTH 320
 
 
 static unsigned char arrayBuffer[128];
@@ -407,19 +411,73 @@ void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bk
 
   ili9320_SetCursor(Ypos,Xaddress);
 
-  for(index = 0; index < 24; index++)
+  for(index = 0; index < 16; index++)
   {
     LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
     for(j = 0; j < 2; j++)
     {
         for(i = 0; i < 8; i++)
         {
-            if((c[3*index + j] & (0x80 >> i)) == 0x00)
+            if((c[2*index + j] & (0x80 >> i)) == 0x00)
                 LCD_WriteRAM(bkColor);
             else
                 LCD_WriteRAM(charColor);
         }   
     }
+    Xaddress++;
+    ili9320_SetCursor(Ypos, Xaddress);
+  }
+}
+
+void LCD_DrawChinaChar16x8(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bkColor)
+{
+  u32 index = 0, i = 0;
+  u8 Xaddress = 0;
+   
+  Xaddress = Xpos;
+
+  ili9320_SetCursor(Ypos,Xaddress);
+
+  for(index = 0; index < 16; index++)
+  {
+    LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+
+		for(i = 0; i < 8; i++)
+		{
+			if((c[index] & (0x80 >> i)) == 0x00)
+					LCD_WriteRAM(bkColor);
+			else
+					LCD_WriteRAM(charColor);
+		}
+
+    Xaddress++;
+    ili9320_SetCursor(Ypos, Xaddress);
+  }
+}
+
+void LCD_DrawChinaChar32x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bkColor)
+{
+  u32 index = 0, i = 0, j = 0;
+  u8 Xaddress = 0;
+   
+  Xaddress = Xpos;
+
+  ili9320_SetCursor(Ypos,Xaddress);
+
+  for(index = 0; index < 32; index++)
+  {
+    LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+
+		for(j = 0; j < 2; j++){
+			for(i = 0; i < 8; i++)
+			{
+					if((c[2*index + j] & (0x80 >> i)) == 0x00)
+							LCD_WriteRAM(bkColor);
+					else
+							LCD_WriteRAM(charColor);
+			}
+		}
+
     Xaddress++;
     ili9320_SetCursor(Ypos, Xaddress);
   }
@@ -434,40 +492,48 @@ void LCD_DrawChinaChar32x32(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bk
 
   ili9320_SetCursor(Ypos,Xaddress);
 
-  for(index = 0; index < 24; index++)
+  for(index = 0; index < 32; index++)
   {
     LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
     for(j = 0; j < 4; j++)
     {
-        for(i = 0; i < 8; i++)
+				for(i = 0; i < 8; i++)
         {
-            if((c[3*index + j] & (0x80 >> i)) == 0x00)
+            if((c[4*index + j] & (0x80 >> i)) == 0x00)
                 LCD_WriteRAM(bkColor);
             else
                 LCD_WriteRAM(charColor);
-        }   
+        }  				
     }
     Xaddress++;
     ili9320_SetCursor(Ypos, Xaddress);
   }
 }
 
-const unsigned char *LedDisplayGB2312String(int x, int y, const unsigned char *gbString, unsigned char  DotMatrix, int charColor, int bkColor) {
+const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *gbString, unsigned char  DotMatrix, int charColor, int bkColor) {
 	if (!FontDotArrayFetchLock()) {
 		return gbString;
 	}
 
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
-			
+
 			if(DotMatrix == 16){
+				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_ASCII_16X8) {
+					x += BYTES_HEIGHT_PER_FONT_ASCII_16X8;
+					y = 0;
+				}
 				FontDotArrayFetchASCII_16(arrayBuffer, *gbString);
-				LCD_DrawChinaChar16x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
-				x += BYTES_WIDTH_PER_FONT_ASCII_16X8;
+				LCD_DrawChinaChar16x8(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
+				y += BYTES_WIDTH_PER_FONT_ASCII_16X8;
 			} else if(DotMatrix == 32){
+				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
+					x += BYTES_HEIGHT_PER_FONT_ASCII_32X16;
+					y = 0;
+				}
 				FontDotArrayFetchASCII_32(arrayBuffer, *gbString);
-				LCD_DrawChinaChar32x32(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
-				x += BYTES_WIDTH_PER_FONT_ASCII_32X16;
+				LCD_DrawChinaChar32x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
+				y += BYTES_WIDTH_PER_FONT_ASCII_32X16;
 			}
 				++gbString;
 
@@ -478,13 +544,21 @@ const unsigned char *LedDisplayGB2312String(int x, int y, const unsigned char *g
 			}
 			code += *gbString++;
 			if(DotMatrix == 16){
+				if (y > LED_DOT_WIDTH - BYTES_HEIGHT_PER_FONT_GB_16X16) {
+					x += BYTES_HEIGHT_PER_FONT_GB_16X16;
+					y = 0;
+				}
 				FontDotArrayFetchGB_16(arrayBuffer, code);
 				LCD_DrawChinaChar16x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);		
-				x += BYTES_WIDTH_PER_FONT_GB_16X16;
+				y += BYTES_WIDTH_PER_FONT_GB_16X16;
 			} else if (DotMatrix == 32){
+				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_GB_32X32) {
+					x += BYTES_WIDTH_PER_FONT_GB_32X32;
+					y = 0;
+				}
 				FontDotArrayFetchGB_32(arrayBuffer, code);
 				LCD_DrawChinaChar32x32(x, y, (const u8 *)arrayBuffer, charColor, bkColor);		
-				x += BYTES_WIDTH_PER_FONT_GB_32X32;
+				y += BYTES_WIDTH_PER_FONT_GB_32X32;
 			}
 				
 		} else if (isUnicodeStart(*gbString)) {
@@ -494,11 +568,11 @@ const unsigned char *LedDisplayGB2312String(int x, int y, const unsigned char *g
 			if(DotMatrix == 16){
 				FontDotArrayFetchUCS_16(arrayBuffer, code);
 				LCD_DrawChinaChar16x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
-				x += BYTES_WIDTH_PER_FONT_GB_16X16;
+				y += BYTES_WIDTH_PER_FONT_GB_16X16;
 			} else if (DotMatrix == 32){
 				FontDotArrayFetchUCS_32(arrayBuffer, code);
 				LCD_DrawChinaChar32x32(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
-				x += BYTES_WIDTH_PER_FONT_GB_32X32;
+				y += BYTES_WIDTH_PER_FONT_GB_32X32;
 			}
 			
 		} else {
@@ -515,12 +589,12 @@ __exit:
 
 void Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 16, Font16Color, LIGHTBLUE);
+	LedDisplayGB2312String(x, y, str, 16, Font16Color, BackColor);
 }
 
 void Lcd_DisplayChinese32(int x, int y, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 32, Font32Color, LIGHTBLUE);
+	LedDisplayGB2312String(x, y, str, 32, Font32Color, BackColor);
 	
 	Exist32Font = 1;
 }
@@ -617,24 +691,10 @@ void ili9320_Initializtion(void)
 
     Lcd_Light_ON;
 
-    ili9320_Clear(RED);
-	//	ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic)
-    LCD_DisplayWelcomeStr(0x60);
+    ili9320_Clear(BackColor);
+		Lcd_DisplayChinese16(0, 0,(const unsigned char *)"北京欢迎您！1234567890abcdefg:合肥大明节能科技股份有限公司");
+		Lcd_DisplayChinese32(0, 50,(const unsigned char *)"北京欢迎您！1234567890efghijklmnabc：合肥大明节能科技股份有限公司");
 
-    StartX = (320 - 8*len)/2;
-    for (i=0;i<len;i++)
-    {
-        ili9320_PutChar((StartX+8*i),60,str[i],YELLOW, RED);
-    }
-    if(DeviceCode==0x8989)
-		{
-	    i=0;
-        while(ID8989str[i]!='\0')
-        {
-            ili9320_PutChar((StartX+8*i),140,ID8989str[i],YELLOW, RED);
-			i++;
-        }
-    }
     Delay(1200);  
 }
 

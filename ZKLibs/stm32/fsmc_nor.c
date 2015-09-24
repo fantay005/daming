@@ -1,11 +1,11 @@
 #include "stm32f10x_fsmc.h"
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_rcc.h"
-#include "stm32f10x_rcc.h"
 #include "fsmc_nor.h"
+#include <stdio.h>
 
-#define BlockErase_Timeout    ((long)0x00A00000)
-#define ChipErase_Timeout     ((long)0x30000000)
+#define BlockErase_Timeout    ((long)0x00119400)
+#define ChipErase_Timeout     ((long)0x00232800)
 #define Program_Timeout       ((long)0x00001400)
 
 /*******************************************************************************
@@ -21,7 +21,8 @@ void FSMC_NOR_Init(void) {
 	FSMC_NORSRAMInitTypeDef  FSMC_NORSRAMInitStructure;
 	FSMC_NORSRAMTimingInitTypeDef  p;
 	GPIO_InitTypeDef GPIO_InitStructure;
-
+	NOR_IDTypeDef t;
+	
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOD | RCC_APB2Periph_GPIOE |
 						   RCC_APB2Periph_GPIOF | RCC_APB2Periph_GPIOG, ENABLE);
 
@@ -91,7 +92,14 @@ void FSMC_NOR_Init(void) {
 
 	/* Enable FSMC Bank1_NOR Bank */
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);
-	FSMC_NOR_Reset();
+	
+//	FSMC_NOR_Reset();
+	
+	FSMC_NOR_ReadID(&t);
+	printf("%x\r\n", t.Manufacturer_Code);
+	printf("%x\r\n", t.Device_Code1);
+	printf("%x\r\n", t.Device_Code2);
+	printf("%x\r\n", t.Device_Code3);
 }
 
 /******************************************************************************
@@ -191,14 +199,14 @@ NOR_Status FSMC_NOR_EraseChip(void) {
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data) {
-	short t;
+	unsigned char t;
 	NOR_Status status;
 
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
 	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
 	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00A0);
 	NOR_WRITE((Bank1_NOR2_ADDR + WriteAddr), Data);
-	for (t = 0; t < 100; t++);
+	for (t = 0; t < 200; t++);
 	status = (FSMC_NOR_GetStatus(Program_Timeout));
 	FSMC_NOR_ReturnToReadMode();
 	return status;
@@ -319,27 +327,29 @@ NOR_Status FSMC_NOR_Reset(void) {
 NOR_Status FSMC_NOR_GetStatus(long Timeout) {
 	short val1 = 0x00, val2 = 0x00;
 	NOR_Status status = NOR_ONGOING;
-	//long timeout = Timeout;
-	/*
-	// Poll on NOR memory Ready/Busy signal ------------------------------------
-	while((GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_6) != RESET) && (timeout > 0))
-	{
-	  timeout--;
-	}
+//	long timeout = Timeout;
+//	/*
+//	// Poll on NOR memory Ready/Busy signal ------------------------------------*/
+//	while((GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_10) != RESET) && (timeout > 0))
+//	{
+//	  timeout--;
+//	}
 
-	timeout = Timeout;
+//	timeout = Timeout;
 
-	while((GPIO_ReadInputDataBit(GPIOD, GPIO_Pin_6) == RESET) && (timeout > 0))
-	{
-	  timeout--;
-	}
-	*/
+//	while((GPIO_ReadInputDataBit(GPIOE, GPIO_Pin_10) == RESET) && (timeout > 0))
+//	{
+//	  timeout--;
+//		if(timeout == 0){
+//			timeout = 0;
+//		}
+//	}
+	
 	// Get the NOR memory operation status -------------------------------------
 	while ((Timeout != 0x00) && (status != NOR_SUCCESS)) {
 		Timeout--;
 
-		//Read DQ6 and DQ5
-		//Read DQ6 and DQ2   SST39VF320
+		//Read DQ6 and DQ2   SST39VF6401B
 
 		val1 = *(unsigned short *)(Bank1_NOR2_ADDR);
 		val2 = *(unsigned short *)(Bank1_NOR2_ADDR);
@@ -349,7 +359,6 @@ NOR_Status FSMC_NOR_GetStatus(long Timeout) {
 			return NOR_SUCCESS;
 		}
 
-		//if((val1 & 0x0020) != 0x0020)
 		if ((val1 & 0x0004) != 0x0004) {
 			status = NOR_ONGOING;
 		}
@@ -359,8 +368,7 @@ NOR_Status FSMC_NOR_GetStatus(long Timeout) {
 
 		if ((val1 & 0x0040) == (val2 & 0x0040)) {
 			return NOR_SUCCESS;
-		} else if ((val1 & 0x0020) == 0x0020) // ?????????????????????
-			//else if((val1 & 0x0004) == 0x0004)
+		} else if((val1 & 0x0004) == 0x0004)
 		{
 			return NOR_ERROR;
 		}

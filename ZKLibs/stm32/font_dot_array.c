@@ -28,10 +28,22 @@ void FontDotArrayInit() {
 }
 
 int FontDotArrayFetchASCII_16(uint8_t *buf, uint8_t c) {
+	uint8_t tmp, i;
 	uint32_t addr = (c - 0x20) * 15 + FONT_DOT_ASCII_16X8_OFFSET;
 	addr &= ~0x01;
 	NorFlashRead2(addr, (short *)buf, 8);
-	buf[16] = 0;
+	for(i = 0; i < 8; i++){
+		tmp = buf[2 * i];
+		buf[2 * i] = buf[2 * i + 1];
+		buf[2 * i + 1] = tmp;
+	}
+	if(c%2){
+		tmp = buf[0];
+		for(i = 0; i < 15; i++){
+			buf[i] = buf[i + 1];
+		}
+		buf[15] = tmp;
+	}
 	return 16;
 }
 
@@ -42,17 +54,27 @@ int FontDotArrayFetchASCII_24(uint8_t *buf, uint8_t c) {
 }
 
 int FontDotArrayFetchASCII_32(uint8_t *buf, uint8_t c) {
+	uint8_t tmp, i;
 	uint32_t addr = (c - 0x20) * 64 + FONT_DOT_ASCII_32X16_OFFSET;
 	NorFlashRead2(addr, (short *)buf, 32);
+	for(i = 0; i < 32; i++){
+		tmp = buf[2 * i];
+		buf[2 * i] = buf[2 * i + 1];
+		buf[2 * i + 1] = tmp;
+	}
 	return 64;
 }
 
 int FontDotArrayFetchGB_16(uint8_t *buf, uint16_t code) {
-	uint32_t addr;
-
-	addr = ((code >> 8) - 0xA1) * 94 + ((code & 0xff) - 0xA1);
+	uint8_t tmp, i;
+	uint32_t addr = ((code >> 8) - 0xA1) * 94 + ((code & 0xff) - 0xA1);
 	addr = addr * 30 + FONT_DOT_CHINESE_16X16_OFFSET;
 	NorFlashRead2(addr, (short *)buf, 15);
+	for(i = 0; i < 16; i++){
+		tmp = buf[2 * i];
+		buf[2 * i] = buf[2 * i + 1];
+		buf[2 * i + 1] = tmp;
+	}
 	buf[30] = 0;
 	buf[31] = 0;
 	return 32;
@@ -67,9 +89,15 @@ int FontDotArrayFetchGB_24(uint8_t *buf, uint16_t code) {
 }
 
 int FontDotArrayFetchGB_32(uint8_t *buf, uint16_t code) {
+	uint8_t tmp, i;
 	uint32_t addr = ((code >> 8) - 0xA1) * 94 + ((code & 0xff) - 0xA1);
 	addr = addr * 128 + FONT_DOT_CHINESE_32X32_OFFSET;
 	NorFlashRead2(addr, (short *)buf, 64);
+	for(i = 0; i < 64; i++){
+		tmp = buf[2 * i];
+		buf[2 * i] = buf[2 * i + 1];
+		buf[2 * i + 1] = tmp;
+	}
 	return 128;
 }
 

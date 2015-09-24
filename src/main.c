@@ -66,6 +66,7 @@ static void PreSetupHardware(void) {
 extern void UartDebugInit(void);
 extern void WatchdogInit(void);
 extern void SDInit(void);
+extern void NorFlashInit(void) ;
 extern void ili9320_Initializtion(void);
 extern void ili9320_Clear(u16 dat);
 extern void ZigbeeConfigDisplay(void);
@@ -74,9 +75,10 @@ int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
 	//WatchdogInit();
+	NorFlashInit();
 	ili9320_Initializtion();
 
-	//SDInit();
+	SDInit();
 
 	printf("\n=============================================\n");
 	printf("%s", Version());

@@ -4,7 +4,7 @@
 #include "ili9320_api.h"
 #include "ili9320.h"
 #include "key.h"
-#include "shuncom.h"
+#include "CommZigBee.h"
 
 #define BACKCOLOR   LIGHTBLUE
 #define LINECOLOR   BLACK

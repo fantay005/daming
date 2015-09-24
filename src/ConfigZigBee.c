@@ -9,7 +9,7 @@
 #include "stm32f10x_usart.h"
 #include "misc.h"
 #include "zklib.h"
-#include "shuncom.h"
+#include "CommZigBee.h"
 
 #define SERx         USART3
 #define SERx_IRQn    USART3_IRQn
@@ -124,28 +124,6 @@ void USART3_IRQHandler(void) {
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
 
-	if(((data >= '0') && (data <= 'F')) || (data == 0x03)){
-		buffer[bufferIndex++] = data;
-		if(bufferIndex == 9) {
-			if (buffer[7] > '9') {
-				param1 = buffer[7] - '7';
-			} else {
-				param1 = buffer[7] - '0';
-			}
-			
-			if (buffer[8] > '9') {
-				param2 = buffer[8] - '7';
-			} else {
-				param2 = buffer[8] - '0';
-			}
-			
-			LenZIGB = (param1 << 4) + param2;
-		}
-	} else {
-		bufferIndex = 0;
-		LenZIGB = 0;
-	}
-	
 	if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
@@ -215,8 +193,8 @@ static void __ConfigTask(void *parameter) {
 
 
 void ConfigInit(void) {
-	__ConfigInitUsart(38400);
 	__ConfigInitHardware();
+	__ConfigInitUsart(38400);
 	__ConfigQueue = xQueueCreate(5, sizeof(ConfigTaskMsg *));
 	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

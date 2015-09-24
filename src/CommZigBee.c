@@ -9,7 +9,7 @@
 #include "stm32f10x_usart.h"
 #include "misc.h"
 #include "zklib.h"
-#include "shuncom.h"
+#include "CommZigBee.h"
 
 #define COMx         USART2
 #define COMx_IRQn    USART2_IRQn
