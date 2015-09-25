@@ -3036,6 +3036,10 @@ void  NVIC_Config (void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+extern void BackColorSet(void);
+extern void ili9320_SetLight(char line);
+
+
 void SDInit(void) {
 	FIL fsrc;
 	FRESULT result;
@@ -3064,7 +3068,17 @@ void SDInit(void) {
 	result = f_open(&fsrc, (const TCHAR*)"±õºþ.txt", FA_OPEN_EXISTING | FA_READ);
 	
 	if (result == FR_OK) {
-		result = f_read(&fsrc, buf, 100, &br);
+		result = f_read(&fsrc, buf, 512, &br);
+		BackColorSet();
+		Lcd_DisplayChinese16(0, 0, buf);	
+		
+		while(1){
+			char i;
+			for(i = 1; i < 16; i++){
+				ili9320_SetLight(i);
+				Delay(500);
+			}
+		}
 		
 		if (result == FR_OK){
 			printf("OK.\r\n");

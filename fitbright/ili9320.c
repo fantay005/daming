@@ -31,10 +31,10 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
-#define Font32Color   BLACK
-#define Font16Color   BLACK
+#define FontColor   BLACK
 
-#define BackColor     CYAN
+#define BackColor     MAGENTA
+#define EnLight       WHITE
 
 #define LED_DOT_WIDTH 320
 
@@ -521,14 +521,36 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 	if (!FontDotArrayFetchLock()) {
 		return gbString;
 	}
-
+		
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
+			if(*gbString == 0x0D){
+				++gbString;
+				continue;
+			}
+			if(*gbString == 0x0A){
+				if(*(gbString - 1) == 0x0D){
+					x += BYTES_HEIGHT_PER_FONT_ASCII_16X8;
+					if(x > 230){
+						goto __exit;
+					}
+					y = 0;
+					++gbString;
+					continue;
+				}
+			}
+			
+			if(x > 230){
+				goto __exit;
+			}
 
 			if(DotMatrix == 16){
 				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_ASCII_16X8) {
 					x += BYTES_HEIGHT_PER_FONT_ASCII_16X8;
 					y = 0;
+					if(x > 230){
+						goto __exit;
+					}
 				}
 				FontDotArrayFetchASCII_16(arrayBuffer, *gbString);
 				LCD_DrawChinaChar16x8(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
@@ -537,6 +559,9 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_ASCII_32X16) {
 					x += BYTES_HEIGHT_PER_FONT_ASCII_32X16;
 					y = 0;
+					if(x > 230){
+						goto __exit;
+					}
 				}
 				FontDotArrayFetchASCII_32(arrayBuffer, *gbString);
 				LCD_DrawChinaChar32x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);
@@ -554,6 +579,9 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 				if (y > LED_DOT_WIDTH - BYTES_HEIGHT_PER_FONT_GB_16X16) {
 					x += BYTES_HEIGHT_PER_FONT_GB_16X16;
 					y = 0;
+					if(x > 230){
+						goto __exit;
+					}
 				}
 				FontDotArrayFetchGB_16(arrayBuffer, code);
 				LCD_DrawChinaChar16x16(x, y, (const u8 *)arrayBuffer, charColor, bkColor);		
@@ -562,6 +590,9 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 				if (y > LED_DOT_WIDTH - BYTES_WIDTH_PER_FONT_GB_32X32) {
 					x += BYTES_WIDTH_PER_FONT_GB_32X32;
 					y = 0;
+					if(x > 230){
+						goto __exit;
+					}
 				}
 				FontDotArrayFetchGB_32(arrayBuffer, code);
 				LCD_DrawChinaChar32x32(x, y, (const u8 *)arrayBuffer, charColor, bkColor);		
@@ -594,29 +625,21 @@ __exit:
 	return NULL;
 }
 
-void Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
+void Lcd_LineDisplay16(char line, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 16, Font16Color, BackColor);
+	LedDisplayGB2312String(0, line*16, str, 16, FontColor, BackColor);
 }
 
-void Lcd_DisplayChinese32(int x, int y, const unsigned char *str){
+const unsigned char *Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
 	
-	LedDisplayGB2312String(x, y, str, 32, Font32Color, BackColor);
-	
-	Exist32Font = 1;
+	return LedDisplayGB2312String(x, y, str, 16, FontColor, BackColor);
 }
 
-void LCD_DisplayWelcomeStr(u8 Line)
-{
-  u16 num = 0;
-
-  /* Send the string character by character on LCD */
-  for(num=0; num<13; num++)
-  {
-    /* Display one China character on LCD */
-    LCD_DrawChinaChar24x24(Line, num*24+4, (u8 *)WelcomeStr[num],MAGENTA, LGRAY);
-  }
+const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str){
+	
+	return LedDisplayGB2312String(x, y, str, 32, FontColor, BackColor);
 }
+
 /****************************************************************************
 * 名    称：void ili9320_Initializtion()
 * 功    能：初始化 ILI9320 控制器
@@ -806,7 +829,7 @@ void ili9320_Darken(u8 Line, u16 Color)
   LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
   for(index=0; index<16*320; index++)
   {
-		 if(Color != Font16Color){
+		 if(Color != FontColor){
 			LCD->LCD_RAM=Color;
 		 }
   }
@@ -826,6 +849,48 @@ u16 ili9320_GetPoint(u16 x,u16 y)
   ili9320_SetCursor(x,y);
   return (ili9320_BGR2RGB(LCD_ReadRAM()));
 }
+
+/****************************************************************************
+光标设置函数
+
+*****************************************************************************/
+static unsigned char First_Dot = 0;  //定义第一行的第一个点的Y坐标
+
+void ili9320_SetLight(char line){
+	int index;
+	u16 data;
+	unsigned int msg;
+	unsigned short divisor, remainder;
+	
+	for(index=0; index<76800; index++)
+  {
+	 divisor = index/320;
+	 remainder = index%320;
+	 ili9320_SetCursor(remainder, divisor);
+	 data = LCD_ReadRAM();
+	 if(data != FontColor){
+		ili9320_SetCursor(remainder, divisor);
+		LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+		LCD->LCD_RAM = BackColor;
+	 }
+  }
+	
+	line = line - 1;
+  msg = line * 16 * 320;
+	
+  for(index=0; index<16*320; index++){	
+	 divisor = (index + msg)/320;
+	 remainder = index%320;
+	 ili9320_SetCursor(remainder, divisor);
+	 data = LCD_ReadRAM();
+	 if(data != FontColor){
+		ili9320_SetCursor(remainder, divisor);
+		LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+		LCD->LCD_RAM = EnLight;
+	 }
+  }
+}
+
 /****************************************************************************
 * 名    称：void ili9320_SetPoint(u16 x,u16 y,u16 point)
 * 功    能：在指定座标画点

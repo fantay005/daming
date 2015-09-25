@@ -70,6 +70,7 @@ extern void NorFlashInit(void) ;
 extern void ili9320_Initializtion(void);
 extern void ili9320_Clear(u16 dat);
 extern void ZigbeeConfigDisplay(void);
+extern void ConfigInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -78,7 +79,8 @@ int main(void) {
 	NorFlashInit();
 	ili9320_Initializtion();
 
-	SDInit();
+//	SDInit();
+	ConfigInit();
 
 	printf("\n=============================================\n");
 	printf("%s", Version());

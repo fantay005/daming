@@ -6,7 +6,7 @@
 #include "key.h"
 #include "CommZigBee.h"
 
-#define BACKCOLOR   LIGHTBLUE
+#define BACKCOLOR   CYAN
 #define LINECOLOR   BLACK
 #define DAKENCOLOR  DARKBLUE
 
@@ -23,7 +23,7 @@ ZigBee_Param Config_ZigBee, Display_ZigBee;
 BSN_Data Analysis_MSG;
 
 
-static void BackColorSet(void){
+void BackColorSet(void){
 	ili9320_Clear(BACKCOLOR);
 }
 

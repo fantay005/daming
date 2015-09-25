@@ -170,7 +170,7 @@
 #define RED                    0xF800
 #define MAGENTA                0xF81F
 #define GREEN                  0x07E0
-#define CYAN                   0x7FFF
+#define CYAN                   0x7FFF  //青色
 #define BROWN                  0XBC40  //棕色
 #define BRRED                  0XFC07  //棕红色
 #define GRAY                   0X8430  //灰色
@@ -221,8 +221,9 @@ void ili9320_Delay(u32 nCount);
 u16  ili9320_GetCode(void);;
 void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bkColor);
 void ili9320_BackLight(u8 status);
-void Lcd_DisplayChinese16(int x, int y, const unsigned char *str);
-void Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
+const unsigned char *Lcd_DisplayChinese16(int , int y, const unsigned char *str);
+const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
+void Lcd_LineDisplay16(char line, const unsigned char *str);
 void ili9320_Darken(u8 Line, u16 Color);
 
 u16 ili9320_BGR2RGB(u16 c);

@@ -10,6 +10,8 @@
 #include "misc.h"
 #include "zklib.h"
 #include "CommZigBee.h"
+#include "ili9320.h"
+#include "display.h"
 
 #define SERx         USART3
 #define SERx_IRQn    USART3_IRQn
@@ -127,7 +129,7 @@ void USART3_IRQHandler(void) {
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		buffer[bufferIndex++] = 0;
-		msg = __ConfigCreateMessage(CONFIG_USELESS_DATA, (const char *)buffer, bufferIndex);		
+		msg = __ConfigCreateMessage(CONFIG_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
 		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				portYIELD();
@@ -136,15 +138,24 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
-		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
-
-		}
 	}
 }
 
+static char Line = 1;
+
 static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-
+	if(Line == 1){
+		BackColorSet();
+	}
+	Lcd_LineDisplay16(Line, (const unsigned char *)p);
+	if(strlen(p) > 4){
+		Line++;
+	}
+	
+//	if(Line >=3){
+//		Lcd_LineDisplay16(Line++, "大明科技");
+//	}
 }
 
 static void __TaskHandleSend(ConfigTaskMsg *msg){
