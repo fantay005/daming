@@ -45,6 +45,13 @@ static char Exist32Font;
 
 u16 DeviceCode;
 
+const char *brief = "  ★合肥大明节能科技股份有限公司是以高强度气体放电（称HID）灯用电子镇流器为主导，集研发、制造、销售为一体的高新技术企业。公司依托相关单位，拥有一支以专业技术和研发人员为主体的优秀团队，推出FITBR系列大功率电子镇流器108种，FITBR产品优良的设计、高可靠性的品质、显著的节能效益得到了国内外专家和客户的认可和接受。本公司\
+所有的产品都通过了ISO9001：2008以及CE、ROHS认证。大明公司将本着\"精益求精、追求卓越\"的理念，通过不断的科技创新，将\"FITBR\"打造成为国内外知名品牌，推动国家乃至全球绿色照明的持续发展。";
+
+const char *addr = "地址：合肥市蜀山产业园振兴路6号厂房4楼";
+
+const char *teleph= "电话：0551-65398793 / 65398791";
+
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
 {
@@ -692,8 +699,10 @@ void ili9320_Initializtion(void)
     Lcd_Light_ON;
 
     ili9320_Clear(BackColor);
-		Lcd_DisplayChinese16(0, 0,(const unsigned char *)"北京欢迎您！1234567890abcdefg:合肥大明节能科技股份有限公司");
-		Lcd_DisplayChinese32(0, 50,(const unsigned char *)"北京欢迎您！1234567890efghijklmnabc：合肥大明节能科技股份有限公司");
+		Lcd_DisplayChinese16(0, 0,(const unsigned char *)brief);
+		Lcd_DisplayChinese16(0, 208,(const unsigned char *)addr);
+		Lcd_DisplayChinese16(0, 224,(const unsigned char *)teleph);
+	//	Lcd_DisplayChinese32(0, 50,(const unsigned char *)"北京欢迎您！1234567890efghijklmnabc：合肥大明节能科技股份有限公司");
 
     Delay(1200);  
 }

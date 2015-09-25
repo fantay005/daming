@@ -66,7 +66,7 @@ typedef enum{
 	CONFIG_RECIEVE_DATA,
 	CONFIG_SEND_DATA,
 	CONFIG_MODIFY_DATA,
-	CONFIG_NONE,
+	CONFIG_USELESS_DATA,
 }ConfigTaskMessageType;
 
 typedef struct {
@@ -110,7 +110,6 @@ bool ConfigTaskRecieveModifyData(const char *dat, int len) {
 
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
-static unsigned char LenZIGB;
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -124,24 +123,22 @@ void USART3_IRQHandler(void) {
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
 
-	if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
+	if (data == 0x0A){
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		buffer[bufferIndex++] = 0;
-		msg = __ConfigCreateMessage(CONFIG_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+		msg = __ConfigCreateMessage(CONFIG_USELESS_DATA, (const char *)buffer, bufferIndex);		
 		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				portYIELD();
 			}
 		}
 		bufferIndex = 0;
-		LenZIGB = 0;
-	} else if(bufferIndex > (LenZIGB + 12)){
-		bufferIndex = 0;
-		LenZIGB = 0;
-	} else if (data == 0x02){
-		bufferIndex = 0;
+	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
+		if ((bufferIndex == 2) && (strncmp("#H", buffer, 2) == 0)) {
+
+		}
 	}
 }
 
@@ -168,7 +165,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ CONFIG_RECIEVE_DATA, __TaskHandleRecieve },
 	{ CONFIG_SEND_DATA, __TaskHandleSend },
 	{ CONFIG_MODIFY_DATA, __TaskHandleModify},
-	{ CONFIG_NONE, NULL },
+	{ CONFIG_USELESS_DATA, NULL },
 };
 
 static void __ConfigTask(void *parameter) {
@@ -180,7 +177,7 @@ static void __ConfigTask(void *parameter) {
 		rc = xQueueReceive(__ConfigQueue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
-			for (; map->type != CONFIG_NONE; ++map) {
+			for (; map->type != CONFIG_USELESS_DATA; ++map) {
 				if (message->type == map->type) {
 					map->handlerFunc(message);
 					break;

@@ -33,10 +33,10 @@
 /   3: f_lseek() function is removed in addition to 2. */
 
 
-#define	_USE_STRFUNC	1	/* 0:Disable or 1-2:Enable */   //设置是否使用字符串函数，主要有f_gets, f_putc, f_puts, f_printf四个函数
+#define	_USE_STRFUNC	0	/* 0:Disable or 1-2:Enable */   //设置是否使用字符串函数，主要有f_gets, f_putc, f_puts, f_printf四个函数
 
 
-#define	_USE_MKFS		1	/* 0:Disable or 1:Enable */   //设置是否实现f_mkfs函数
+#define	_USE_MKFS		0	/* 0:Disable or 1:Enable */   //设置是否实现f_mkfs函数
 /* To enable f_mkfs() function, set _USE_MKFS to 1 and set _FS_READONLY to 0 */
 
 
@@ -56,7 +56,7 @@
 / Locale and Namespace Configurations
 /---------------------------------------------------------------------------*/
 
-#define _CODE_PAGE	1   //设置目标系统的本地化设置，本系统有ASCII支持就足够了，支持本地化的情况下，模块的大小将大幅增加
+#define _CODE_PAGE	936   //设置目标系统的本地化设置，本系统有ASCII支持就足够了，支持本地化的情况下，模块的大小将大幅增加
 /* The _CODE_PAGE specifies the OEM code page to be used on the target system.
 /  Incorrect setting of the code page can cause a file open failure.
 /
@@ -88,7 +88,7 @@
 /   1    - ASCII (Valid for only non-LFN configuration) */
 
 
-#define	_USE_LFN	0		/* 0 to 3 */    //设置长文件名,选择不支持
+#define	_USE_LFN	1		/* 0 to 3 */    //设置长文件名,选择不支持
 #define	_MAX_LFN	255		/* Maximum LFN length to handle (12 to 255) */  //不用设置，因为不支持长文件名
 /* The _USE_LFN option switches the LFN feature.
 /

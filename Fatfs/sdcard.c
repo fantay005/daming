@@ -3037,7 +3037,13 @@ void  NVIC_Config (void) {
 }
 
 void SDInit(void) {
+	FIL fsrc;
+	FRESULT result;
+  FATFS fs;
+	UINT br;
 	SD_Error Status;
+	char buf[512];
+	
 	NVIC_Config();
 	Status = SD_Init();
 	if(Status == SD_OK) {                                    //检测初始化是否成功
@@ -3046,6 +3052,25 @@ void SDInit(void) {
 		printf("\r\n SD_Init 初始化失败 \r\n" );
 		printf("\r\n 返回的Status的值为： %d \r\n",Status );
 	}
+	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}
+	
+	result = f_open(&fsrc, (const TCHAR*)"滨湖.txt", FA_OPEN_EXISTING | FA_READ);
+	
+	if (result == FR_OK) {
+		result = f_read(&fsrc, buf, 100, &br);
+		
+		if (result == FR_OK){
+			printf("OK.\r\n");
+		}
+	}
+
 }
 
 static xSemaphoreHandle __semaphore = NULL;
