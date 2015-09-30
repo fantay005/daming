@@ -6,7 +6,6 @@
 #include "key.h"
 #include "CommZigBee.h"
 
-#define BACKCOLOR   CYAN
 #define LINECOLOR   BLACK
 #define DAKENCOLOR  DARKBLUE
 
@@ -21,11 +20,6 @@
 ZigBee_Param Config_ZigBee, Display_ZigBee; 
 
 BSN_Data Analysis_MSG;
-
-
-void BackColorSet(void){
-	ili9320_Clear(BACKCOLOR);
-}
 
 static void DarkenPrepareLine(char line){
 	ili9320_Darken(line, DAKENCOLOR);

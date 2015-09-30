@@ -56,7 +56,7 @@ static void PreSetupHardware(void) {
 	/* TIM3 clock enable */
 	RCC_APB1PeriphClockCmd( RCC_APB1Periph_PWR | RCC_APB1Periph_BKP | 
 						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
-						   RCC_APB1Periph_UART4, ENABLE);
+						   RCC_APB1Periph_UART4 | RCC_APB1Periph_TIM3, ENABLE);
 
 	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
 
@@ -67,20 +67,20 @@ extern void UartDebugInit(void);
 extern void WatchdogInit(void);
 extern void SDInit(void);
 extern void NorFlashInit(void) ;
-extern void ili9320_Initializtion(void);
-extern void ili9320_Clear(u16 dat);
+extern void Ili9320Init(void);
 extern void ZigbeeConfigDisplay(void);
 extern void ConfigInit(void);
+extern void KeyInit(void);
 
 int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
 	//WatchdogInit();
 	NorFlashInit();
-	ili9320_Initializtion();
-
+	Ili9320Init();
 //	SDInit();
 	ConfigInit();
+	KeyInit();
 
 	printf("\n=============================================\n");
 	printf("%s", Version());

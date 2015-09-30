@@ -96,9 +96,23 @@ void __ConfigDestroyMessage(ConfigTaskMsg *message) {
 	vPortFree(message);
 }
 
-static void ConfigComSendChar(char c) {
+static void ConfigComSendChar(char c){
 	USART_SendData(SERx, c);
 	while (USART_GetFlagStatus(SERx, USART_FLAG_TXE) == RESET);
+}
+
+void ConfigComSendStr(char *str){
+	while(*str)
+		ConfigComSendChar(*str++);
+}	
+
+bool ConfigTaskSendData(const char *dat, int len) {
+	ConfigTaskMsg *message = __ConfigCreateMessage(CONFIG_SEND_DATA, dat, len);
+	if (pdTRUE != xQueueSend(__ConfigQueue, &message, configTICK_RATE_HZ * 5)) {
+		__ConfigDestroyMessage(message);
+		return true;
+	}
+	return false;
 }
 
 bool ConfigTaskRecieveModifyData(const char *dat, int len) {
@@ -110,8 +124,30 @@ bool ConfigTaskRecieveModifyData(const char *dat, int len) {
 	return false;
 }
 
+static char isSHUNCOM = 0;
+
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
+
+static inline void __handheldRecievSafeCode(unsigned char data) {
+	if (data == 0x0A) {
+		ConfigTaskMsg *message;
+		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+		const char *dat = "SHUNCOM";
+		buffer[bufferIndex++] = 0;
+		message = __ConfigCreateMessage(CONFIG_SEND_DATA, dat, strlen(dat));
+		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &message, &xHigherPriorityTaskWoken)) {
+			if (xHigherPriorityTaskWoken) {
+				taskYIELD();
+			}
+		} 
+		isSHUNCOM = 0;
+		bufferIndex = 0;
+	} else if (data != 0x0D) {
+		buffer[bufferIndex++] = data;
+	}
+}
+
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -124,6 +160,11 @@ void USART3_IRQHandler(void) {
 	data = USART_ReceiveData(SERx);
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
+	
+	if (isSHUNCOM) {
+		__handheldRecievSafeCode(data);
+		return;
+	}
 
 	if (data == 0x0A){
 		ConfigTaskMsg *msg;
@@ -138,29 +179,24 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
-	}
+		
+		if (strncmp(buffer, "请输入安全码：", 14) == 0) {
+			bufferIndex = 0;
+			isSHUNCOM = 1;
+		}
+	} 
 }
 
-static char Line = 1;
 
 static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-	if(Line == 1){
-		BackColorSet();
-	}
-	Lcd_LineDisplay16(Line, (const unsigned char *)p);
-	if(strlen(p) > 4){
-		Line++;
-	}
-	
-//	if(Line >=3){
-//		Lcd_LineDisplay16(Line++, "大明科技");
-//	}
+	Ili9320TaskOrderDis(p, strlen(p) + 1);
 }
 
 static void __TaskHandleSend(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-	
+	Ili9320TaskOrderDis(p, strlen(p));
+	ConfigComSendStr(p);
 }
 
 static void __TaskHandleModify(ConfigTaskMsg *msg){
@@ -184,8 +220,8 @@ static void __ConfigTask(void *parameter) {
 	ConfigTaskMsg *message;
 
 	for (;;) {
-		printf("Config: loop again\n");
-		rc = xQueueReceive(__ConfigQueue, &message, configTICK_RATE_HZ * 10);
+	//	printf("Config: loop again\n");
+		rc = xQueueReceive(__ConfigQueue, &message, configTICK_RATE_HZ );
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != CONFIG_USELESS_DATA; ++map) {

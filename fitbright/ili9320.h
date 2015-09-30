@@ -2,6 +2,7 @@
 #define __ILI9320_H
 
 #include "stm32f10x.h"
+#include <stdbool.h>
 
 //定义驱动IC是ILI9320还是ILI9325
 #define  ILI9325 //ILI9325
@@ -226,10 +227,9 @@ const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str
 void Lcd_LineDisplay16(char line, const unsigned char *str);
 void ili9320_Darken(u8 Line, u16 Color);
 
-u16 ili9320_BGR2RGB(u16 c);
-
-u16 ili9320_GetPoint(u16 x,u16 y);;
-void ili9320_PutChar_16x24(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor);
-
+bool Ili9320TaskTakeOutOne(const char *dat, int len);
+bool Ili9320TaskOneByOneDis(const char *dat, int len);
+bool Ili9320TaskOrderDis(const char *dat, int len);
+bool Ili9320TaskClear(const char *dat, int len);
 #endif /* __ILI9320_API_H */
 

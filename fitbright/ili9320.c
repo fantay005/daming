@@ -22,6 +22,12 @@
   */ 
 
 /* Includes ------------------------------------------------------------------*/
+#include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
 #include "stm32f10x.h"
 #include "stm32f10x_fsmc.h"
 #include "ili9320.h"
@@ -31,9 +37,13 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
+#define ILI_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+
+static xQueueHandle __Ili9320Queue;
+
 #define FontColor   BLACK
 
-#define BackColor     MAGENTA
+#define BackColor     CYAN
 #define EnLight       WHITE
 
 #define LED_DOT_WIDTH 320
@@ -525,8 +535,8 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
 			if(*gbString == 0x0D){
-				++gbString;
-				continue;
+					++gbString;
+					continue;
 			}
 			if(*gbString == 0x0A){
 				if(*(gbString - 1) == 0x0D){
@@ -626,8 +636,11 @@ __exit:
 }
 
 void Lcd_LineDisplay16(char line, const unsigned char *str){
-	
-	LedDisplayGB2312String(0, line*16, str, 16, FontColor, BackColor);
+	LedDisplayGB2312String(0, (line - 1)*16, str, 16, FontColor, BackColor);
+}
+
+void Lcd_OnebyoneDisplay16(char line, char which, const unsigned char *str){
+	LedDisplayGB2312String(which * 8, (line - 1)*16, str, 16, FontColor, BackColor);
 }
 
 const unsigned char *Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
@@ -833,6 +846,27 @@ void ili9320_Darken(u8 Line, u16 Color)
 			LCD->LCD_RAM=Color;
 		 }
   }
+}
+
+/****************************************************************************
+* 名    称：u16 ili9320_BGR2RGB(u16 c)
+* 功    能：RRRRRGGGGGGBBBBB 改为 BBBBBGGGGGGRRRRR 格式
+* 入口参数：c      BRG 颜色值
+* 出口参数：RGB 颜色值
+* 说    明：内部函数调用
+* 调用方法：
+****************************************************************************/
+u16 ili9320_BGR2RGB(u16 c)
+{
+  u16  r, g, b, rgb;
+
+  b = (c>>0)  & 0x1f;
+  g = (c>>5)  & 0x3f;
+  r = (c>>11) & 0x1f;
+  
+  rgb =  (b<<11) + (g<<5) + (r<<0);
+
+  return( rgb );
 }
 
 /****************************************************************************
@@ -1119,26 +1153,6 @@ void ili9320_PutChar_16x24(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor)
     }
   }
 }
-/****************************************************************************
-* 名    称：u16 ili9320_BGR2RGB(u16 c)
-* 功    能：RRRRRGGGGGGBBBBB 改为 BBBBBGGGGGGRRRRR 格式
-* 入口参数：c      BRG 颜色值
-* 出口参数：RGB 颜色值
-* 说    明：内部函数调用
-* 调用方法：
-****************************************************************************/
-u16 ili9320_BGR2RGB(u16 c)
-{
-  u16  r, g, b, rgb;
-
-  b = (c>>0)  & 0x1f;
-  g = (c>>5)  & 0x3f;
-  r = (c>>11) & 0x1f;
-  
-  rgb =  (b<<11) + (g<<5) + (r<<0);
-
-  return( rgb );
-}
 
 /****************************************************************************
 * 名    称：void ili9320_BackLight(u8 status)
@@ -1173,3 +1187,176 @@ void ili9320_Delay(vu32 nCount)
    Delay(nCount);
   //for(; nCount != 0; nCount--);
 }
+
+
+
+void BackColorSet(void){
+	ili9320_Clear(BackColor);
+}
+
+typedef enum{
+	ILI_TAKEOUT_DISPALY,
+	ILI_ONEBYONE_DISPALY,
+	ILI_ORDER_DISPALY,
+	ILI_CLEAR_SCREEN,
+	ILI_NULL,
+}Ili9320TaskMsgType;
+
+typedef struct {
+	/// Message type.
+	Ili9320TaskMsgType type;
+	/// Message lenght.
+	unsigned char length;
+} Ili9320TaskMsg;
+
+static Ili9320TaskMsg *__Ili9320CreateMessage(Ili9320TaskMsgType type, const char *dat, unsigned char len) {
+  Ili9320TaskMsg *message = pvPortMalloc(ALIGNED_SIZEOF(Ili9320TaskMsg) + len);
+	if (message != NULL) {
+		message->type = type;
+		message->length = len;
+		memcpy(&message[1], dat, len);
+	}
+	return message;
+}
+
+static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
+	return &message[1];
+}
+
+
+bool Ili9320TaskTakeOutOne(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_TAKEOUT_DISPALY, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool Ili9320TaskOneByOneDis(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_ONEBYONE_DISPALY, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool Ili9320TaskOrderDis(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_ORDER_DISPALY, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool Ili9320TaskClear(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_CLEAR_SCREEN, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+static char Line = 1;
+static char BitNumb = 0;
+
+void ili9320_ClearLine(void)
+{
+  u32 index=0;
+  ili9320_SetCursor(0,(Line - 1) * 16); 
+  LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+  for(index=0;index<5120;index++)
+   {
+     LCD->LCD_RAM=BackColor;
+   }
+}
+
+void __HandleTakeOutOne(Ili9320TaskMsg *msg){
+	char *p = " ";
+	Lcd_OnebyoneDisplay16(Line, --BitNumb, (const unsigned char *)p);
+}
+
+void __HandleOnebyone(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	if(Line == 1){
+		BackColorSet();
+	}
+	Lcd_OnebyoneDisplay16(Line, BitNumb++, (const unsigned char *)p);
+}
+
+void __HandleOrderDisplay(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	if(Line == 1){
+		BackColorSet();
+	}
+	ili9320_ClearLine();
+	Lcd_LineDisplay16(Line, (const unsigned char *)p);
+	if((strlen(p) > 20) && (strlen(p) <= 40)){
+		Line++;
+	} else if((strlen(p) > 40) && (strlen(p) <= 80)){
+		Line += 2;
+	} else if((strlen(p) > 80) && (strlen(p) <= 120)){
+		Line += 3;
+	}	else if((strlen(p) > 120) && (strlen(p) <= 160)){
+		Line += 3;
+	}else if(strlen(p) < 21){
+		return;
+	}
+	
+	if(Line > 15){
+		Line = 1;
+	}	
+}
+
+void __HandleCls(Ili9320TaskMsg *msg){
+	BackColorSet();
+	Line = 1;
+}
+
+typedef struct {
+	Ili9320TaskMsgType type;
+	void (*handlerFunc)(Ili9320TaskMsg *);
+} MessageHandlerMap;
+
+static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_TAKEOUT_DISPALY, __HandleTakeOutOne},
+	{ ILI_ONEBYONE_DISPALY, __HandleOnebyone},
+	{ ILI_ORDER_DISPALY, __HandleOrderDisplay },
+	{ ILI_CLEAR_SCREEN, __HandleCls },
+	{ ILI_NULL, NULL },
+};
+
+static void __Ili9320Task(void *parameter) {
+	portBASE_TYPE rc;
+	Ili9320TaskMsg *message;
+
+	for (;;) {
+	//	printf("ili9320: loop again\n");
+		rc = xQueueReceive(__Ili9320Queue, &message, configTICK_RATE_HZ);
+		if (rc == pdTRUE) {
+			const MessageHandlerMap *map = __messageHandlerMaps;
+			printf("%s", message + 2);
+			if(message->type != (ILI_ONEBYONE_DISPALY || ILI_TAKEOUT_DISPALY)){
+				BitNumb = 0;
+			}
+			for (; map->type != ILI_NULL; ++map) {
+				if (message->type == map->type) {
+					map->handlerFunc(message);
+					break;
+				}
+			}
+			vPortFree(message);
+		} 
+	}
+}
+
+
+void Ili9320Init(void) {
+	ili9320_Initializtion();
+	__Ili9320Queue = xQueueCreate(5, sizeof(Ili9320TaskMsg *));
+	xTaskCreate(__Ili9320Task, (signed portCHAR *) "ILI9320", ILI_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+}
+
