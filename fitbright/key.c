@@ -360,18 +360,29 @@ void key_driver(KeyPress code)
 	}
 }
 
+static char times = 0;
 static char count = 0;
-static char dat[12];
+static char dat[7];
+
+static void InputChange(void){
+	char tmp[5];
+	if(IME == 0)
+			strcpy(tmp, "123");
+		else
+			strcpy(tmp, "ABC");
+		Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
+}
 
 void TIM3_IRQHandler(void){
 	portBASE_TYPE xHigherPriorityTaskWoken;
-	char tmp[2] = {0};
+	char tmp[12] = {0};
 	
 	KeyTaskMsg *msg;
 	char hex2char[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',};
 	
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
+		times++;
 	}
 	
 	key_driver(keycode());
@@ -381,6 +392,11 @@ void TIM3_IRQHandler(void){
 			IME = 1;
 		else
 			IME = 0;
+	}
+	
+	if(times > 40){
+		times = 0;
+		InputChange();
 	}
 	
 	if(KeyConfirm == NOKEY)
@@ -405,6 +421,10 @@ void TIM3_IRQHandler(void){
 	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYF)){		
 		dat[count++] = hex2char[KeyConfirm];
 		dat[count] = 0;
+		if(count > 6){
+			count = 0;
+			dat[0] = 0;
+		}
 	
 		Ili9320TaskOrderDis(dat, strlen(dat) + 1);
 		KeyConfirm = NOKEY;
@@ -415,6 +435,20 @@ void TIM3_IRQHandler(void){
 		count = 0;
   } else if(KeyConfirm == KEYCLEAR){
 		strcpy(dat, "Clear");
+  } else if(KeyConfirm == KEYINPT){
+		InputChange();
+		KeyConfirm = NOKEY;
+		return;
+  } else if(KeyConfirm == KEYUP){
+		strcpy(tmp, "UP");
+		Ili9320TaskUpAndDown(tmp, strlen(tmp) + 1);
+		KeyConfirm = NOKEY;
+		return;
+  } else if(KeyConfirm == KEYDN){
+		strcpy(tmp, "DOWN");
+		Ili9320TaskUpAndDown(tmp, strlen(tmp) + 1);
+		KeyConfirm = NOKEY;
+		return;
   } else if(KeyConfirm == KEYLF){
 		if(count > 0){
 			count--;
@@ -428,7 +462,7 @@ void TIM3_IRQHandler(void){
 		return;
 	}
 	
-	msg = __KeyCreateMessage(KEY_SEND_DATA, dat, strlen(dat));
+	msg = __KeyCreateMessage(KEY_SEND_DATA, dat, strlen(dat) + 1);
 	KeyConfirm = NOKEY;
 	
 	if(strncasecmp(dat, "Clear", 5) == 0){

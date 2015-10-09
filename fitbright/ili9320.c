@@ -528,10 +528,14 @@ void LCD_DrawChinaChar32x32(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bk
 }
 
 const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *gbString, unsigned char  DotMatrix, int charColor, int bkColor) {
+	if(gbString == NULL)
+	return NULL;
+		
+	
 	if (!FontDotArrayFetchLock()) {
 		return gbString;
 	}
-		
+
 	while (*gbString) {
 		if (isAsciiStart(*gbString)) {
 			if(*gbString == 0x0D){
@@ -635,12 +639,13 @@ __exit:
 	return NULL;
 }
 
-void Lcd_LineDisplay16(char line, const unsigned char *str){
-	LedDisplayGB2312String(0, (line - 1)*16, str, 16, FontColor, BackColor);
+const unsigned char *Lcd_LineDisplay16(char line, const unsigned char *str){	
+	return LedDisplayGB2312String(0, (line - 1)*16, str, 16, FontColor, BackColor);
 }
 
-void Lcd_OnebyoneDisplay16(char line, char which, const unsigned char *str){
-	LedDisplayGB2312String(which * 8, (line - 1)*16, str, 16, FontColor, BackColor);
+const unsigned char *Lcd_DisplayInput(int x, int y, const unsigned char *str){
+	
+	return LedDisplayGB2312String(x, y, str, 16, MAGENTA, BackColor);
 }
 
 const unsigned char *Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
@@ -663,10 +668,6 @@ const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str
 ****************************************************************************/
 void ili9320_Initializtion(void)
 {
-    const u8 str[]       = " Welcome to www.fitbright.com  ";
-    const u8 ID8989str[] = "";
-    u8 len = sizeof(str)-1;
-    u16 i, StartX;
     /*****************************
     **    硬件连接说明          **
     ** STM32         ili9320    **
@@ -1195,10 +1196,10 @@ void BackColorSet(void){
 }
 
 typedef enum{
-	ILI_TAKEOUT_DISPALY,
-	ILI_ONEBYONE_DISPALY,
+	ILI_INPUT_DISPALY,
 	ILI_ORDER_DISPALY,
 	ILI_CLEAR_SCREEN,
+	ILI_UPANDDOWN_PAGE,
 	ILI_NULL,
 }Ili9320TaskMsgType;
 
@@ -1220,21 +1221,15 @@ static Ili9320TaskMsg *__Ili9320CreateMessage(Ili9320TaskMsgType type, const cha
 }
 
 static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
-	return &message[1];
+	if(message->length != 0)
+		return &message[1];
+	else
+		return NULL;
 }
 
 
-bool Ili9320TaskTakeOutOne(const char *dat, int len) {
-	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_TAKEOUT_DISPALY, dat, len);
-	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
-		vPortFree(message);
-		return true;
-	}
-	return false;
-}
-
-bool Ili9320TaskOneByOneDis(const char *dat, int len) {
-	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_ONEBYONE_DISPALY, dat, len);
+bool Ili9320TaskInputDis(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_INPUT_DISPALY, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
 		return true;
@@ -1260,8 +1255,16 @@ bool Ili9320TaskClear(const char *dat, int len) {
 	return false;
 }
 
-static char Line = 1;
-static char BitNumb = 0;
+bool Ili9320TaskUpAndDown(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_UPANDDOWN_PAGE, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+static unsigned char Line = 1;
 
 void ili9320_ClearLine(void)
 {
@@ -1274,41 +1277,77 @@ void ili9320_ClearLine(void)
    }
 }
 
-void __HandleTakeOutOne(Ili9320TaskMsg *msg){
-	char *p = " ";
-	Lcd_OnebyoneDisplay16(Line, --BitNumb, (const unsigned char *)p);
+
+
+void __HandleInput(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	Lcd_DisplayInput(296, 224, (const unsigned char *)p);
 }
 
-void __HandleOnebyone(Ili9320TaskMsg *msg){
+static unsigned char LastLine = 1;
+static const uint8_t *__displayNewPage = NULL;
+
+static const uint8_t *__displayLastPage = NULL;
+static const uint8_t *__displayCurrentPage = NULL;
+
+static unsigned short len = 0;
+
+void __HandleUpAndDown(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
-	if(Line == 1){
-		BackColorSet();
-	}
-	Lcd_OnebyoneDisplay16(Line, BitNumb++, (const unsigned char *)p);
+	
+	BackColorSet();
+	if(strncmp(p, "UP", 2) == 0){
+		Lcd_LineDisplay16(1, (const unsigned char *)__displayLastPage);
+	} else if(strncmp(p, "DOWN", 4) == 0)
+		Lcd_LineDisplay16(1, (const unsigned char *)__displayCurrentPage);
 }
 
 void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
+
 	if(Line == 1){
 		BackColorSet();
 	}
 	ili9320_ClearLine();
-	Lcd_LineDisplay16(Line, (const unsigned char *)p);
-	if((strlen(p) > 20) && (strlen(p) <= 40)){
+	__displayNewPage = Lcd_LineDisplay16(Line, (const unsigned char *)p);
+	
+	if(__displayNewPage != NULL){
+		Line = 1;
+		BackColorSet();
+		Lcd_LineDisplay16(Line, (const unsigned char *)__displayNewPage);
+	}
+	
+	if(LastLine <= Line){
+		if(strlen(p) > 4)
+			len += sprintf((char *)__displayCurrentPage + len, "%s\r\n", p);
+		LastLine = Line;
+	} else {
+		strcpy((char *)__displayLastPage,  (const char *)__displayCurrentPage);	
+		len = 0;
+		if(__displayNewPage != NULL){
+			len += sprintf((char *)__displayCurrentPage + len, "%s\r\n", __displayNewPage);
+			Line = (16 - LastLine);
+		}
+		else
+			len = sprintf((char *)__displayCurrentPage + len, "%s\r\n", p);
+		LastLine = 1;
+	}
+	
+	if((strlen(p) > 4) && (strlen(p) <= 40)){
 		Line++;
 	} else if((strlen(p) > 40) && (strlen(p) <= 80)){
 		Line += 2;
 	} else if((strlen(p) > 80) && (strlen(p) <= 120)){
 		Line += 3;
 	}	else if((strlen(p) > 120) && (strlen(p) <= 160)){
-		Line += 3;
-	}else if(strlen(p) < 21){
+		Line += 4;
+	}else if(strlen(p) < 5){
 		return;
 	}
 	
-	if(Line > 15){
-		Line = 1;
-	}	
+	if(Line > 15)
+		Line = Line - 15;
+
 }
 
 void __HandleCls(Ili9320TaskMsg *msg){
@@ -1322,8 +1361,8 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
-	{ ILI_TAKEOUT_DISPALY, __HandleTakeOutOne},
-	{ ILI_ONEBYONE_DISPALY, __HandleOnebyone},
+	{ ILI_UPANDDOWN_PAGE, __HandleUpAndDown},
+	{ ILI_INPUT_DISPALY, __HandleInput},
 	{ ILI_ORDER_DISPALY, __HandleOrderDisplay },
 	{ ILI_CLEAR_SCREEN, __HandleCls },
 	{ ILI_NULL, NULL },
@@ -1333,15 +1372,14 @@ static void __Ili9320Task(void *parameter) {
 	portBASE_TYPE rc;
 	Ili9320TaskMsg *message;
 
+	__displayLastPage = pvPortMalloc(640);
+	__displayCurrentPage = pvPortMalloc(640);
 	for (;;) {
 	//	printf("ili9320: loop again\n");
 		rc = xQueueReceive(__Ili9320Queue, &message, configTICK_RATE_HZ);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			printf("%s", message + 2);
-			if(message->type != (ILI_ONEBYONE_DISPALY || ILI_TAKEOUT_DISPALY)){
-				BitNumb = 0;
-			}
 			for (; map->type != ILI_NULL; ++map) {
 				if (message->type == map->type) {
 					map->handlerFunc(message);
@@ -1356,7 +1394,7 @@ static void __Ili9320Task(void *parameter) {
 
 void Ili9320Init(void) {
 	ili9320_Initializtion();
-	__Ili9320Queue = xQueueCreate(5, sizeof(Ili9320TaskMsg *));
+	__Ili9320Queue = xQueueCreate(15, sizeof(Ili9320TaskMsg *));
 	xTaskCreate(__Ili9320Task, (signed portCHAR *) "ILI9320", ILI_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 

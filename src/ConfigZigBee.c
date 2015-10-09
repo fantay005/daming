@@ -133,9 +133,9 @@ static inline void __handheldRecievSafeCode(unsigned char data) {
 	if (data == 0x0A) {
 		ConfigTaskMsg *message;
 		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		const char *dat = "SHUNCOM";
+		const char *buf = "SHUNCOM";
 		buffer[bufferIndex++] = 0;
-		message = __ConfigCreateMessage(CONFIG_SEND_DATA, dat, strlen(dat));
+		message = __ConfigCreateMessage(CONFIG_SEND_DATA, buf, strlen(buf) + 1);
 		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
@@ -151,7 +151,6 @@ static inline void __handheldRecievSafeCode(unsigned char data) {
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
-	char param1, param2;
 	
 	if (USART_GetITStatus(SERx, USART_IT_RXNE) == RESET) {
 		return;
@@ -166,9 +165,11 @@ void USART3_IRQHandler(void) {
 		return;
 	}
 
-	if (data == 0x0A){
+	if ((data == 0x0A) || (data == 0x3E)){
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
+		if(data == 0x3E)
+			buffer[bufferIndex++] = 0x3E;
 		buffer[bufferIndex++] = 0;
 		msg = __ConfigCreateMessage(CONFIG_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
 		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &msg, &xHigherPriorityTaskWoken)) {
@@ -180,7 +181,12 @@ void USART3_IRQHandler(void) {
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
 		
-		if (strncmp(buffer, "请输入安全码：", 14) == 0) {
+		if (strncmp((const char *)buffer, "请输入安全码：SHUNCOM", 21) == 0) {
+			bufferIndex = 0;
+			isSHUNCOM = 1;
+		}
+		
+		if (strncmp((const char *)buffer, "PLEASE INPUT：", 14) == 0) {
 			bufferIndex = 0;
 			isSHUNCOM = 1;
 		}
@@ -239,7 +245,7 @@ static void __ConfigTask(void *parameter) {
 void ConfigInit(void) {
 	__ConfigInitHardware();
 	__ConfigInitUsart(38400);
-	__ConfigQueue = xQueueCreate(5, sizeof(ConfigTaskMsg *));
+	__ConfigQueue = xQueueCreate(15, sizeof(ConfigTaskMsg *));
 	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

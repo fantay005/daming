@@ -224,9 +224,9 @@ void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bk
 void ili9320_BackLight(u8 status);
 const unsigned char *Lcd_DisplayChinese16(int , int y, const unsigned char *str);
 const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
-void Lcd_LineDisplay16(char line, const unsigned char *str);
 void ili9320_Darken(u8 Line, u16 Color);
 
+bool Ili9320TaskUpAndDown(const char *dat, int len);
 bool Ili9320TaskTakeOutOne(const char *dat, int len);
 bool Ili9320TaskOneByOneDis(const char *dat, int len);
 bool Ili9320TaskOrderDis(const char *dat, int len);
