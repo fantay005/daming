@@ -78,7 +78,7 @@ int main(void) {
 	//WatchdogInit();
 	NorFlashInit();
 	Ili9320Init();
-//	SDInit();
+	SDInit();
 	ConfigInit();
 	KeyInit();
 

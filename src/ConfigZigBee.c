@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#include <stdbool.h>
 #include "stm32f10x_gpio.h"
 #include "stm32f10x_usart.h"
 #include "misc.h"
@@ -12,6 +11,7 @@
 #include "CommZigBee.h"
 #include "ili9320.h"
 #include "display.h"
+#include "ConfigZigbee.h"
 
 #define SERx         USART3
 #define SERx_IRQn    USART3_IRQn
@@ -115,38 +115,38 @@ bool ConfigTaskSendData(const char *dat, int len) {
 	return false;
 }
 
-bool ConfigTaskRecieveModifyData(const char *dat, int len) {
-	ConfigTaskMsg *message = __ConfigCreateMessage(CONFIG_MODIFY_DATA, dat, len);
-	if (pdTRUE != xQueueSend(__ConfigQueue, &message, configTICK_RATE_HZ * 5)) {
-		__ConfigDestroyMessage(message);
-		return true;
-	}
-	return false;
-}
+//bool ConfigTaskRecieveModifyData(const char *dat, int len) {
+//	ConfigTaskMsg *message = __ConfigCreateMessage(CONFIG_MODIFY_DATA, dat, len);
+//	if (pdTRUE != xQueueSend(__ConfigQueue, &message, configTICK_RATE_HZ * 5)) {
+//		__ConfigDestroyMessage(message);
+//		return true;
+//	}
+//	return false;
+//}
 
-static char isSHUNCOM = 0;
+//static char isSHUNCOM = 0;
 
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 
-static inline void __handheldRecievSafeCode(unsigned char data) {
-	if (data == 0x0A) {
-		ConfigTaskMsg *message;
-		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-		const char *buf = "SHUNCOM";
-		buffer[bufferIndex++] = 0;
-		message = __ConfigCreateMessage(CONFIG_SEND_DATA, buf, strlen(buf) + 1);
-		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &message, &xHigherPriorityTaskWoken)) {
-			if (xHigherPriorityTaskWoken) {
-				taskYIELD();
-			}
-		} 
-		isSHUNCOM = 0;
-		bufferIndex = 0;
-	} else if (data != 0x0D) {
-		buffer[bufferIndex++] = data;
-	}
-}
+//static inline void __handheldRecievSafeCode(unsigned char data) {
+//	if (data == 0x0A) {
+//		ConfigTaskMsg *message;
+//		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
+//		const char *buf = "SHUNCOM";
+//		buffer[bufferIndex++] = 0;
+//		message = __ConfigCreateMessage(CONFIG_SEND_DATA, buf, strlen(buf) + 1);
+//		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &message, &xHigherPriorityTaskWoken)) {
+//			if (xHigherPriorityTaskWoken) {
+//				taskYIELD();
+//			}
+//		} 
+//		isSHUNCOM = 0;
+//		bufferIndex = 0;
+//	} else if (data != 0x0D) {
+//		buffer[bufferIndex++] = data;
+//	}
+//}
 
 
 void USART3_IRQHandler(void) {
@@ -159,11 +159,6 @@ void USART3_IRQHandler(void) {
 	data = USART_ReceiveData(SERx);
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
-	
-	if (isSHUNCOM) {
-		__handheldRecievSafeCode(data);
-		return;
-	}
 
 	if ((data == 0x0A) || (data == 0x3E)){
 		ConfigTaskMsg *msg;
@@ -180,16 +175,6 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
-		
-		if (strncmp((const char *)buffer, "«Î ‰»Î∞≤»´¬Î£∫SHUNCOM", 21) == 0) {
-			bufferIndex = 0;
-			isSHUNCOM = 1;
-		}
-		
-		if (strncmp((const char *)buffer, "PLEASE INPUT£∫", 14) == 0) {
-			bufferIndex = 0;
-			isSHUNCOM = 1;
-		}
 	} 
 }
 
@@ -201,14 +186,14 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 
 static void __TaskHandleSend(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-	Ili9320TaskOrderDis(p, strlen(p));
+	Ili9320TaskOrderDis(p, strlen(p) + 1);
 	ConfigComSendStr(p);
 }
 
-static void __TaskHandleModify(ConfigTaskMsg *msg){
-	char *p = __ConfigGetMsgData(msg);
-	
-}
+//static void __TaskHandleModify(ConfigTaskMsg *msg){
+//	char *p = __ConfigGetMsgData(msg);
+//	
+//}
 typedef struct {
 	ConfigTaskMessageType type;
 	void (*handlerFunc)(ConfigTaskMsg *);
@@ -217,7 +202,7 @@ typedef struct {
 static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ CONFIG_RECIEVE_DATA, __TaskHandleRecieve },
 	{ CONFIG_SEND_DATA, __TaskHandleSend },
-	{ CONFIG_MODIFY_DATA, __TaskHandleModify},
+//	{ CONFIG_MODIFY_DATA, __TaskHandleModify},
 	{ CONFIG_USELESS_DATA, NULL },
 };
 

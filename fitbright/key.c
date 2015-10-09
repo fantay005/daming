@@ -117,6 +117,7 @@ typedef enum{
 	KEYD,
 	KEYE,
 	KEYF,
+	KEYL,
 	KEYUP,
 	KEYDN,
 	KEYLF,
@@ -362,7 +363,7 @@ void key_driver(KeyPress code)
 
 static char times = 0;
 static char count = 0;
-static char dat[7];
+static char dat[9];
 
 static void InputChange(void){
 	char tmp[5];
@@ -378,7 +379,7 @@ void TIM3_IRQHandler(void){
 	char tmp[12] = {0};
 	
 	KeyTaskMsg *msg;
-	char hex2char[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F',};
+	char hex2char[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'L'};
 	
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
@@ -415,10 +416,12 @@ void TIM3_IRQHandler(void){
 			KeyConfirm = KEYE;
 		} else if (KeyConfirm == KEY6){
 			KeyConfirm = KEYF;
+		}	else if (KeyConfirm == KEY7){
+			KeyConfirm = KEYL;
 		}	
 	}
 	
-	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYF)){		
+	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYL)){		
 		dat[count++] = hex2char[KeyConfirm];
 		dat[count] = 0;
 		if(count > 6){
@@ -430,10 +433,10 @@ void TIM3_IRQHandler(void){
 		KeyConfirm = NOKEY;
 		return;
 	} else if(KeyConfirm == KEYOK){
-		if(dat[0] == 0)
-			strcpy(dat, "SHUNCOM ");
 		count = 0;
-  } else if(KeyConfirm == KEYCLEAR){
+  } else if(KeyConfirm == KEYRT){
+		strcpy(dat, "SHUNCOM ");
+  }else if(KeyConfirm == KEYCLEAR){
 		strcpy(dat, "Clear");
   } else if(KeyConfirm == KEYINPT){
 		InputChange();
@@ -467,6 +470,7 @@ void TIM3_IRQHandler(void){
 	
 	if(strncasecmp(dat, "Clear", 5) == 0){
 		Ili9320TaskClear(dat, strlen(dat));
+		memset(dat, 0, 9);
 		return;
 	}
 	Ili9320TaskOrderDis(dat, strlen(dat) + 1);
@@ -475,15 +479,12 @@ void TIM3_IRQHandler(void){
 			portYIELD();
 		}
 	}
-  memset(dat, 0, 12);
+  memset(dat, 0, 9);
 } 
-
-extern void ConfigComSendStr(char *str);
 
 void __HandleConfigKey(KeyTaskMsg *dat){
 	char *p =__KeyGetMsgData(dat);
-	ConfigComSendStr(p);
-	KeyConfirm = NOKEY;
+	ConfigTaskSendData(p, strlen(p));
 }
 
 typedef struct {

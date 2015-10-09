@@ -1264,7 +1264,15 @@ bool Ili9320TaskUpAndDown(const char *dat, int len) {
 	return false;
 }
 
-static unsigned char Line = 1;
+static char Line = 1;                         //当前显示页面显示到的行数
+
+static char LastLine = 1;                     //记录上次显示屏显示到的行数
+static const uint8_t *__displayNewPage = NULL;				 //记录当前页面显示不完的数据指针		
+
+static const uint8_t *__displayLastPage = NULL;        //记录上一页面显示的数据指针
+static const uint8_t *__displayCurrentPage = NULL;     //记录当前页面显示的数据指针
+
+static unsigned short len = 0;                         //显示的数据与显示指针的偏移量
 
 void ili9320_ClearLine(void)
 {
@@ -1278,19 +1286,11 @@ void ili9320_ClearLine(void)
 }
 
 
-
 void __HandleInput(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 	Lcd_DisplayInput(296, 224, (const unsigned char *)p);
 }
 
-static unsigned char LastLine = 1;
-static const uint8_t *__displayNewPage = NULL;
-
-static const uint8_t *__displayLastPage = NULL;
-static const uint8_t *__displayCurrentPage = NULL;
-
-static unsigned short len = 0;
 
 void __HandleUpAndDown(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
@@ -1308,29 +1308,32 @@ void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 	if(Line == 1){
 		BackColorSet();
 	}
+	
 	ili9320_ClearLine();
 	__displayNewPage = Lcd_LineDisplay16(Line, (const unsigned char *)p);
-	
-	if(__displayNewPage != NULL){
-		Line = 1;
-		BackColorSet();
-		Lcd_LineDisplay16(Line, (const unsigned char *)__displayNewPage);
-	}
 	
 	if(LastLine <= Line){
 		if(strlen(p) > 4)
 			len += sprintf((char *)__displayCurrentPage + len, "%s\r\n", p);
 		LastLine = Line;
-	} else {
-		strcpy((char *)__displayLastPage,  (const char *)__displayCurrentPage);	
-		len = 0;
 		if(__displayNewPage != NULL){
+			len = 0;
+			strcpy((char *)__displayLastPage,  (const char *)__displayCurrentPage);	
 			len += sprintf((char *)__displayCurrentPage + len, "%s\r\n", __displayNewPage);
-			Line = (16 - LastLine);
 		}
-		else
-			len = sprintf((char *)__displayCurrentPage + len, "%s\r\n", p);
+	} else {	
+		if(Line == 1){
+			len = 0;
+			strcpy((char *)__displayLastPage,  (const char *)__displayCurrentPage);		
+			if(strlen(p) > 4)
+				len = sprintf((char *)__displayCurrentPage + len, "%s\r\n", p);
+		}
 		LastLine = 1;
+	}
+	
+	if(__displayNewPage != NULL){
+		BackColorSet();
+		Lcd_LineDisplay16(1, (const unsigned char *)__displayNewPage);
 	}
 	
 	if((strlen(p) > 4) && (strlen(p) <= 40)){
@@ -1341,12 +1344,13 @@ void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 		Line += 3;
 	}	else if((strlen(p) > 120) && (strlen(p) <= 160)){
 		Line += 4;
-	}else if(strlen(p) < 5){
+	} else if(strlen(p) < 5){
 		return;
 	}
 	
-	if(Line > 15)
+	if(Line > 15){
 		Line = Line - 15;
+	}
 
 }
 
