@@ -88,8 +88,8 @@
 /   1    - ASCII (Valid for only non-LFN configuration) */
 
 
-#define	_USE_LFN	1		/* 0 to 3 */    //设置长文件名,选择不支持
-#define	_MAX_LFN	255		/* Maximum LFN length to handle (12 to 255) */  //不用设置，因为不支持长文件名
+#define	_USE_LFN	0		/* 0 to 3 */    //设置长文件名,选择不支持
+#define	_MAX_LFN	200	/* Maximum LFN length to handle (12 to 255) */  //不用设置，因为不支持长文件名
 /* The _USE_LFN option switches the LFN feature.
 /
 /   0: Disable LFN feature. _MAX_LFN has no effect.

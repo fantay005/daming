@@ -71,6 +71,7 @@ extern void Ili9320Init(void);
 extern void ZigbeeConfigDisplay(void);
 extern void ConfigInit(void);
 extern void KeyInit(void);
+extern void SDTest(void);
 
 int main(void) {
 	PreSetupHardware();

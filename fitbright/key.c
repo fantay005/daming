@@ -10,6 +10,8 @@
 #include "misc.h"
 #include "zklib.h"
 #include "ili9320.h"
+#include "ConfigZigbee.h"
+#include "sdcard.h"
 
 #define KEY_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 
@@ -99,61 +101,6 @@ static xQueueHandle __KeyQueue;
 #define KEY_INPUT    GPIO_ReadInputDataBit(GPIO_KEY_RT,Pin_Key_RT)
 
 /*重新对按键进行定义*/
-
-typedef enum{
-	KEY0,
-	KEY1,
-	KEY2,
-	KEY3,
-	KEY4,
-	KEY5,
-	KEY6,
-	KEY7,
-	KEY8,
-	KEY9,
-	KEYA,
-	KEYB,
-	KEYC,
-	KEYD,
-	KEYE,
-	KEYF,
-	KEYL,
-	KEYUP,
-	KEYDN,
-	KEYLF,
-	KEYRT,
-	KEYOK,
-	KEYMENU,
-	KEYINPT,
-	KEYDEL,
-	KEYCLEAR,
-	NOKEY,
-}KeyPress;
-
-typedef enum{
-	Open_GUI,        //开机界面
-	Main_GUI,        //主界面	
-	Config_GUI,      //配置界面
-	Service_GUI,     //维修界面	
-	Test_GUI,        //测试界面
-	Close_GUI,       //关机界面
-	
-	GateWay_Set,     //配置模式下，网关选择
-	Address_Set,     //配置模式下，设置ZigBee地址
-	Config_Set,      //配置模式下，高级配置，可配置所有参数
-	Config_DIS,      //配置模式下，配置显示
-	
-	GateWay_Choose,  //维修模式下，网关选择
-	Address_Choose,  //维修模式下，地址选择
-	Read_Data,       //维修模式下，读取镇流器参数
-	Ballast_Operate, //维修模式下，镇流器操作  /*包括开灯、关灯*/
-	Diagn_Reason,    //维修原因    /*包括镇流器问题、灯管问题、灯座问题、ZigBee模块问题、电源问题、接触不良问题、ZigBee地址问题*/
-	
-	GateWay_Decide,  //测试模式下，网关选择
-	Address_Option,  //测试模式下，ZigBee地址选择
-	Debug_Option,    //测试模式下，调试镇流器 /*包括开灯、关灯、调光，读镇流器数据*/
-	
-}Dis_Type;
 
 
 typedef enum{
@@ -361,10 +308,6 @@ void key_driver(KeyPress code)
 	}
 }
 
-static char times = 0;
-static char count = 0;
-static char dat[9];
-
 static void InputChange(void){
 	char tmp[5];
 	if(IME == 0)
@@ -374,52 +317,55 @@ static void InputChange(void){
 		Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
 }
 
-void TIM3_IRQHandler(void){
+static char times = 0;
+static char count = 0;
+static char dat[9];
+
+extern void ili9320_SetLight(char line);
+
+static unsigned char wave = 1;    //行数
+static unsigned char page = 1;    //页数
+
+void __handleGateway(void){
+	if(KeyConfirm == KEYUP){
+		wave--;
+	} else if(KeyConfirm == KEYDN){
+		wave++;
+	} else if(KeyConfirm == KEYLF){
+		wave = 1;
+		page--;
+	} else if(KeyConfirm == KEYRT){
+		wave = 1;
+		page++;
+	} else if(KeyConfirm == KEYOK){
+		SDTaskSureOption((const char *)(wave + 15 * (page - 1)), 1);
+		KeyConfirm = NOKEY;
+		return;
+	}
+	
+	if(wave > 15){
+		wave -= 15;
+	} else if(wave < 1){
+		wave += 15;
+	}
+	
+	if(page > 4){
+		page -= 4;
+	} else if(page < 1){
+		page += 4;
+	}	
+	
+	ili9320_SetLight(wave + 15 * (page - 1));
+	KeyConfirm = NOKEY;
+}	
+	
+void __handleAdvanceSet(void){
 	portBASE_TYPE xHigherPriorityTaskWoken;
 	char tmp[12] = {0};
 	
 	KeyTaskMsg *msg;
 	char hex2char[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'L'};
-	
-	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
-		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
-		times++;
-	}
-	
-	key_driver(keycode());
-	
-	if(KeyConfirm == KEYINPT){
-		if(IME == 0)
-			IME = 1;
-		else
-			IME = 0;
-	}
-	
-	if(times > 40){
-		times = 0;
-		InputChange();
-	}
-	
-	if(KeyConfirm == NOKEY)
-		return;
-		
-	if(IME == 1){
-		if(KeyConfirm == KEY1){
-			KeyConfirm = KEYA;
-		} else if (KeyConfirm == KEY2){
-			KeyConfirm = KEYB;
-		} else if (KeyConfirm == KEY3){
-			KeyConfirm = KEYC;
-		} else if (KeyConfirm == KEY4){
-			KeyConfirm = KEYD;
-		} else if (KeyConfirm == KEY5){
-			KeyConfirm = KEYE;
-		} else if (KeyConfirm == KEY6){
-			KeyConfirm = KEYF;
-		}	else if (KeyConfirm == KEY7){
-			KeyConfirm = KEYL;
-		}	
-	}
+
 	
 	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYL)){		
 		dat[count++] = hex2char[KeyConfirm];
@@ -481,6 +427,50 @@ void TIM3_IRQHandler(void){
 	}
   memset(dat, 0, 9);
 } 
+
+void TIM3_IRQHandler(void){	
+	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
+		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
+		times++;
+	}
+	
+	key_driver(keycode());
+	
+	if(KeyConfirm == KEYINPT){
+		if(IME == 0)
+			IME = 1;
+		else
+			IME = 0;
+	}
+	
+	if(times > 40){
+		times = 0;
+		InputChange();
+	}
+	
+	if(KeyConfirm == NOKEY)
+		return;
+		
+	if(IME == 1){
+		if(KeyConfirm == KEY1){
+			KeyConfirm = KEYA;
+		} else if (KeyConfirm == KEY2){
+			KeyConfirm = KEYB;
+		} else if (KeyConfirm == KEY3){
+			KeyConfirm = KEYC;
+		} else if (KeyConfirm == KEY4){
+			KeyConfirm = KEYD;
+		} else if (KeyConfirm == KEY5){
+			KeyConfirm = KEYE;
+		} else if (KeyConfirm == KEY6){
+			KeyConfirm = KEYF;
+		}	else if (KeyConfirm == KEY7){
+			KeyConfirm = KEYL;
+		}	
+	}
+	
+	__handleGateway();
+}
 
 void __HandleConfigKey(KeyTaskMsg *dat){
 	char *p =__KeyGetMsgData(dat);

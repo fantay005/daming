@@ -25,9 +25,18 @@
 #include "diskio.h"	
 #include <stdio.h>
 #include "FreeRTOS.h"
+#include "queue.h"
+#include "task.h"
 #include "semphr.h"
 #include "ff.h"
 #include "misc.h"
+#include "zklib.h"
+#include <string.h>
+#include "ili9320.h"
+
+#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+
+static xQueueHandle __SDHCQueue;
 
 SD_CardInfo card_info;
 
@@ -132,82 +141,6 @@ static void DMA_TxConfiguration(uint32_t *BufferSRC, uint32_t BufferSize);
 static void DMA_RxConfiguration(uint32_t *BufferDST, uint32_t BufferSize);
 
 /* Private functions ---------------------------------------------------------*/
-
-/*******************************************************************************
-* Function Name  : SD_Init
-* Description    : Initializes the SD Card and put it into StandBy State (Ready 
-*                  for data transfer).
-* Input          : None
-* Output         : None
-* Return         : SD_Error: SD Card Error code.
-*******************************************************************************/
-SD_Error SD_Init(void)
-{
-  SD_Error errorstatus = SD_OK;
-
-  /* Configure SDIO interface GPIO */
-  GPIO_Configuration();
-
-  /* Enable the SDIO AHB Clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_SDIO, ENABLE);
-
-  /* Enable the DMA2 Clock */
-  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA2, ENABLE);
-
-  SDIO_DeInit();
-
-  errorstatus = SD_PowerON();
-
-  if (errorstatus != SD_OK)
-  {
-    /* CMD Response TimeOut (wait for CMDSENT flag) */
-    return(errorstatus);
-  }
-
-  errorstatus = SD_InitializeCards();
-
-  if (errorstatus != SD_OK)
-  {
-    /* CMD Response TimeOut (wait for CMDSENT flag) */
-    return(errorstatus);
-  }
-
-  /* Configure the SDIO peripheral */
-  /* HCLK = 72 MHz, SDIOCLK = 72 MHz, SDIO_CK = HCLK/(2 + 1) = 24 MHz */  
-  SDIO_InitStructure.SDIO_ClockDiv = SDIO_TRANSFER_CLK_DIV + 3; 
-  SDIO_InitStructure.SDIO_ClockEdge = SDIO_ClockEdge_Rising;
-  SDIO_InitStructure.SDIO_ClockBypass = SDIO_ClockBypass_Disable;
-  SDIO_InitStructure.SDIO_ClockPowerSave = SDIO_ClockPowerSave_Disable;
-  SDIO_InitStructure.SDIO_BusWide = SDIO_BusWide_1b;
-  SDIO_InitStructure.SDIO_HardwareFlowControl = SDIO_HardwareFlowControl_Disable;
-  SDIO_Init(&SDIO_InitStructure);
-	
-	 if (errorstatus == SD_OK)
-  {
-		/*----------------- 解析 CSD/CID 寄存器(根据其结构) ------------------*/
-     errorstatus = SD_GetCardInfo(&card_info);
-  }
-	
-	if (errorstatus == SD_OK)
-  {
-		/*----------------- 选择卡 --------------------------------*/
-     errorstatus = SD_SelectDeselect((uint32_t)card_info.RCA << 16);
-  }
-	
-	if (errorstatus == SD_OK)
-  {
-		/* 使能宽总线(4位)操作模式 */
-     errorstatus = SD_EnableWideBusOperation(SDIO_BusWide_4b);
-  }
-	
-	  if (errorstatus == SD_OK)
-  {
-    /* 设置设备模式为DMA模式 */
-	errorstatus = SD_SetDeviceMode(SD_DMA_MODE);
-  }
-
-  return(errorstatus);
-}
 
 /*******************************************************************************
 * Function Name  : SD_PowerON
@@ -353,6 +286,7 @@ SD_Error SD_PowerON(void)
 
   return(errorstatus);
 }
+
 
 /*******************************************************************************
 * Function Name  : SD_PowerOFF
@@ -790,6 +724,82 @@ SD_Error SD_SelectDeselect(uint32_t addr)
   return(errorstatus);
 }
 
+
+/*******************************************************************************
+* Function Name  : SD_Init
+* Description    : Initializes the SD Card and put it into StandBy State (Ready 
+*                  for data transfer).
+* Input          : None
+* Output         : None
+* Return         : SD_Error: SD Card Error code.
+*******************************************************************************/
+SD_Error SD_Init(void)
+{
+  SD_Error errorstatus = SD_OK;
+
+  /* Configure SDIO interface GPIO */
+  GPIO_Configuration();
+
+  /* Enable the SDIO AHB Clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_SDIO, ENABLE);
+
+  /* Enable the DMA2 Clock */
+  RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA2, ENABLE);
+
+  SDIO_DeInit();
+
+  errorstatus = SD_PowerON();
+
+  if (errorstatus != SD_OK)
+  {
+    /* CMD Response TimeOut (wait for CMDSENT flag) */
+    return(errorstatus);
+  }
+
+  errorstatus = SD_InitializeCards();
+
+  if (errorstatus != SD_OK)
+  {
+    /* CMD Response TimeOut (wait for CMDSENT flag) */
+    return(errorstatus);
+  }
+
+  /* Configure the SDIO peripheral */
+  /* HCLK = 72 MHz, SDIOCLK = 72 MHz, SDIO_CK = HCLK/(2 + 1) = 24 MHz */  
+  SDIO_InitStructure.SDIO_ClockDiv = SDIO_TRANSFER_CLK_DIV + 3; 
+  SDIO_InitStructure.SDIO_ClockEdge = SDIO_ClockEdge_Rising;
+  SDIO_InitStructure.SDIO_ClockBypass = SDIO_ClockBypass_Disable;
+  SDIO_InitStructure.SDIO_ClockPowerSave = SDIO_ClockPowerSave_Disable;
+  SDIO_InitStructure.SDIO_BusWide = SDIO_BusWide_1b;
+  SDIO_InitStructure.SDIO_HardwareFlowControl = SDIO_HardwareFlowControl_Disable;
+  SDIO_Init(&SDIO_InitStructure);
+	
+	 if (errorstatus == SD_OK)
+  {
+		/*----------------- 解析 CSD/CID 寄存器(根据其结构) ------------------*/
+     errorstatus = SD_GetCardInfo(&card_info);
+  }
+	
+	if (errorstatus == SD_OK)
+  {
+		/*----------------- 选择卡 --------------------------------*/
+     errorstatus = SD_SelectDeselect((uint32_t)card_info.RCA << 16);
+  }
+	
+	if (errorstatus == SD_OK)
+  {
+		/* 使能宽总线(4位)操作模式 */
+     errorstatus = SD_EnableWideBusOperation(SDIO_BusWide_4b);
+  }
+	
+	  if (errorstatus == SD_OK)
+  {
+    /* 设置设备模式为DMA模式 */
+	errorstatus = SD_SetDeviceMode(SD_DMA_MODE);
+  }
+
+  return(errorstatus);
+}
 /*******************************************************************************
 * Function Name  : SD_ReadBlock
 * Description    : Allows to read one block from a specified address in a card.
@@ -3018,6 +3028,7 @@ static const char *FR_Table[]=
     "FR_INVALID_PARAMETER：参数无效"                         /* (19) Given parameter is invalid */
 };
 
+
 void  NVIC_Config (void) {
   NVIC_InitTypeDef NVIC_InitStructure;
 
@@ -3036,17 +3047,305 @@ void  NVIC_Config (void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
-extern void BackColorSet(void);
-extern void ili9320_SetLight(char line);
+/***************************************************
+显示一张BMP格式的图片
 
+****************************************************/
 
-void SDInit(void) {
-	FIL fsrc;
-	FRESULT result;
-  FATFS fs;
-	UINT br;
+static FIL fsrc;
+static FRESULT result;
+static FATFS fs;
+static UINT br;
+static DIR DirInf;
+static FILINFO FileInf;
+
+extern void LCD_WriteRAM(u16 RGB_Code);
+extern void TFT_SetXY(u16 x,u16 y);
+
+void Pic_Viewer(const unsigned char *name)
+{
+	unsigned char data[512], buf[32]; 
+	u16 i;
+	unsigned int cnt,file_cnt,temp1;
+	u16 temp;
+	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	sprintf(buf, "%s%s%s", "0:界面/", name, ".bmp");
+	BackColorSet();  	
+	result = f_open(&fsrc, buf, FA_OPEN_EXISTING | FA_READ);    
+
+	if(result!=FR_OK){
+		return;
+	}
+	result = f_read(&fsrc, data, 36, &br);                            //BMP文件的头信息有50个字节
+	TFT_SetXY(0,0);
+	
+	if(data[0]==0x42 && data[1]==0x4D) {                                //文件的类型
+		
+		temp = data[18]+(data[19]<<8)+(data[20]<<16)+(data[21]<<24);      //像素的宽度
+		temp1 = data[22]+(data[23]<<8)+(data[24]<<16)+(data[25]<<24);     //像素的长度
+
+		if(temp==320 && temp1==240){
+			
+			temp = data[28]+(data[29]<<8);                                  //文件的位真彩
+			if(temp==32){       //32位增强型真彩色
+				
+				file_cnt = data[2]+(data[3]<<8)+(data[4]<<16)+(data[5]<<24);  //文件大小
+				cnt = 36;
+				while(1){ 
+					
+					result = f_read(&fsrc, data, 512, &br);                    //读取512个数据
+					cnt += sizeof(data);
+					if(cnt >= file_cnt)                                         //长度超过文件长度
+						break;
+
+					for(i=0; i<128; i++) 	
+						LCD_WriteRAM((data[i*4+2]>>3)<<11 | (data[i*4+1]>>2)<<5 |(data[i*4]>>3));						 
+					    
+				}   
+			} else if(temp == 24){    //24位真彩色
+                                       
+				file_cnt = data[2]+(data[3]<<8)+(data[4]<<16)+(data[5]<<24);  //文件大小
+				cnt = 36;
+				while(1) {
+					
+					result = f_read(&fsrc, data, 384, &br);                     //读取384个数据
+					cnt += 384;
+					if(cnt >= file_cnt)                                      
+						break;
+					
+					for(i=0;i<128;i++)
+						LCD_WriteRAM((data[i*3+2]*32/256)<<11 | (data[i*3+1]*64/256)<<5 |(data[i*3]*32/256));	
+					
+				}                  
+			} else if(temp==16){       //16位真彩色
+                                        
+				file_cnt = data[2]+(data[3]<<8)+(data[4]<<16)+(data[5]<<24);  
+				cnt = 36;
+				while(1){
+					
+					result = f_read(&fsrc, data,254, &br);                     
+					cnt += 254;
+					if(cnt >= file_cnt)                                       
+						break;
+					
+					for(i=0;i<128;i++)
+					 LCD_WriteRAM(((data[i*2+1])<<9|(data[i*2])));
+				
+				}                  
+			}	
+		} else {
+			BackColorSet();  
+			TFT_SetXY(0,0);
+			
+			file_cnt = data[2]+(data[3]<<8)+(data[4]<<16)+(data[5]<<24);
+			cnt = 36;
+			while(1){ 
+				result = f_read(&fsrc, data, 384, &br);   
+				cnt += sizeof(data);
+				if(cnt >= file_cnt)                            
+					break;
+
+				for(i=0; i<128; i++)	
+					LCD_WriteRAM((data[i*4+2]>>3)<<11 | (data[i*4+1]>>2)<<5 |(data[i*4]>>3));	 	    																																							 
+			}
+		}
+	}
+
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);
+}
+
+typedef enum{
+	SD_OPEN_FILE,
+	SD_READ_FILE,
+	SD_CLOSE_FILE,
+	SD_OPTION_SURE,
+	SD_SWITCH_PAGE,
+	SD_NULL,
+}SDTaskMsgType;
+
+typedef struct {
+	/// Message type.
+	SDTaskMsgType type;
+	/// Message lenght.
+	unsigned char length;
+} SDTaskMsg;
+
+static SDTaskMsg *__SDCreateMessage(SDTaskMsgType type, const char *dat, unsigned char len) {
+  SDTaskMsg *message = pvPortMalloc(ALIGNED_SIZEOF(SDTaskMsg) + len);
+	if (message != NULL) {
+		message->type = type;
+		message->length = len;
+		memcpy(&message[1], dat, len);
+	}
+	return message;
+}
+
+static inline void *__SDGetMsgData(SDTaskMsg *message) {
+	return &message[1];
+}
+
+bool SDTaskSureOption(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_OPTION_SURE, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskSwitchPage(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_SWITCH_PAGE, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+static void __SDTaskHandleOpen(SDTaskMsg *message){
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}	
+	
+	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);	
+}
+
+static void __SDTaskHandleRead(SDTaskMsg *message){
+	
+}
+
+static void __SDTaskHandleClose(SDTaskMsg *message){
+	
+}
+
+static void __SDTaskHandleOption(SDTaskMsg *message){
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}
+	
+	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);
+	
+	if (result == FR_OK) {
+		result = f_read(&fsrc, buf, 512, &br);
+		BackColorSet();
+}
+
+static void __SDTashHandleSwitch(SDTaskMsg *message){
+	
+}
+
+typedef struct {
+	SDTaskMsgType type;
+	void (*handlerFunc)(SDTaskMsg *);
+} MessageHandlerMap;
+
+static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_OPEN_FILE, __SDTaskHandleOpen },
+	{ SD_READ_FILE, __SDTaskHandleRead },
+	{ SD_CLOSE_FILE, __SDTaskHandleClose },
+	{ SD_SWITCH_PAGE, __SDTashHandleSwitch },
+	{ SD_OPTION_SURE, __SDTaskHandleOption },
+	{ SD_NULL, NULL },
+};
+
+static void __SDTask(void *parameter) {
+	portBASE_TYPE rc;
+	SDTaskMsg *msg;
+	
+	for (;;) {
+	//	printf("SDCard: loop again\n");
+		rc = xQueueReceive(__SDHCQueue, &msg, configTICK_RATE_HZ );
+		if (rc == pdTRUE) {
+			const MessageHandlerMap *map = __messageHandlerMaps;
+			for (; map->type != SD_OPEN_FILE; ++map) {
+				if (msg->type == map->type) {
+					map->handlerFunc(msg);
+					break;
+				}
+			}
+			vPortFree(msg);
+		} 
+	}
+}
+
+void SDTest(void) {
 	SD_Error Status;
 	char buf[512];
+	char tmp[20], form[36];
+
+	NVIC_Config();
+	Status = SD_Init();
+	if(Status == SD_OK) {                                    //检测初始化是否成功
+		printf( " \r\n SD_Init 初始化成功 \r\n " );		
+	}	else {
+		printf("\r\n SD_Init 初始化失败 \r\n" );
+		printf("\r\n 返回的Status的值为： %d \r\n",Status );
+	}
+
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}
+	
+	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);
+	
+	if (result == FR_OK) {
+		result = f_read(&fsrc, buf, 512, &br);
+		BackColorSet();
+		Lcd_DisplayChinese16(0, 0, (const unsigned char *)buf);	
+		
+		if (result == FR_OK){
+			printf("OK.\r\n");
+		}
+		
+		sscanf(strchr(buf, '1'), "%s", form);
+		sscanf(form, "%*[^.]%*c%s", tmp);
+		sprintf(form, "%s%s", "/", tmp);
+		result = f_opendir(&DirInf, (const TCHAR *)form);
+	
+		if (result == FR_OK) {
+			printf("Folder open success.\n");
+		} else {
+			printf("Folder open Fail.\n");
+		}
+			
+		while(1){
+			result = f_readdir(&DirInf,&FileInf); 
+			
+			if (result == FR_OK) {
+				printf("Folder read success.\n");
+			} else {
+				printf("Folder read Fail.\n");
+			}
+			
+			if(strncmp(FileInf.fname, "51", 2) == 0){
+				result = f_open(&fsrc, (const TCHAR*)"0:滨湖/滨湖.txt", FA_OPEN_EXISTING | FA_READ);
+				if (result == FR_OK) {
+					result = f_read(&fsrc, buf, 512, &br);
+					BackColorSet();
+					Lcd_DisplayChinese16(0, 0, (const unsigned char *)buf);	
+				}
+				
+				break;
+			}
+		}
+	}
+}
+
+void SDInit(void) {
+	SD_Error Status;
 	
 	NVIC_Config();
 	Status = SD_Init();
@@ -3057,51 +3356,7 @@ void SDInit(void) {
 		printf("\r\n 返回的Status的值为： %d \r\n",Status );
 	}
 	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}
-	
-	result = f_open(&fsrc, (const TCHAR*)"滨湖.txt", FA_OPEN_EXISTING | FA_READ);
-	
-	if (result == FR_OK) {
-		result = f_read(&fsrc, buf, 512, &br);
-		BackColorSet();
-		Lcd_DisplayChinese16(0, 0, buf);	
-		
-		while(1){
-			char i;
-			for(i = 1; i < 16; i++){
-				ili9320_SetLight(i);
-				Delay(500);
-			}
-		}
-		
-		if (result == FR_OK){
-			printf("OK.\r\n");
-		}
-	}
-
+	Pic_Viewer("logo");
+	__SDHCQueue = xQueueCreate(15, sizeof(SDTaskMsg *));
+	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
-
-static xSemaphoreHandle __semaphore = NULL;
-
-void SD_FS_Write(FIL* fp, const void* buff, UINT btw) {
-	UINT* bw;
-	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		f_write(fp, buff, btw, bw);
-		xSemaphoreGive(__semaphore);
-	}
-}
-
-void SD_FS_Read(FIL* fp, void* buff, UINT btr) {
-	UINT* br;
-	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		f_read(fp, buff, btr, br);
-		xSemaphoreGive(__semaphore);
-	}
-}
-

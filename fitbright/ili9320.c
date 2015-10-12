@@ -41,7 +41,7 @@
 
 static xQueueHandle __Ili9320Queue;
 
-#define FontColor   BLACK
+#define FontColor     BLACK
 
 #define BackColor     CYAN
 #define EnLight       WHITE
@@ -383,6 +383,42 @@ void Delay(u32 nCount)
    }
 }
 
+/****************************************************************************
+* 名    称：void ili9320_SetCursor(u16 x,u16 y)
+* 功    能：设置屏幕座标
+* 入口参数：x      行座标
+*           y      列座标
+* 出口参数：无
+* 说    明：
+* 调用方法：ili9320_SetCursor(10,10);
+****************************************************************************/
+//inline void ili9320_SetCursor(u16 x,u16 y)
+void ili9320_SetCursor(u16 x,u16 y)
+{
+	if(DeviceCode==0x8989)
+	{
+	 	LCD_WriteReg(0x004e,y);        //行
+    	LCD_WriteReg(0x004f,x);  //列
+	}
+	else if((DeviceCode==0x9919))
+	{
+		LCD_WriteReg(0x004e,x); // 行
+  		LCD_WriteReg(0x004f,y); // 列	
+	}
+    /*
+	else if((DeviceCode==0x9325))
+	{
+		LCD_WriteReg(0x0020,x); // 行
+  		LCD_WriteReg(0x0021,y); // 列	
+	}
+	*/
+	else
+	{
+  		LCD_WriteReg(0x0020,y); // 行
+  		LCD_WriteReg(0x0021,0x13f-x); // 列
+	}
+}
+
 /**
   * @brief  Draws a chinacharacter on LCD.
   * @param  Xpos: the Line where to display the character shape.
@@ -659,6 +695,26 @@ const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str
 }
 
 /****************************************************************************
+* 名    称：void ili9320_Clear(u16 dat)
+* 功    能：将屏幕填充成指定的颜色，如清屏，则填充 0xffff
+* 入口参数：dat      填充值
+* 出口参数：无
+* 说    明：
+* 调用方法：ili9320_Clear(0xffff);
+****************************************************************************/
+void ili9320_Clear(u16 Color)
+{
+  u32 index=0;
+  ili9320_SetCursor(0,0); 
+  LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+  for(index=0;index<76800;index++)
+   {
+     LCD->LCD_RAM=Color;
+   }
+	 Exist32Font = 0;
+}
+
+/****************************************************************************
 * 名    称：void ili9320_Initializtion()
 * 功    能：初始化 ILI9320 控制器
 * 入口参数：无
@@ -745,42 +801,6 @@ void ili9320_Initializtion(void)
 }
 
 /****************************************************************************
-* 名    称：void ili9320_SetCursor(u16 x,u16 y)
-* 功    能：设置屏幕座标
-* 入口参数：x      行座标
-*           y      列座标
-* 出口参数：无
-* 说    明：
-* 调用方法：ili9320_SetCursor(10,10);
-****************************************************************************/
-//inline void ili9320_SetCursor(u16 x,u16 y)
-void ili9320_SetCursor(u16 x,u16 y)
-{
-	if(DeviceCode==0x8989)
-	{
-	 	LCD_WriteReg(0x004e,y);        //行
-    	LCD_WriteReg(0x004f,x);  //列
-	}
-	else if((DeviceCode==0x9919))
-	{
-		LCD_WriteReg(0x004e,x); // 行
-  		LCD_WriteReg(0x004f,y); // 列	
-	}
-    /*
-	else if((DeviceCode==0x9325))
-	{
-		LCD_WriteReg(0x0020,x); // 行
-  		LCD_WriteReg(0x0021,y); // 列	
-	}
-	*/
-	else
-	{
-  		LCD_WriteReg(0x0020,y); // 行
-  		LCD_WriteReg(0x0021,0x13f-x); // 列
-	}
-}
-
-/****************************************************************************
 * 名    称：void ili9320_SetWindows(u16 StartX,u16 StartY,u16 EndX,u16 EndY)
 * 功    能：设置窗口区域
 * 入口参数：StartX     行起始座标
@@ -801,33 +821,7 @@ void ili9320_SetWindows(u16 StartX,u16 StartY,u16 EndX,u16 EndY)
   LCD_WriteReg(0x0053, EndY);
 }
 
-/****************************************************************************
-* 名    称：void ili9320_Clear(u16 dat)
-* 功    能：将屏幕填充成指定的颜色，如清屏，则填充 0xffff
-* 入口参数：dat      填充值
-* 出口参数：无
-* 说    明：
-* 调用方法：ili9320_Clear(0xffff);
-****************************************************************************/
-void ili9320_Clear(u16 Color)
-{
-  u32 index=0;
-  ili9320_SetCursor(0,0); 
-  LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
-  for(index=0;index<76800;index++)
-   {
-     LCD->LCD_RAM=Color;
-   }
-	 Exist32Font = 0;
-}
-
-/****************************************************************************
-
-
-
-
-
-******************************************************************************/
+/******************************************************************************/
 
 void ili9320_Darken(u8 Line, u16 Color)
 {
@@ -889,7 +883,7 @@ u16 ili9320_GetPoint(u16 x,u16 y)
 光标设置函数
 
 *****************************************************************************/
-static unsigned char First_Dot = 0;  //定义第一行的第一个点的Y坐标
+//static unsigned char First_Dot = 0;  //定义第一行的第一个点的Y坐标
 
 void ili9320_SetLight(char line){
 	int index;
@@ -943,6 +937,15 @@ void ili9320_SetPoint(u16 x,u16 y,u16 point)
 
   LCD_WriteRAM_Prepare();
   LCD_WriteRAM(point);
+}
+
+
+void TFT_SetXY(u16 x,u16 y)
+{
+  if ( (x>320)||(y>240) ) return;
+  ili9320_SetCursor(x,y);
+
+  LCD_WriteRAM_Prepare();
 }
 
 
@@ -1189,13 +1192,12 @@ void ili9320_Delay(vu32 nCount)
   //for(; nCount != 0; nCount--);
 }
 
-
-
 void BackColorSet(void){
 	ili9320_Clear(BackColor);
 }
 
 typedef enum{
+	ILI_CHANGE_INTERFACE,
 	ILI_INPUT_DISPALY,
 	ILI_ORDER_DISPALY,
 	ILI_CLEAR_SCREEN,
@@ -1227,6 +1229,14 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return NULL;
 }
 
+bool Ili9320TaskChangeInterface(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_CHANGE_INTERFACE, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
 
 bool Ili9320TaskInputDis(const char *dat, int len) {
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_INPUT_DISPALY, dat, len);
@@ -1359,12 +1369,20 @@ void __HandleCls(Ili9320TaskMsg *msg){
 	Line = 1;
 }
 
+void __HandleChangeInterface(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	BackColorSet();
+	
+	__displayNewPage = Lcd_LineDisplay16(Line, (const unsigned char *)p);
+}
+
 typedef struct {
 	Ili9320TaskMsgType type;
 	void (*handlerFunc)(Ili9320TaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_CHANGE_INTERFACE, __HandleChangeInterface},
 	{ ILI_UPANDDOWN_PAGE, __HandleUpAndDown},
 	{ ILI_INPUT_DISPALY, __HandleInput},
 	{ ILI_ORDER_DISPALY, __HandleOrderDisplay },

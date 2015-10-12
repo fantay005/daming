@@ -723,11 +723,6 @@
               <FileType>1</FileType>
               <FilePath>.\Fatfs\sdcard.c</FilePath>
             </File>
-            <File>
-              <FileName>cc936.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fitbright\cc936.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

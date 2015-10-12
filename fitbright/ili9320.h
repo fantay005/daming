@@ -13,32 +13,8 @@
 //硬件相关的子函数
 #define Lcd_Light_ON   GPIO_SetBits(GPIOC, GPIO_Pin_7);
 #define Lcd_Light_OFF  GPIO_ResetBits(GPIOC, GPIO_Pin_7);
-/*
-#define nCsPin  GPIO_Pin_8
-#define RsPin   GPIO_Pin_9
-#define nWrPin  GPIO_Pin_10
-#define nRdPin  GPIO_Pin_11
-#define nRstPin GPIO_Pin_12
-#define Lcd_LightPin GPIO_Pin_13
 
-#define Set_nWr (*((volatile unsigned long *) 0x40011010) = nWrPin)
-#define Clr_nWr (*((volatile unsigned long *) 0x40011014) = nWrPin)
 
-#define Set_Cs  (*((volatile unsigned long *) 0x40011010) = nCsPin)
-#define Clr_Cs  (*((volatile unsigned long *) 0x40011014) = nCsPin)
-
-#define Set_Rs  (*((volatile unsigned long *) 0x40011010) = RsPin)
-#define Clr_Rs  (*((volatile unsigned long *) 0x40011014) = RsPin)
-
-#define Set_nRd (*((volatile unsigned long *) 0x40011010) = nRdPin)
-#define Clr_nRd (*((volatile unsigned long *) 0x40011014) = nRdPin)
-
-#define Set_Rst (*((volatile unsigned long *) 0x40011010) = nRstPin)
-#define Clr_Rst (*((volatile unsigned long *) 0x40011014) = nRstPin)
-
-#define Lcd_Light_ON   (*((volatile unsigned long *) 0x40011010) = Lcd_LightPin)
-#define Lcd_Light_OFF  (*((volatile unsigned long *) 0x40011014) = Lcd_LightPin)
-*/
 /* LCD Registers */
 #ifndef     R0 
 
@@ -208,27 +184,10 @@
 	#define Vertical       0x01
 #endif
 
-void LCD_DB_AS_InPut(void);
-void LCD_DB_AS_OutPut(void);
-
-void ili9320_Initializtion(void);
-void ili9320_SetCursor(u16 x,u16 y);
-void ili9320_SetWindows(u16 StartX,u16 StartY,u16 EndX,u16 EndY);
-void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic);
-void ili9320_SetPoint(u16 x,u16 y,u16 point);
-void ili9320_PutChar(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor);
-void ili9320_Clear(u16 dat);
-void ili9320_Delay(u32 nCount);
-u16  ili9320_GetCode(void);;
-void LCD_DrawChinaChar16x16(u16 Xpos, u16 Ypos, const u8 *c,u16 charColor,u16 bkColor);
-void ili9320_BackLight(u8 status);
-const unsigned char *Lcd_DisplayChinese16(int , int y, const unsigned char *str);
-const unsigned char *Lcd_DisplayChinese32(int x, int y, const unsigned char *str);
-void ili9320_Darken(u8 Line, u16 Color);
-
+void BackColorSet(void);
+bool Ili9320TaskInputDis(const char *dat, int len);
 bool Ili9320TaskUpAndDown(const char *dat, int len);
 bool Ili9320TaskTakeOutOne(const char *dat, int len);
-bool Ili9320TaskOneByOneDis(const char *dat, int len);
 bool Ili9320TaskOrderDis(const char *dat, int len);
 bool Ili9320TaskClear(const char *dat, int len);
 #endif /* __ILI9320_API_H */

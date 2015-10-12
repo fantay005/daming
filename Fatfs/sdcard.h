@@ -21,7 +21,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "stm32f10x.h"
 #include "diskio.h"
-
+#include <stdbool.h>
 /* Exported types ------------------------------------------------------------*/
 typedef enum
 {
@@ -241,24 +241,9 @@ typedef struct
 
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
-SD_Error SD_Init(void);
-SD_Error SD_PowerON(void);
-SD_Error SD_PowerOFF(void);
-SD_Error SD_InitializeCards(void);
-SD_Error SD_GetCardInfo(SD_CardInfo *cardinfo);
-SD_Error SD_EnableWideBusOperation(uint32_t WideMode);
-SD_Error SD_SetDeviceMode(uint32_t Mode);
-SD_Error SD_SelectDeselect(uint32_t addr);
-SD_Error SD_ReadBlock(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize);
-SD_Error SD_ReadMultiBlocks(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
-SD_Error SD_WriteBlock(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize);
-SD_Error SD_WriteMultiBlocks(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
-SDTransferState SD_GetTransferState(void);
-SD_Error SD_StopTransfer(void);
-SD_Error SD_Erase(uint32_t startaddr, uint32_t endaddr);
-SD_Error SD_SendStatus(uint32_t *pcardstatus);
-SD_Error SD_SendSDStatus(uint32_t *psdstatus);
-SD_Error SD_ProcessIRQSrc(void);
+
+bool SDTaskSureOption(const char *dat, int len);
+
 
 #endif /* __SDCARD_H */
 
