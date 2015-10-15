@@ -148,6 +148,7 @@ static unsigned char buffer[255];
 //	}
 //}
 
+extern bool Com3IsOK(void);
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -160,6 +161,8 @@ void USART3_IRQHandler(void) {
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
 
+	if(!Com3IsOK())
+		return;
 	if ((data == 0x0A) || (data == 0x3E)){
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;

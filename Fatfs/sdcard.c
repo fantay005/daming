@@ -33,8 +33,9 @@
 #include "zklib.h"
 #include <string.h>
 #include "ili9320.h"
+#include "key.h"
 
-#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
 static xQueueHandle __SDHCQueue;
 
@@ -3157,7 +3158,9 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
-	SD_OPEN_FILE,
+	SD_HANDLE_WG,
+	SD_DAMING_INTRODUCE,
+	SD_HANDLE_KEY,
 	SD_READ_FILE,
 	SD_CLOSE_FILE,
 	SD_OPTION_SURE,
@@ -3169,7 +3172,7 @@ typedef struct {
 	/// Message type.
 	SDTaskMsgType type;
 	/// Message lenght.
-	unsigned char length;
+	int length;
 } SDTaskMsg;
 
 static SDTaskMsg *__SDCreateMessage(SDTaskMsgType type, const char *dat, unsigned char len) {
@@ -3186,8 +3189,35 @@ static inline void *__SDGetMsgData(SDTaskMsg *message) {
 	return &message[1];
 }
 
+bool SDTaskHandleWGOption(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_WG, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleKey(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_KEY, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
 bool SDTaskSureOption(const char *dat, int len) {
 	SDTaskMsg *message = __SDCreateMessage(SD_OPTION_SURE, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskIntroduce(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_DAMING_INTRODUCE, dat, len);
 	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
 		return true;
@@ -3204,16 +3234,72 @@ bool SDTaskSwitchPage(const char *dat, int len) {
 	return false;
 }
 
-static void __SDTaskHandleOpen(SDTaskMsg *message){
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+static void __SDTaskHandleIntroduce(SDTaskMsg *message){
+	unsigned char buf[512];
+	short i;
 	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
 	if (result == FR_OK) {
 		printf("File mount success.\n");
 	} else {
 		printf("File mount Error.\n");
 	}	
 	
-	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);	
+	result = f_open(&fsrc, (const TCHAR*)"0:滨湖/滨湖.txt", FA_OPEN_EXISTING | FA_READ);	
+	
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+
+	for(;;){
+		result = f_read(&fsrc, buf, 508, &br);
+		if (result || br == 0) 
+			break;	
+		
+		buf[br] = 0;
+		if(buf[br - 1] == 0x0D){
+			buf[br + 1] = 0;
+			result = f_read(&fsrc, &buf[br], 1, &br);
+		}
+		
+		for(i = 0; i < strlen(buf); i++){
+			if((buf[i - 1] == 0x0D) && (buf[i] == 0x0A)){			
+				result = f_lseek(&fsrc, fsrc.fptr - strlen(buf) + i + 1);
+				buf[i + 1] = 0;
+				break;
+			}			
+		}
+		
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	}
+}
+
+static void __SDTaskHandlePGUP(SDTaskMsg *message){
+	unsigned char buf[512];
+	short i;
+	
+	for(;;){
+		result = f_read(&fsrc, buf, 508, &br);
+		if (result || br == 0) 
+			break;	
+		
+		buf[br] = 0;
+		if(buf[br - 1] == 0x0D){
+			buf[br + 1] = 0;
+			result = f_read(&fsrc, &buf[br], 1, &br);
+		}
+		
+		for(i = 0; i < strlen(buf); i++){
+			if((buf[i - 1] == 0x0D) && (buf[i] == 0x0A)){			
+				result = f_lseek(&fsrc, fsrc.fptr - strlen(buf) + i + 1);
+				buf[i + 1] = 0;
+				break;
+			}			
+		}
+		
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+  }
 }
 
 static void __SDTaskHandleRead(SDTaskMsg *message){
@@ -3225,6 +3311,7 @@ static void __SDTaskHandleClose(SDTaskMsg *message){
 }
 
 static void __SDTaskHandleOption(SDTaskMsg *message){
+	unsigned char buf[512];
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);
 	if (result == FR_OK) {
 		printf("File mount success.\n");
@@ -3234,13 +3321,232 @@ static void __SDTaskHandleOption(SDTaskMsg *message){
 	
 	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);
 	
-	if (result == FR_OK) {
-		result = f_read(&fsrc, buf, 512, &br);
-		BackColorSet();
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+	result = f_read(&fsrc, buf, 512, &br);
+	BackColorSet();
+
 }
 
 static void __SDTashHandleSwitch(SDTaskMsg *message){
 	
+}
+
+extern char PageNumBer(void);
+
+static void __OpenMainGUI(char *dat, char *msg){
+	unsigned char buf[512];
+	short i;
+	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}	
+	
+	
+	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);	
+	
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+	
+	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI) || (msg[0] == Test_GUI)){
+		switch (msg[1]){
+			case 1:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			default:
+				break;
+		}
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		return;
+	}
+	
+	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){
+		switch (PageNumBer()){
+			case 1:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 2:
+				for(i = 0; i < 30; i++){
+					f_gets(buf, 64, &fsrc);
+					if(i > 14)
+						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 3:
+				for(i = 0; i < 45; i++){
+					f_gets(buf, 64, &fsrc);
+					if(i > 29)
+						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 4:
+				for(i = 0; i < 60; i++){
+					f_gets(buf, 64, &fsrc);
+					if(i > 44)
+						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			default:
+					break;
+		}
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		return;
+	}
+	
+	for(;;){
+		result = f_read(&fsrc, buf, 508, &br);
+		if (result || br == 0) 
+			break;	
+		
+		buf[br] = 0;
+		if(buf[br - 1] == 0x0D){
+			buf[br + 1] = 0;
+			result = f_read(&fsrc, &buf[br], 1, &br);
+		}
+		
+		for(i = 0; i < strlen(buf); i++){
+			if((buf[i - 1] == 0x0D) && (buf[i] == 0x0A)){			
+				result = f_lseek(&fsrc, fsrc.fptr - strlen(buf) + i + 1);
+				buf[i + 1] = 0;
+				break;
+			}			
+		}
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	}
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+}
+
+extern pro DeterProject(void);
+
+static char *FileName(char *msg){
+	unsigned char tmp[32], buf[16];
+	
+	if(DeterProject() == 1){
+		sprintf(buf, "%s", "滨湖");
+	} else if(DeterProject() == 2){
+		sprintf(buf, "%s", "产业园");
+	} else if(DeterProject() == 3){
+		sprintf(buf, "%s", "大明");
+	}
+	
+	if(msg[1] == KEYMENU){
+		Ili9320TaskClear("C", 1);
+		sprintf(tmp, "0:界面/%s.txt", "界面");
+	} else if(msg[0] == Main_GUI){
+		Ili9320TaskClear("C", 1);
+		switch (msg[1]){
+			case 1:
+				sprintf(tmp, "0:界面/%s.txt", "项目");
+				break;
+			case 2:
+				sprintf(tmp, "0:界面/%s.txt",  "配置");
+				break;
+			case 3:
+				sprintf(tmp, "0:界面/%s.txt",  "维修" );
+				break;
+			case 4:
+				sprintf(tmp, "0:界面/%s.txt",  "测试" );
+				break;
+			case 5:
+				sprintf(tmp, "0:界面/%s.txt",  "简介" );
+				break;
+			default:
+				break;
+		}
+	} else if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){
+		Ili9320TaskClear("C", 1);
+		switch (msg[1]){
+			case 1:
+				sprintf(tmp, "0:界面/%s.txt", buf);
+				break;
+			default:
+				break;
+		}
+	} else if(msg[0] == Test_GUI){
+		Ili9320TaskClear("C", 1);
+		switch (msg[1]){
+			case 1:
+				sprintf(tmp, "0:界面/%s.txt",  buf);
+				break;
+			case 4:
+				sprintf(tmp, "0:界面/%s.txt",  "调光");
+				break;
+			default:
+				break;
+		}
+	} else if((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)){
+		Ili9320TaskClear("C", 1);
+		switch (msg[1]){
+			case 20:
+				sprintf(tmp, "0:界面/%s.txt",  buf);
+				break;
+			case 21:
+				sprintf(tmp, "0:界面/%s.txt",  buf);
+				break;
+			default:
+				break;
+		}
+	}
+	
+
+	
+	return tmp;
+}
+
+static void __SDHandleKey(SDTaskMsg *message){
+	char *p = __SDGetMsgData(message);
+	
+	__OpenMainGUI(FileName(p), p);
+}
+
+static void __SDTaskHandleWGOption(SDTaskMsg *message){
+	unsigned char tmp[32], buf[64];
+	char *p = __SDGetMsgData(message);
+	
+	if(DeterProject() == 1){
+		sprintf(buf, "%s", "滨湖");
+	} else if(DeterProject() == 2){
+		sprintf(buf, "%s", "产业园");
+	} else if(DeterProject() == 3){
+		sprintf(buf, "%s", "大明");
+	}
+	
+	sprintf(tmp, "0:%s/%d.txt", buf, p[1]);
+	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	if (result == FR_OK) {
+		printf("File mount success.\n");
+	} else {
+		printf("File mount Error.\n");
+	}
+	
+	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);
+	
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+	f_gets(buf, 64, &fsrc);
+	f_gets(buf, 64, &fsrc);
+	f_gets(buf, 64, &fsrc);
+	f_gets(buf, 64, &fsrc);
+	BackColorSet();
 }
 
 typedef struct {
@@ -3249,7 +3555,9 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
-	{ SD_OPEN_FILE, __SDTaskHandleOpen },
+	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
+	{ SD_DAMING_INTRODUCE, __SDTaskHandleIntroduce },
+	{ SD_HANDLE_KEY, __SDHandleKey },
 	{ SD_READ_FILE, __SDTaskHandleRead },
 	{ SD_CLOSE_FILE, __SDTaskHandleClose },
 	{ SD_SWITCH_PAGE, __SDTashHandleSwitch },
@@ -3266,7 +3574,7 @@ static void __SDTask(void *parameter) {
 		rc = xQueueReceive(__SDHCQueue, &msg, configTICK_RATE_HZ );
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
-			for (; map->type != SD_OPEN_FILE; ++map) {
+			for (; map->type != SD_NULL; ++map) {
 				if (msg->type == map->type) {
 					map->handlerFunc(msg);
 					break;
@@ -3277,72 +3585,6 @@ static void __SDTask(void *parameter) {
 	}
 }
 
-void SDTest(void) {
-	SD_Error Status;
-	char buf[512];
-	char tmp[20], form[36];
-
-	NVIC_Config();
-	Status = SD_Init();
-	if(Status == SD_OK) {                                    //检测初始化是否成功
-		printf( " \r\n SD_Init 初始化成功 \r\n " );		
-	}	else {
-		printf("\r\n SD_Init 初始化失败 \r\n" );
-		printf("\r\n 返回的Status的值为： %d \r\n",Status );
-	}
-
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}
-	
-	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);
-	
-	if (result == FR_OK) {
-		result = f_read(&fsrc, buf, 512, &br);
-		BackColorSet();
-		Lcd_DisplayChinese16(0, 0, (const unsigned char *)buf);	
-		
-		if (result == FR_OK){
-			printf("OK.\r\n");
-		}
-		
-		sscanf(strchr(buf, '1'), "%s", form);
-		sscanf(form, "%*[^.]%*c%s", tmp);
-		sprintf(form, "%s%s", "/", tmp);
-		result = f_opendir(&DirInf, (const TCHAR *)form);
-	
-		if (result == FR_OK) {
-			printf("Folder open success.\n");
-		} else {
-			printf("Folder open Fail.\n");
-		}
-			
-		while(1){
-			result = f_readdir(&DirInf,&FileInf); 
-			
-			if (result == FR_OK) {
-				printf("Folder read success.\n");
-			} else {
-				printf("Folder read Fail.\n");
-			}
-			
-			if(strncmp(FileInf.fname, "51", 2) == 0){
-				result = f_open(&fsrc, (const TCHAR*)"0:滨湖/滨湖.txt", FA_OPEN_EXISTING | FA_READ);
-				if (result == FR_OK) {
-					result = f_read(&fsrc, buf, 512, &br);
-					BackColorSet();
-					Lcd_DisplayChinese16(0, 0, (const unsigned char *)buf);	
-				}
-				
-				break;
-			}
-		}
-	}
-}
 
 void SDInit(void) {
 	SD_Error Status;

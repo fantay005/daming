@@ -170,19 +170,15 @@ void USART2_IRQHandler(void) {
 static void __handleRecieve(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
 	
-	
 }
 
 static void __handleSend(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
 	
-	
 }
 
 static void __handleModify(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
-	
-	
 	
 }
 

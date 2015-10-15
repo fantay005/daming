@@ -33,7 +33,7 @@
 /   3: f_lseek() function is removed in addition to 2. */
 
 
-#define	_USE_STRFUNC	0	/* 0:Disable or 1-2:Enable */   //设置是否使用字符串函数，主要有f_gets, f_putc, f_puts, f_printf四个函数
+#define	_USE_STRFUNC	1	/* 0:Disable or 1-2:Enable */   //设置是否使用字符串函数，主要有f_gets, f_putc, f_puts, f_printf四个函数
 
 
 #define	_USE_MKFS		0	/* 0:Disable or 1:Enable */   //设置是否实现f_mkfs函数

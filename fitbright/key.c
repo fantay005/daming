@@ -13,7 +13,7 @@
 #include "ConfigZigbee.h"
 #include "sdcard.h"
 
-#define KEY_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define KEY_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
 static xQueueHandle __KeyQueue;
 
@@ -87,7 +87,7 @@ static xQueueHandle __KeyQueue;
 #define KEY_7        GPIO_ReadInputDataBit(GPIO_KEY_UP,Pin_Key_UP)
 #define KEY_8        GPIO_ReadInputDataBit(GPIO_KEY_DOWN,Pin_Key_DOWN)
 #define KEY_9        GPIO_ReadInputDataBit(GPIO_KEY_0,Pin_Key_0)
-#define KEY_CLEAR    GPIO_ReadInputDataBit(GPIO_KEY_1,Pin_Key_1)
+#define KEY_RET      GPIO_ReadInputDataBit(GPIO_KEY_1,Pin_Key_1)
 #define KEY_0        GPIO_ReadInputDataBit(GPIO_KEY_2,Pin_Key_2)
 #define KEY_DEL      GPIO_ReadInputDataBit(GPIO_KEY_3,Pin_Key_3)
 #define KEY_DN       GPIO_ReadInputDataBit(GPIO_KEY_4,Pin_Key_4)
@@ -272,14 +272,16 @@ KeyPress keycode(void){
 		return KEYINPT;
 	} else if(KEY_OK == 0){
 		return KEYOK;
-	} else if(KEY_CLEAR == 0){
-		return KEYCLEAR;
+	} else if(KEY_RET == 0){
+		return KEYRETURN;
 	} else {
 		return NOKEY;
 	}
 }
 
-static KeyPress KeyConfirm = NOKEY;
+static KeyPress KeyConfirm = NOKEY;         //上电后按键的初始状态
+
+static Dis_Type  InterFace = Open_GUI;      //上电后显示界面的初始状态
 
 void key_driver(KeyPress code)
 {
@@ -323,23 +325,97 @@ static char dat[9];
 
 extern void ili9320_SetLight(char line);
 
-static unsigned char wave = 1;    //行数
-static unsigned char page = 1;    //页数
+static unsigned char wave = 1;     //行数
+static unsigned char page = 1;     //页数
 
-void __handleGateway(void){
+static unsigned char MaxPage = 1;  //最大页数
+
+static unsigned char OptDecide = 0; //确定选项
+
+bool DisStatus(char type){
+	switch (type){
+		case 2:
+			return true;
+		case 3:
+			return true;
+		case 4:
+			return true;
+		case 5:
+			return true;
+		case 6:
+			return true;
+		case 7:
+			return true;
+		case 8:
+			return true;
+		case 12:
+			return true;
+		case 15:
+			return true;
+		case 18:
+			return true;
+		default:
+			return false;
+	}	
+}
+
+char PageNumBer(void){
+	return page;
+}
+
+void ChooseLine(void){
+	unsigned char tmp[2];
+	
 	if(KeyConfirm == KEYUP){
 		wave--;
 	} else if(KeyConfirm == KEYDN){
 		wave++;
-	} else if(KeyConfirm == KEYLF){
-		wave = 1;
-		page--;
+	} else if(KeyConfirm == KEYLF){	
+		if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide))
+			return;
+		if(page > 1){
+			page--;
+			wave = 1;
+		} else {
+			page = MaxPage;
+			if(MaxPage != 1)
+				wave = 1;
+		}
+		
+		tmp[0] = InterFace;
+		tmp[1] = KeyConfirm;
+		SDTaskHandleKey((const char *)tmp, 2);
+		
+		return;
 	} else if(KeyConfirm == KEYRT){
-		wave = 1;
-		page++;
+		if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide))
+			return;
+		
+		if(page < MaxPage){
+			wave = 1;
+			page++;
+		} else {
+			page = 1;
+			if(MaxPage != 1)
+				wave = 1;
+		}
+		
+		tmp[0] = InterFace;
+		tmp[1] = KeyConfirm;
+		SDTaskHandleKey((const char *)tmp, 2);
+		
+		return;
 	} else if(KeyConfirm == KEYOK){
-		SDTaskSureOption((const char *)(wave + 15 * (page - 1)), 1);
-		KeyConfirm = NOKEY;
+		
+		if(DisStatus(InterFace)){
+					
+			tmp[0] = InterFace;
+			tmp[1] = wave;
+			SDTaskHandleKey((const char *)tmp, 2);
+			OptDecide = 1;
+		}
+		
+					
 		return;
 	}
 	
@@ -355,9 +431,10 @@ void __handleGateway(void){
 		page += 4;
 	}	
 	
-	ili9320_SetLight(wave + 15 * (page - 1));
-	KeyConfirm = NOKEY;
-}	
+	ili9320_SetLight(wave);
+}
+
+
 	
 void __handleAdvanceSet(void){
 	portBASE_TYPE xHigherPriorityTaskWoken;
@@ -368,7 +445,7 @@ void __handleAdvanceSet(void){
 
 	
 	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYL)){		
-		dat[count++] = hex2char[KeyConfirm];
+		dat[count++] = hex2char[KeyConfirm - 1];
 		dat[count] = 0;
 		if(count > 6){
 			count = 0;
@@ -382,8 +459,6 @@ void __handleAdvanceSet(void){
 		count = 0;
   } else if(KeyConfirm == KEYRT){
 		strcpy(dat, "SHUNCOM ");
-  }else if(KeyConfirm == KEYCLEAR){
-		strcpy(dat, "Clear");
   } else if(KeyConfirm == KEYINPT){
 		InputChange();
 		KeyConfirm = NOKEY;
@@ -406,7 +481,7 @@ void __handleAdvanceSet(void){
 		Ili9320TaskOrderDis(dat, strlen(dat) + 1);
 		KeyConfirm = NOKEY;
 		return;
-  }else {
+  } else {
 		KeyConfirm = NOKEY;
 		return;
 	}
@@ -414,11 +489,6 @@ void __handleAdvanceSet(void){
 	msg = __KeyCreateMessage(KEY_SEND_DATA, dat, strlen(dat) + 1);
 	KeyConfirm = NOKEY;
 	
-	if(strncasecmp(dat, "Clear", 5) == 0){
-		Ili9320TaskClear(dat, strlen(dat));
-		memset(dat, 0, 9);
-		return;
-	}
 	Ili9320TaskOrderDis(dat, strlen(dat) + 1);
 	if (pdTRUE == xQueueSendFromISR(__KeyQueue, &msg, &xHigherPriorityTaskWoken)) {
 		if (xHigherPriorityTaskWoken) {
@@ -428,14 +498,92 @@ void __handleAdvanceSet(void){
   memset(dat, 0, 9);
 } 
 
-void TIM3_IRQHandler(void){	
-	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
-		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
-		times++;
+
+static pro Project = Pro_Null;                      //初始化项目为无
+
+pro DeterProject(void){
+	return Project;
+}
+
+void __handleOpenOption(void){
+	unsigned char dat;
+	unsigned char tmp[2];
+	
+  ChooseLine();	
+	
+	if(OptDecide == 0)
+		return;
+	
+	OptDecide = 0;                    //取消确认
+	
+	dat = wave;
+
+	if(InterFace == Main_GUI){
+		if(dat == 1)
+			InterFace = Project_Dir;
+		else if(dat == 2)
+			InterFace = Config_GUI;
+		else if(dat == 3)
+			InterFace = Service_GUI;
+		else if(dat == 4)
+			InterFace = Test_GUI;
+		else if(dat == 5)
+			InterFace = Intro_GUI;
+	} else if (InterFace == Config_GUI){
+		if(dat == 1)
+			InterFace = GateWay_Set;
+		else if(dat == 2)
+			InterFace = Address_Set;
+		else if(dat == 3)
+			InterFace = Config_Set;
+		else if(dat == 4)
+			InterFace = Config_DIS;
+		
+	} else if (InterFace == Service_GUI){
+		if(dat == 1)
+			InterFace = GateWay_Choose;
+		else if(dat == 2)
+			InterFace = Address_Choose;
+		else if(dat == 3)
+			InterFace = Read_Data;
+		
+	} else if (InterFace == Test_GUI){
+		if(dat == 1)
+			InterFace = GateWay_Decide;
+		else if(dat == 2)
+			InterFace = Address_Option;
+		else if(dat == 3)
+			InterFace = Debug_Option;
+		else if(dat == 4)
+			InterFace = Light_Dim;
+		else if(dat == 5)
+			InterFace = On_And_Off;
+		
+	} else if (InterFace == Project_Dir){
+		if(dat == 1){
+			Project = Pro_BinHu;
+		} else if(dat == 2){
+			Project = Pro_ChanYeYuan;
+		} else if(dat == 3){
+			Project = Pro_DaMing;
+		}
+		
+		tmp[0] = Open_GUI;
+	  tmp[1] = KEYMENU;	
+		SDTaskHandleKey((const char *)tmp, 2);
+		InterFace = Main_GUI;
+	}  else if ((InterFace == GateWay_Set) || (InterFace == GateWay_Choose) || (InterFace == GateWay_Decide)){
+					
+			tmp[0] = InterFace;
+			tmp[1] = wave;
+			SDTaskHandleWGOption((const char *)tmp, 2);		
 	}
-	
-	key_driver(keycode());
-	
+		
+	wave = 1;
+	KeyConfirm = NOKEY;
+}
+
+void __handleSwitchInput(void){
 	if(KeyConfirm == KEYINPT){
 		if(IME == 0)
 			IME = 1;
@@ -447,9 +595,6 @@ void TIM3_IRQHandler(void){
 		times = 0;
 		InputChange();
 	}
-	
-	if(KeyConfirm == NOKEY)
-		return;
 		
 	if(IME == 1){
 		if(KeyConfirm == KEY1){
@@ -467,9 +612,120 @@ void TIM3_IRQHandler(void){
 		}	else if (KeyConfirm == KEY7){
 			KeyConfirm = KEYL;
 		}	
+	}	
+}
+
+void ProMaxPage(void){
+	if(Project == Pro_BinHu)
+		MaxPage = 4;
+	else
+		MaxPage = 1;
+}
+
+
+static bool U3IRQ_Enable = false;             //使能串口3接收数据
+
+bool Com3IsOK(void){
+	if(InterFace == Config_Set)
+		U3IRQ_Enable = true;
+	else
+		U3IRQ_Enable = false;
+	return U3IRQ_Enable;
+}
+
+void TIM3_IRQHandler(void){	
+	unsigned char dat[2];
+	
+	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
+		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
+		times++;
 	}
 	
-	__handleGateway();
+	key_driver(keycode());
+	
+	if(KeyConfirm == NOKEY)
+		return;
+	
+	if(KeyConfirm == KEYMENU){
+		
+	  dat[0] = Open_GUI;
+	  dat[1] = KEYMENU;
+	  SDTaskHandleKey((const char *)dat, 2);
+	  InterFace = Main_GUI;
+		KeyConfirm = NOKEY;
+	  return;
+  } else if(KeyConfirm == KEYRETURN){
+		if((InterFace == Project_Dir) || (InterFace == Config_GUI) || (InterFace == Service_GUI) || (InterFace == Test_GUI) || (InterFace == Intro_GUI)){
+			InterFace = Main_GUI;
+			
+	  	dat[0] = Open_GUI;
+	    dat[1] = KEYMENU;
+	    SDTaskHandleKey((const char *)dat, 2);
+		
+		} else if(InterFace == GateWay_Set || InterFace == Address_Set || InterFace == Config_Set || InterFace == Config_DIS){
+			InterFace = Config_GUI;
+			
+			dat[0] = Main_GUI;
+	    dat[1] = 2;
+	    SDTaskHandleKey((const char *)dat, 2);
+		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data ){
+			InterFace = Service_GUI;
+			
+			dat[0] = Main_GUI;
+	    dat[1] = 3;
+	    SDTaskHandleKey((const char *)dat, 2);
+		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == On_And_Off){
+			InterFace = Test_GUI;
+			
+			dat[0] = Main_GUI;
+	    dat[1] = 4;
+	    SDTaskHandleKey((const char *)dat, 2);
+			
+		} 
+		
+		KeyConfirm = NOKEY;
+		return;
+	}
+	
+	if(InterFace == Main_GUI){
+		MaxPage = 1;
+		__handleOpenOption();	
+	} else if(InterFace == Config_GUI){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Service_GUI){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Test_GUI){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Intro_GUI){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Project_Dir){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Light_Dim){
+		MaxPage = 1;
+		__handleOpenOption();
+	} else if(InterFace == Config_Set){
+		__handleSwitchInput();
+		__handleAdvanceSet();		
+	} else if(InterFace == GateWay_Set){
+		ProMaxPage();
+		__handleOpenOption();
+	} else if(InterFace == GateWay_Choose){
+		ProMaxPage();
+		__handleOpenOption();
+	} else if(InterFace == GateWay_Decide){
+		ProMaxPage();
+		__handleOpenOption();
+	} else if(InterFace == Address_Option)
+		__handleOpenOption();
+	else if(InterFace == Debug_Option)
+		__handleOpenOption();
+	
+	KeyConfirm = NOKEY;
 }
 
 void __HandleConfigKey(KeyTaskMsg *dat){

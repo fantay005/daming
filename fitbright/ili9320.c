@@ -37,7 +37,7 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 
-#define ILI_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define ILI_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
 
 static xQueueHandle __Ili9320Queue;
 
@@ -55,12 +55,12 @@ static char Exist32Font;
 
 u16 DeviceCode;
 
-const char *brief = "  ★合肥大明节能科技股份有限公司是以高强度气体放电（称HID）灯用电子镇流器为主导，集研发、制造、销售为一体的高新技术企业。公司依托相关单位，拥有一支以专业技术和研发人员为主体的优秀团队，推出FITBR系列大功率电子镇流器108种，FITBR产品优良的设计、高可靠性的品质、显著的节能效益得到了国内外专家和客户的认可和接受。本公司\
-所有的产品都通过了ISO9001：2008以及CE、ROHS认证。大明公司将本着\"精益求精、追求卓越\"的理念，通过不断的科技创新，将\"FITBR\"打造成为国内外知名品牌，推动国家乃至全球绿色照明的持续发展。";
+//const char *brief = "  ★合肥大明节能科技股份有限公司是以高强度气体放电（称HID）灯用电子镇流器为主导，集研发、制造、销售为一体的高新技术企业。公司依托相关单位，拥有一支以专业技术和研发人员为主体的优秀团队，推出FITBR系列大功率电子镇流器108种，FITBR产品优良的设计、高可靠性的品质、显著的节能效益得到了国内外专家和客户的认可和接受。本公司\
+//所有的产品都通过了ISO9001：2008以及CE、ROHS认证。大明公司将本着\"精益求精、追求卓越\"的理念，通过不断的科技创新，将\"FITBR\"打造成为国内外知名品牌，推动国家乃至全球绿色照明的持续发展。";
 
-const char *addr = "地址：合肥市蜀山产业园振兴路6号厂房4楼";
+//const char *addr = "地址：合肥市蜀山产业园振兴路6号厂房4楼";
 
-const char *teleph= "电话：0551-65398793 / 65398791";
+//const char *teleph= "电话：0551-65398793 / 65398791";
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
@@ -581,11 +581,11 @@ const unsigned char *LedDisplayGB2312String(int y, int x, const unsigned char *g
 			if(*gbString == 0x0A){
 				if(*(gbString - 1) == 0x0D){
 					x += BYTES_HEIGHT_PER_FONT_ASCII_16X8;
+					++gbString;
+					y = 0;
 					if(x > 230){
 						goto __exit;
 					}
-					y = 0;
-					++gbString;
 					continue;
 				}
 			}
@@ -674,6 +674,7 @@ __exit:
 	}
 	return NULL;
 }
+
 
 const unsigned char *Lcd_LineDisplay16(char line, const unsigned char *str){	
 	return LedDisplayGB2312String(0, (line - 1)*16, str, 16, FontColor, BackColor);
@@ -792,12 +793,12 @@ void ili9320_Initializtion(void)
     Lcd_Light_ON;
 
     ili9320_Clear(BackColor);
-		Lcd_DisplayChinese16(0, 0,(const unsigned char *)brief);
-		Lcd_DisplayChinese16(0, 208,(const unsigned char *)addr);
-		Lcd_DisplayChinese16(0, 224,(const unsigned char *)teleph);
+//		Lcd_DisplayChinese16(0, 0,(const unsigned char *)brief);
+//		Lcd_DisplayChinese16(0, 208,(const unsigned char *)addr);
+//		Lcd_DisplayChinese16(0, 224,(const unsigned char *)teleph);
 	//	Lcd_DisplayChinese32(0, 50,(const unsigned char *)"北京欢迎您！1234567890efghijklmnabc：合肥大明节能科技股份有限公司");
 
-    Delay(1200);  
+  //  Delay(1200);  
 }
 
 /****************************************************************************
@@ -891,9 +892,32 @@ void ili9320_SetLight(char line){
 	unsigned int msg;
 	unsigned short divisor, remainder;
 	
-	for(index=0; index<76800; index++)
+	data = line - 2;
+	if(line == 1)
+		data = 14;
+  msg = data * 16 * 320;
+	
+	for(index=0; index<(320 * 16); index++)
   {
-	 divisor = index/320;
+	 divisor = (index + msg)/320;
+	 remainder = index%320;
+	 ili9320_SetCursor(remainder, divisor);
+	 data = LCD_ReadRAM();
+	 if(data != FontColor){
+		ili9320_SetCursor(remainder, divisor);
+		LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+		LCD->LCD_RAM = BackColor;
+	 }
+  }
+	
+	data = line;
+	if(data > 14)
+		data = 0;
+  msg = data * 16 * 320;
+	
+	for(index=0; index<(320 * 16); index++)
+  {
+	 divisor = (index + msg)/320;
 	 remainder = index%320;
 	 ili9320_SetCursor(remainder, divisor);
 	 data = LCD_ReadRAM();
@@ -1209,10 +1233,10 @@ typedef struct {
 	/// Message type.
 	Ili9320TaskMsgType type;
 	/// Message lenght.
-	unsigned char length;
+	int length;
 } Ili9320TaskMsg;
 
-static Ili9320TaskMsg *__Ili9320CreateMessage(Ili9320TaskMsgType type, const char *dat, unsigned char len) {
+static Ili9320TaskMsg *__Ili9320CreateMessage(Ili9320TaskMsgType type, const char *dat, int len) {
   Ili9320TaskMsg *message = pvPortMalloc(ALIGNED_SIZEOF(Ili9320TaskMsg) + len);
 	if (message != NULL) {
 		message->type = type;
@@ -1348,12 +1372,9 @@ void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 	
 	if((strlen(p) > 4) && (strlen(p) <= 40)){
 		Line++;
-	} else if((strlen(p) > 40) && (strlen(p) <= 80)){
-		Line += 2;
-	} else if((strlen(p) > 80) && (strlen(p) <= 120)){
-		Line += 3;
-	}	else if((strlen(p) > 120) && (strlen(p) <= 160)){
-		Line += 4;
+	} else if(strlen(p) > 40){
+		Line += (strlen(p) -1)/40 + 1;
+	
 	} else if(strlen(p) < 5){
 		return;
 	}
@@ -1369,17 +1390,18 @@ void __HandleCls(Ili9320TaskMsg *msg){
 	Line = 1;
 }
 
+
+
 void __HandleChangeInterface(Ili9320TaskMsg *msg){
-	char *p = __Ili9320GetMsgData(msg);
-	BackColorSet();
-	
-	__displayNewPage = Lcd_LineDisplay16(Line, (const unsigned char *)p);
+
 }
+
 
 typedef struct {
 	Ili9320TaskMsgType type;
 	void (*handlerFunc)(Ili9320TaskMsg *);
 } MessageHandlerMap;
+
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ ILI_CHANGE_INTERFACE, __HandleChangeInterface},
@@ -1389,6 +1411,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ ILI_CLEAR_SCREEN, __HandleCls },
 	{ ILI_NULL, NULL },
 };
+
 
 static void __Ili9320Task(void *parameter) {
 	portBASE_TYPE rc;
