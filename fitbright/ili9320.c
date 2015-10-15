@@ -1221,6 +1221,7 @@ void BackColorSet(void){
 }
 
 typedef enum{
+	ILI_DISPLAY_INFOR,
 	ILI_CHANGE_INTERFACE,
 	ILI_INPUT_DISPALY,
 	ILI_ORDER_DISPALY,
@@ -1251,6 +1252,15 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return &message[1];
 	else
 		return NULL;
+}
+
+bool Ili9320TaskDisGateWay(const char *dat, int len) {
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_DISPLAY_INFOR, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
 }
 
 bool Ili9320TaskChangeInterface(const char *dat, int len) {
@@ -1325,6 +1335,10 @@ void __HandleInput(Ili9320TaskMsg *msg){
 	Lcd_DisplayInput(296, 224, (const unsigned char *)p);
 }
 
+void __HandleDisChoice(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	Lcd_DisplayInput(0, 224, (const unsigned char *)p);
+}
 
 void __HandleUpAndDown(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
@@ -1404,6 +1418,7 @@ typedef struct {
 
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_DISPLAY_INFOR, __HandleDisChoice },
 	{ ILI_CHANGE_INTERFACE, __HandleChangeInterface},
 	{ ILI_UPANDDOWN_PAGE, __HandleUpAndDown},
 	{ ILI_INPUT_DISPALY, __HandleInput},

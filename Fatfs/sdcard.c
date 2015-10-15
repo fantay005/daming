@@ -35,7 +35,7 @@
 #include "ili9320.h"
 #include "key.h"
 
-#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
+#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
 
 static xQueueHandle __SDHCQueue;
 
@@ -3159,12 +3159,7 @@ void Pic_Viewer(const unsigned char *name)
 
 typedef enum{
 	SD_HANDLE_WG,
-	SD_DAMING_INTRODUCE,
 	SD_HANDLE_KEY,
-	SD_READ_FILE,
-	SD_CLOSE_FILE,
-	SD_OPTION_SURE,
-	SD_SWITCH_PAGE,
 	SD_NULL,
 }SDTaskMsgType;
 
@@ -3205,133 +3200,6 @@ bool SDTaskHandleKey(const char *dat, int len) {
 		return true;
 	}
 	return false;
-}
-
-bool SDTaskSureOption(const char *dat, int len) {
-	SDTaskMsg *message = __SDCreateMessage(SD_OPTION_SURE, dat, len);
-	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
-		vPortFree(message);
-		return true;
-	}
-	return false;
-}
-
-bool SDTaskIntroduce(const char *dat, int len) {
-	SDTaskMsg *message = __SDCreateMessage(SD_DAMING_INTRODUCE, dat, len);
-	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
-		vPortFree(message);
-		return true;
-	}
-	return false;
-}
-
-bool SDTaskSwitchPage(const char *dat, int len) {
-	SDTaskMsg *message = __SDCreateMessage(SD_SWITCH_PAGE, dat, len);
-	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
-		vPortFree(message);
-		return true;
-	}
-	return false;
-}
-
-static void __SDTaskHandleIntroduce(SDTaskMsg *message){
-	unsigned char buf[512];
-	short i;
-	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}	
-	
-	result = f_open(&fsrc, (const TCHAR*)"0:滨湖/滨湖.txt", FA_OPEN_EXISTING | FA_READ);	
-	
-	if (result != FR_OK) {
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);		
-	}
-
-	for(;;){
-		result = f_read(&fsrc, buf, 508, &br);
-		if (result || br == 0) 
-			break;	
-		
-		buf[br] = 0;
-		if(buf[br - 1] == 0x0D){
-			buf[br + 1] = 0;
-			result = f_read(&fsrc, &buf[br], 1, &br);
-		}
-		
-		for(i = 0; i < strlen(buf); i++){
-			if((buf[i - 1] == 0x0D) && (buf[i] == 0x0A)){			
-				result = f_lseek(&fsrc, fsrc.fptr - strlen(buf) + i + 1);
-				buf[i + 1] = 0;
-				break;
-			}			
-		}
-		
-		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	}
-}
-
-static void __SDTaskHandlePGUP(SDTaskMsg *message){
-	unsigned char buf[512];
-	short i;
-	
-	for(;;){
-		result = f_read(&fsrc, buf, 508, &br);
-		if (result || br == 0) 
-			break;	
-		
-		buf[br] = 0;
-		if(buf[br - 1] == 0x0D){
-			buf[br + 1] = 0;
-			result = f_read(&fsrc, &buf[br], 1, &br);
-		}
-		
-		for(i = 0; i < strlen(buf); i++){
-			if((buf[i - 1] == 0x0D) && (buf[i] == 0x0A)){			
-				result = f_lseek(&fsrc, fsrc.fptr - strlen(buf) + i + 1);
-				buf[i + 1] = 0;
-				break;
-			}			
-		}
-		
-		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-  }
-}
-
-static void __SDTaskHandleRead(SDTaskMsg *message){
-	
-}
-
-static void __SDTaskHandleClose(SDTaskMsg *message){
-	
-}
-
-static void __SDTaskHandleOption(SDTaskMsg *message){
-	unsigned char buf[512];
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}
-	
-	result = f_open(&fsrc, (const TCHAR*)"项目.txt", FA_OPEN_EXISTING | FA_READ);
-	
-	if (result != FR_OK) {
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);		
-	}
-	result = f_read(&fsrc, buf, 512, &br);
-	BackColorSet();
-
-}
-
-static void __SDTashHandleSwitch(SDTaskMsg *message){
-	
 }
 
 extern char PageNumBer(void);
@@ -3515,8 +3383,26 @@ static void __SDHandleKey(SDTaskMsg *message){
 	__OpenMainGUI(FileName(p), p);
 }
 
+static unsigned char GateWayName[40] = {0};
+
+unsigned char *GWname(void){
+	return &GateWayName[0];
+}
+
+extern char ProMaxPage(void);
+
+static char NumOfFrequ = 1;                //频点个数
+
+static unsigned char FrequPoint1 = 0x0F;   //频点1 
+static unsigned char NetID1 = 0xFF;        //网络ID1
+
+static unsigned char FrequPoint2 = 0x0F;   //频点2
+static unsigned char NetID2 = 0xFF;        //网络ID
+
 static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	unsigned char tmp[32], buf[64];
+	char i;
+	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char *p = __SDGetMsgData(message);
 	
 	if(DeterProject() == 1){
@@ -3527,7 +3413,11 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		sprintf(buf, "%s", "大明");
 	}
 	
-	sprintf(tmp, "0:%s/%d.txt", buf, p[1]);
+	i = ProMaxPage() - 1;
+	i = i * 15;
+	i = p[1] + i;
+	
+	sprintf(tmp, "0:%s/%d.txt", buf, i);
 	
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);
 	if (result == FR_OK) {
@@ -3543,10 +3433,65 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		f_mount(&fs, "0:", NULL);		
 	}
 	f_gets(buf, 64, &fsrc);
+	
+	for(i = 0; i < 64; i++){
+		if(buf[i] == 0x0D){
+			buf[i] = 0;
+			break;
+		}
+	}
+
+	sprintf(GateWayName, "%s", buf);
+	
 	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*7s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			FrequPoint1 = i;
+			break;
+		}	
+	}
+  
+	
 	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*9s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			NetID1 = (NetID1 & 0xF) | (i << 4);
+		}	
+		
+		if(HexToChar[i] == tmp[1]){
+			NetID1 = (NetID1 & 0xF0) | i;
+		}	
+	}
+	
+	NumOfFrequ = 1;
+	
 	f_gets(buf, 64, &fsrc);
-	BackColorSet();
+	if(buf[0] == 0)
+		return;
+	sscanf(buf, "%*7s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			FrequPoint2 = i;
+			break;
+		}	
+	}
+  
+	
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*9s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			NetID2 = (NetID1 & 0xF) | (i << 4);
+		}	
+		
+		if(HexToChar[i] == tmp[1]){
+			NetID2 = (NetID1 & 0xF0) | i;
+		}	
+	}
+	
+	NumOfFrequ = 2;
 }
 
 typedef struct {
@@ -3556,12 +3501,7 @@ typedef struct {
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
-	{ SD_DAMING_INTRODUCE, __SDTaskHandleIntroduce },
 	{ SD_HANDLE_KEY, __SDHandleKey },
-	{ SD_READ_FILE, __SDTaskHandleRead },
-	{ SD_CLOSE_FILE, __SDTaskHandleClose },
-	{ SD_SWITCH_PAGE, __SDTashHandleSwitch },
-	{ SD_OPTION_SURE, __SDTaskHandleOption },
 	{ SD_NULL, NULL },
 };
 

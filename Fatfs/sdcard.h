@@ -243,6 +243,8 @@ typedef struct
 /* Exported functions ------------------------------------------------------- */
 
 bool SDTaskSureOption(const char *dat, int len);
+bool SDTaskHandleWGOption(const char *dat, int len);
+bool SDTaskHandleKey(const char *dat, int len);
 
 
 #endif /* __SDCARD_H */

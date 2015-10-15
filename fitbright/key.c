@@ -414,8 +414,7 @@ void ChooseLine(void){
 			SDTaskHandleKey((const char *)tmp, 2);
 			OptDecide = 1;
 		}
-		
-					
+						
 		return;
 	}
 	
@@ -505,6 +504,22 @@ pro DeterProject(void){
 	return Project;
 }
 
+extern unsigned char *GWname(void);
+
+void DisplayInformation(void){
+	char buf[40];
+	
+	if(Project == Pro_BinHu){
+		sprintf(buf, "%s%s", " 滨湖/", GWname());
+	} else if(Project == Pro_ChanYeYuan){
+		sprintf(buf, "%s%s", " 产业园/", GWname());
+	} else if(Project == Pro_DaMing){
+		sprintf(buf, "%s%s", " 公司/", GWname());
+	}
+	
+	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
+}
+
 void __handleOpenOption(void){
 	unsigned char dat;
 	unsigned char tmp[2];
@@ -572,11 +587,41 @@ void __handleOpenOption(void){
 	  tmp[1] = KEYMENU;	
 		SDTaskHandleKey((const char *)tmp, 2);
 		InterFace = Main_GUI;
-	}  else if ((InterFace == GateWay_Set) || (InterFace == GateWay_Choose) || (InterFace == GateWay_Decide)){
+	}  else if (InterFace == GateWay_Set){
 					
-			tmp[0] = InterFace;
-			tmp[1] = wave;
-			SDTaskHandleWGOption((const char *)tmp, 2);		
+		tmp[0] = InterFace;
+		tmp[1] = wave;
+		SDTaskHandleWGOption((const char *)tmp, 2);	
+		
+		tmp[0] = Main_GUI;
+	  tmp[1] = 2;
+	  SDTaskHandleKey((const char *)tmp, 2);
+		
+		InterFace = Config_GUI;
+		
+	} else if(InterFace == GateWay_Choose) {
+		
+		tmp[0] = InterFace;
+		tmp[1] = wave;
+		SDTaskHandleWGOption((const char *)tmp, 2);	
+	
+		tmp[0] = Main_GUI;
+	  tmp[1] = 3;
+	  SDTaskHandleKey((const char *)tmp, 2);
+
+		InterFace = Service_GUI;
+		
+	} else if(InterFace == GateWay_Decide) {
+		
+		tmp[0] = InterFace;
+		tmp[1] = wave;
+		SDTaskHandleWGOption((const char *)tmp, 2);	
+		
+		tmp[0] = Main_GUI;
+	  tmp[1] = 4;
+	  SDTaskHandleKey((const char *)tmp, 2);
+		
+		InterFace = Test_GUI;
 	}
 		
 	wave = 1;
@@ -615,13 +660,14 @@ void __handleSwitchInput(void){
 	}	
 }
 
-void ProMaxPage(void){
+char ProMaxPage(void){
 	if(Project == Pro_BinHu)
 		MaxPage = 4;
 	else
 		MaxPage = 1;
+	
+	return page;
 }
-
 
 static bool U3IRQ_Enable = false;             //使能串口3接收数据
 
@@ -645,6 +691,9 @@ void TIM3_IRQHandler(void){
 	
 	if(KeyConfirm == NOKEY)
 		return;
+	
+	if(KeyConfirm == KEYDEL)
+		DisplayInformation();
 	
 	if(KeyConfirm == KEYMENU){
 		
@@ -683,6 +732,8 @@ void TIM3_IRQHandler(void){
 			
 		} 
 		
+		wave = 1;
+		page = 1;
 		KeyConfirm = NOKEY;
 		return;
 	}
