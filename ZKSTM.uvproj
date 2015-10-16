@@ -743,11 +743,6 @@
               <FileType>1</FileType>
               <FilePath>.\fitbright\key.c</FilePath>
             </File>
-            <File>
-              <FileName>display.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fitbright\display.c</FilePath>
-            </File>
           </Files>
         </Group>
       </Groups>

@@ -3057,15 +3057,13 @@ static FIL fsrc;
 static FRESULT result;
 static FATFS fs;
 static UINT br;
-static DIR DirInf;
-static FILINFO FileInf;
 
 extern void LCD_WriteRAM(u16 RGB_Code);
 extern void TFT_SetXY(u16 x,u16 y);
 
 void Pic_Viewer(const unsigned char *name)
 {
-	unsigned char data[512], buf[32]; 
+	char data[512], buf[32]; 
 	u16 i;
 	unsigned int cnt,file_cnt,temp1;
 	u16 temp;
@@ -3202,38 +3200,59 @@ bool SDTaskHandleKey(const char *dat, int len) {
 	return false;
 }
 
+extern char StatusOfInterface(void);
+
+void FirstIntoInterface(void){         //更换一个新的界面
+	char tmp[2] = {1, 0}, i;
+	i = StatusOfInterface();
+	
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != On_And_Off))
+		Ili9320TaskLightLine(tmp, 1);
+}
+
 static char NumOfFrequ = 0;                //频点个数
 
-static unsigned char GateWayName[40] = {0};
+static char GateWayName[40] = {0};
 
 extern char ProMaxPage(void);
 
-unsigned char *GWname(void){
+extern void ValueAlter(char p);
+
+char *GWname(void){
 	return &GateWayName[0];
 }
 
 static void __OpenMainGUI(char *dat, char *msg){
-	unsigned char buf[512];
+	char buf[512];
 	short i;
 	
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}	
-	
+	printf("%s.\n", FR_Table[result]);
 	
 	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);	
+	printf("%s.\n", FR_Table[result]);
+	if(!result){
+		Ili9320TaskClear("C", 1);
+	}else{
+		return;
+	}
 	
 	if (result != FR_OK) {
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);		
 	}
 	
-	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI) || (msg[0] == Test_GUI)){
+	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI) || (msg[0] == Test_GUI)){      //网关和频点选择进入
 		switch (msg[1]){
 			case 1:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 2:
+				if(NumOfFrequ < 2)
+					break;
 				for(i = 0; i < 15; i++){
 					f_gets(buf, 64, &fsrc);
 					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
@@ -3244,10 +3263,11 @@ static void __OpenMainGUI(char *dat, char *msg){
 		}
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);	
+		FirstIntoInterface();
 		return;
-	}
+	} 
 	
-	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){
+	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){  //网关选项下，左右键进入
 		switch (ProMaxPage()){
 			case 1:
 				for(i = 0; i < 15; i++){
@@ -3281,11 +3301,14 @@ static void __OpenMainGUI(char *dat, char *msg){
 		}
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);	
+		FirstIntoInterface();
 		return;
 	}
 	
 	for(;;){
 		result = f_read(&fsrc, buf, 508, &br);
+		printf("%s.\n", FR_Table[result]);
+		
 		if (result || br == 0) 
 			break;	
 		
@@ -3306,19 +3329,21 @@ static void __OpenMainGUI(char *dat, char *msg){
 	}
 	f_close(&fsrc);
 	f_mount(&fs, "0:", NULL);	
+	
+	FirstIntoInterface();
 }
 
 static unsigned char NumOfOpt = 0;       //选项数目
 static unsigned char LastPro = 0;        //前一个项目
 
 unsigned char NumOfPage(void){
-	return (NumOfOpt/15 + 1);
+	return NumOfOpt;
 }
 
 extern pro DeterProject(void);
 
-static char *FileName(char *msg){
-	unsigned char tmp[32], buf[40];
+static char *FileName(char *msg){         //根据参数，选择文件名称
+	char tmp[32], buf[40];
 	unsigned char i;
 	
 	if(LastPro != DeterProject()){
@@ -3337,10 +3362,10 @@ static char *FileName(char *msg){
 	}
 	
 	if(msg[1] == KEYMENU){
-		Ili9320TaskClear("C", 1);
+
 		sprintf(tmp, "0:界面/%s.txt", "界面");
 	} else if(msg[0] == Main_GUI){
-		Ili9320TaskClear("C", 1);
+
 		switch (msg[1]){
 			case 1:
 				sprintf(tmp, "0:界面/%s.txt", "项目");
@@ -3358,50 +3383,66 @@ static char *FileName(char *msg){
 				sprintf(tmp, "0:界面/%s.txt",  "简介" );
 				break;
 			default:
+				tmp[0] = 0;
 				break;
 		}
 	} else if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){
-		Ili9320TaskClear("C", 1);
+
 		switch (msg[1]){
 			case 1:
 				sprintf(tmp, "0:界面/%s.txt", buf);
 				break;
+			case 2:
+				if(NumOfFrequ > 1)
+					sprintf(tmp, "0:界面/%s.txt", "频点");
+				else
+					tmp[0] = 0;
+				break;
+			case 4:
+				Ili9320TaskClear("C", 1);
+				break;
 			default:
+				tmp[0] = 0;
 				break;
 		}
 	} else if(msg[0] == Test_GUI){
-		Ili9320TaskClear("C", 1);
+		
 		switch (msg[1]){
 			case 1:
 				sprintf(tmp, "0:界面/%s.txt",  buf);
+				break;
+			case 2:
+				sprintf(tmp, "0:界面/%s.txt", "频点");
 				break;
 			case 4:
 				sprintf(tmp, "0:界面/%s.txt",  "调光");
 				break;
 			default:
+				tmp[0] = 0;
 				break;
 		}
 	} else if((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)){
-		Ili9320TaskClear("C", 1);
+
 		switch (msg[1]){
-			case 20:
+			case 20:                                     //左键
 				sprintf(tmp, "0:界面/%s.txt",  buf);
-				break;
-			case 21:
+				break;																		 
+			case 21:																		 //右键
 				sprintf(tmp, "0:界面/%s.txt",  buf);
 				break;
 			default:
+				tmp[0] = 0;
 				break;
 		}
+	} else if((msg[0] == Frequ_Set) || (msg[0] == Frequ_Choose) || (msg[0] == Frequ_Option)){
+		
+		ValueAlter(msg[1]);
+		tmp[0] = 0;
+	} else {
+		tmp[0] = 0;
 	}
 	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
-	if (result != FR_OK) {
-		NumOfOpt = 1;
-		return tmp;
-	}	
-	
-	
+	f_mount(&fs, (const TCHAR*)"0:", 1);	
 	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);	
 	
 	if (result != FR_OK) {
@@ -3409,10 +3450,10 @@ static char *FileName(char *msg){
 		return tmp;
 	}	
 	
-	for(i = 0; i < 255; i++){
+	for(i = 0; i < 255; i++){																	//判断选项个数
 		f_gets(buf, 40, &fsrc);
 		if(strlen(buf) < 4){
-			NumOfOpt = i + 1;
+			NumOfOpt = i;
 			break;
 		}	
 	}
@@ -3437,7 +3478,7 @@ static unsigned char FrequPoint2 = 0x0F;   //频点2
 static unsigned char NetID2 = 0xFF;        //网络ID
 
 static void __SDTaskHandleWGOption(SDTaskMsg *message){
-	unsigned char tmp[32], buf[64];
+	char tmp[32], buf[64];
 	char i;
 	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char *p = __SDGetMsgData(message);
@@ -3457,13 +3498,10 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	sprintf(tmp, "0:%s/%d.txt", buf, i);
 	
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	if (result == FR_OK) {
-		printf("File mount success.\n");
-	} else {
-		printf("File mount Error.\n");
-	}
+	printf("%s.\n", FR_Table[result]);
 	
 	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);
+	printf("%s.\n", FR_Table[result]);
 	
 	if (result != FR_OK) {
 		f_close(&fsrc);
@@ -3503,9 +3541,10 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	}
 	
 	NumOfFrequ = 1;
+	ValueAlter(1);
 	
 	f_gets(buf, 64, &fsrc);
-	if(buf[0] == 0)
+	if(strlen(buf) < 4)
 		return;
 	sscanf(buf, "%*7s%s", tmp);
 	for(i = 0; i < 16; i++){
@@ -3515,20 +3554,22 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		}	
 	}
   
-	
 	f_gets(buf, 64, &fsrc);
 	sscanf(buf, "%*9s%s", tmp);
+	if(strlen(buf) < 4)
+		return;
 	for(i = 0; i < 16; i++){
 		if(HexToChar[i] == tmp[0]){
-			NetID2 = (NetID1 & 0xF) | (i << 4);
+			NetID2 = (NetID1 & 0x0F) | (i << 4);
 		}	
 		
 		if(HexToChar[i] == tmp[1]){
-			NetID2 = (NetID1 & 0xF0) | i;
+			NetID2 = (NetID1 & 0xF0) | (i & 0x0F);
 		}	
 	}
 	
 	NumOfFrequ = 2;
+	ValueAlter(0);
 }
 
 typedef struct {

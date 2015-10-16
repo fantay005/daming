@@ -886,6 +886,8 @@ u16 ili9320_GetPoint(u16 x,u16 y)
 *****************************************************************************/
 //static unsigned char First_Dot = 0;  //定义第一行的第一个点的Y坐标
 
+extern char JudgeMaxNum(void);
+
 void ili9320_SetLight(char line){
 	int index;
 	u16 data;
@@ -894,7 +896,7 @@ void ili9320_SetLight(char line){
 	
 	data = line - 2;
 	if(line == 1)
-		data = 14;
+		data = JudgeMaxNum() - 1;
   msg = data * 16 * 320;
 	
 	for(index=0; index<(320 * 16); index++)
@@ -911,7 +913,7 @@ void ili9320_SetLight(char line){
   }
 	
 	data = line;
-	if(data > 14)
+	if(data > (JudgeMaxNum() - 1))
 		data = 0;
   msg = data * 16 * 320;
 	
@@ -1221,6 +1223,7 @@ void BackColorSet(void){
 }
 
 typedef enum{
+	ILI_LIGHT_LINE,
 	ILI_DISPLAY_INFOR,
 	ILI_CHANGE_INTERFACE,
 	ILI_INPUT_DISPALY,
@@ -1254,7 +1257,7 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return NULL;
 }
 
-bool Ili9320TaskDisGateWay(const char *dat, int len) {
+bool Ili9320TaskDisGateWay(const char *dat, int len) {                              //点亮一行背景
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_DISPLAY_INFOR, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1263,7 +1266,16 @@ bool Ili9320TaskDisGateWay(const char *dat, int len) {
 	return false;
 }
 
-bool Ili9320TaskChangeInterface(const char *dat, int len) {
+bool Ili9320TaskLightLine(const char *dat, int len) {                              //项目、网关、频点信息显示
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_LIGHT_LINE, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool Ili9320TaskChangeInterface(const char *dat, int len) {                         //高级设置中，上下页切换                         
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_CHANGE_INTERFACE, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1272,7 +1284,7 @@ bool Ili9320TaskChangeInterface(const char *dat, int len) {
 	return false;
 }
 
-bool Ili9320TaskInputDis(const char *dat, int len) {
+bool Ili9320TaskInputDis(const char *dat, int len) {                               //高级设置中，输入法切换
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_INPUT_DISPALY, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1281,7 +1293,7 @@ bool Ili9320TaskInputDis(const char *dat, int len) {
 	return false;
 }
 
-bool Ili9320TaskOrderDis(const char *dat, int len) {
+bool Ili9320TaskOrderDis(const char *dat, int len) {                               //正常显示
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_ORDER_DISPALY, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1410,6 +1422,11 @@ void __HandleChangeInterface(Ili9320TaskMsg *msg){
 
 }
 
+void __HandleLightLine(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	
+	ili9320_SetLight(p[0]);
+}
 
 typedef struct {
 	Ili9320TaskMsgType type;
@@ -1418,6 +1435,7 @@ typedef struct {
 
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_LIGHT_LINE, __HandleLightLine },
 	{ ILI_DISPLAY_INFOR, __HandleDisChoice },
 	{ ILI_CHANGE_INTERFACE, __HandleChangeInterface},
 	{ ILI_UPANDDOWN_PAGE, __HandleUpAndDown},

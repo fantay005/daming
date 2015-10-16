@@ -280,8 +280,11 @@ KeyPress keycode(void){                 //¼ì²âÓÐ±ä»¯°´¼ü£¬Ðè±»È·ÈÏ
 }
 
 static KeyPress KeyConfirm = NOKEY;         //ÉÏµçºó°´¼üµÄ³õÊ¼×´Ì¬
-
 static Dis_Type  InterFace = Open_GUI;      //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
+
+char StatusOfInterface(void){
+	return InterFace;
+}
 
 void key_driver(KeyPress code)              //¼ì²âÓÐÐ§°´¼ü
 {
@@ -319,53 +322,203 @@ static void InputChange(void){                   //ÏÔÊ¾µ±Ç°ÊäÈë·¨
 		Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
 }
 
-static char times = 0;             //¶¨Ê±Æ÷ÖÐ¶Ï¼ÆÊý
-static char count = 0;             //ÊäÈëÊý×Ö¼üµÄ¸öÊý
-static char dat[9];                //ÊäÈëÊý×Ö¼ü×éºÏ
+static char times = 0;             		//¶¨Ê±Æ÷ÖÐ¶Ï¼ÆÊý
+static char count = 0;            	  //ÊäÈëÊý×Ö¼üµÄ¸öÊý
+static char dat[9];               	  //ÊäÈëÊý×Ö¼ü×éºÏ
+static unsigned char wave = 1;    	  //ÐÐÊý
+static unsigned char page = 1;    	  //Ò³Êý
+static unsigned char MaxPage = 1; 	  //×î´óÒ³Êý
+static unsigned char MaxLine = 1;     //Ò»Ò³×î´óÐÐÊý£¬¼´×î¶àµÄÑ¡Ïî
+static unsigned char OptDecide = 0; 	//È·¶¨Ñ¡Ïî
+static pro Project = Pro_Null;                      //³õÊ¼»¯ÏîÄ¿ÎªÎÞ
+static unsigned char FrequencyDot = 0;              //³õÊ¼ÆµµãÎªÎÞ
+static unsigned int  ZigBAddr = 0;     //³õÊ¼ZigBeeµØÖ·Öµ
 
-extern void ili9320_SetLight(char line);
+void ValueAlter(char p){                            //¸Ä±äÆµµãµÄÖµ
+	FrequencyDot = p;
+}
 
-static unsigned char wave = 1;     //ÐÐÊý
-static unsigned char page = 1;     //Ò³Êý
+extern unsigned char NumOfPage(void);
 
-static unsigned char MaxPage = 1;  //×î´óÒ³Êý
+unsigned char ProMaxPage(void){              //È·ÈÏÏÔÊ¾ÀàÐÍµÄ×î´óÒ³Êý
+	MaxPage = NumOfPage() / 15 + 1;
+	return page;
+}
 
-static unsigned char OptDecide = 0; //È·¶¨Ñ¡Ïî
+pro DeterProject(void){
+	return Project;
+}
 
-bool DisStatus(char type){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍÖµÔÚ°´ÏÂÈ·ÈÏ¼üºó£¬ÐèÒª±»µ¥¶À´¦Àí
+extern unsigned char *GWname(void);
+
+extern char NumberOfPoint(void);
+
+bool DisStatus(char type, char param){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍÖµÔÚ°´ÏÂÈ·ÈÏ¼üºó£¬ÐèÒª±»µ¥¶À´¦Àí
+	char tmp[2];
+	
+	sprintf((char *)tmp, "%s", GWname());
 	switch (type){
 		case 2:
 			return true;
 		case 3:
 			return true;
 		case 4:
-			return true;
+			switch(param){
+				case 1:
+					return true;
+				case 2:
+					if(tmp[0] == 0)           //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					return true;
+				case 3:
+					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					return true;
+				case 4:
+					return true;
+				case 5:
+					return true;
+				default:
+					return false;
+				
+			}
 		case 5:
-			return true;
+			switch(param){
+				case 1:
+					return true;
+				case 2:
+					if(tmp[0] == 0)           //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					return true;
+				case 3:
+					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					return true;
+				case 4:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 5:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 6:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				default:
+					return false;
+				
+			}
 		case 6:
-			return true;
+			switch(param){
+				case 1:
+					return true;
+				case 2:
+					if(tmp[0] == 0)           //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					return true;
+				case 3:
+					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					return true;
+				case 4:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 5:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 6:
+					return true;
+				default:
+					return false;
+				
+			}
 		case 7:
 			return true;
 		case 8:
+			if(Project == Pro_Null)     //Ã»ÓÐÑ¡ÔñÏîÄ¿×´¿öÏÂ
+				return false;
+			return true;
+		case 9:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
 			return true;
 		case 12:
+			if(Project == Pro_Null)
+				return false;
+			return true;
+		case 13:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
+			return true;
+		case 14:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
 			return true;
 		case 15:
+			if(Project == Pro_Null)
+				return false;
+			return true;
+		case 16:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
+			return true;
+		case 17:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
 			return true;
 		case 18:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
+			return true;
+		case 19:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
+			return true;
+		case 20:
+			if(tmp[0] == 0)            //Ã»ÓÐÑ¡ÔñÍø¹Ø×´¿öÏÂ
+				return false;
+			return true;
+		case 21:
+			if(tmp[0] == 0)
+				return false;
+			return true;
+		case 22:
+			if(tmp[0] == 0)
+				return false;
 			return true;
 		default:
 			return false;
 	}	
 }
 
+char JudgeMaxNum(void){
+	if(MaxPage > page)
+		MaxLine = 15;
+	else
+		MaxLine = NumOfPage()%15;
+	
+	return MaxLine;
+}
+
+
+
 void ChooseLine(void){                         //È·¶¨ÐÐÊý£¬ºÍÒ³Êý
-	unsigned char tmp[2];
+	unsigned char tmp[2], i;
+	
+	JudgeMaxNum();
 	
 	if(KeyConfirm == KEYUP){
 		wave--;
+		if(wave < 1)
+			wave = MaxLine;
 	} else if(KeyConfirm == KEYDN){
 		wave++;
+		if(wave > MaxLine)
+			wave = 1;
 	} else if(KeyConfirm == KEYLF){	
 		if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide))
 			return;
@@ -403,30 +556,22 @@ void ChooseLine(void){                         //È·¶¨ÐÐÊý£¬ºÍÒ³Êý
 		return;
 	} else if(KeyConfirm == KEYOK){
 		
-		if(DisStatus(InterFace)){
+		if(DisStatus(InterFace, wave)){
 					
 			tmp[0] = InterFace;
 			tmp[1] = wave;
-			SDTaskHandleKey((const char *)tmp, 2);
+			SDTaskHandleKey((const char *)tmp, 2);             //·¢ËÍ°´¼ü´¦ÀíÊý¾Ý
 			OptDecide = 1;
 		}
 						
 		return;
 	}
 	
-	if(wave > 15){
-		wave -= 15;
-	} else if(wave < 1){
-		wave += 15;
-	}
-	
-	if(page > 4){
-		page -= 4;
-	} else if(page < 1){
-		page += 4;
-	}	
-	
-	ili9320_SetLight(wave);
+	tmp[0] = wave;
+	tmp[1] = 0;
+	i = InterFace;
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != On_And_Off))
+		Ili9320TaskLightLine((const char *)tmp, strlen((const char *)tmp));
 }
 
 
@@ -493,32 +638,22 @@ void __handleAdvanceSet(void){                          //¸ß¼¶ÅäÖÃÀàÐÍÏÂ£¬°´¼ü´¦
   memset(dat, 0, 9);
 } 
 
-
-static pro Project = Pro_Null;                      //³õÊ¼»¯ÏîÄ¿ÎªÎÞ
-static unsigned char FrequencyDot = 0;              //³õÊ¼ÆµµãÎªÎÞ
-
-pro DeterProject(void){
-	return Project;
-}
-
-extern unsigned char *GWname(void);
-
-extern char NumberOfPoint(void);
-
 void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬ÆµµãµÈ
 	char buf[40], tmp[6];
 	
-	if(NumberOfPoint() == 1){
-		FrequencyDot = 1;
-	}
 	
-  if(FrequencyDot == 1){
+  if((FrequencyDot == 1) || (NumberOfPoint() == 1)){
 		sprintf(tmp, "/Æµµã1");
 	} else if(FrequencyDot == 2){
 		sprintf(tmp, "/Æµµã2");
+	} else if((FrequencyDot == 0) && (NumberOfPoint() != 1)){
+		tmp[0] = 0;
 	} else {
 		tmp[0] = 0;
 	}
+	
+	if(Project == Pro_Null)
+		return;
 	
 	if(Project == Pro_BinHu){
 		sprintf(buf, "%s%s%s", "±õºþ/", GWname(), tmp);
@@ -537,7 +672,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 	
   ChooseLine();	
 	
-	if(OptDecide == 0)                //¼ì²âÊÇ·ñÓÐÐèÒª´¦ÀíµÄÈ·ÈÏ¼ü°´ÏÂ
+	if(OptDecide == 0)                //¼ì²âÊÇ·ñÓÐÐèÒª´¦ÀíµÄÈ·ÈÏ¼ü°´ÏÂ£¬È»ºó¸Ä±äÏÔÊ¾ÀàÐÍÖµ
 		return;
 	
 	OptDecide = 0;                    //È¡ÏûÈ·ÈÏ
@@ -547,80 +682,112 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 	if(InterFace == Main_GUI){                   //µ±ÏÔÊ¾Ò³ÃæÎªÖ÷²Ëµ¥Ê±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
 		if(dat == 1){
 			InterFace = Project_Dir;
-		} else if(dat == 2)
+			
+		} else if(dat == 2){
 			InterFace = Config_GUI;
-		else if(dat == 3)
+			
+		} else if(dat == 3){
 			InterFace = Service_GUI;
-		else if(dat == 4)
+			
+		} else if(dat == 4){
 			InterFace = Test_GUI;
-		else if(dat == 5)
+			
+		} else if(dat == 5){
 			InterFace = Intro_GUI;
+			
+		}
+		
 	} else if (InterFace == Config_GUI){         //µ±ÏÔÊ¾Ò³ÃæÎªÅäÖÃ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
-		if(dat == 1)
+		
+		if(dat == 1){
 			InterFace = GateWay_Set;
-		else if(dat == 2)
-			InterFace = Address_Set;
-		else if(dat == 3){
-			if(NumberOfPoint() > 1)
+			
+		} else if(dat == 2){
+			if(NumberOfPoint() > 1){
 				InterFace = Frequ_Set;
-			else
+			}else
 				return;
-		} else if(dat == 4)
+			
+		} else if(dat == 3){
+			InterFace = Address_Set;
+			
+		} else if(dat == 4){
 			InterFace = Config_Set;
-		else if(dat == 5)
+		
+		} else if(dat == 5){
 			InterFace = Config_DIS;
 		
+		}
+		
 	} else if (InterFace == Service_GUI){        //µ±ÏÔÊ¾Ò³ÃæÎªÎ¬ÐÞ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
-		if(dat == 1)
+
+		if(dat == 1){
 			InterFace = GateWay_Choose;
-		else if(dat == 2)
+			
+		} else if(dat == 3){
 			InterFace = Address_Choose;
-		else if(dat == 3){
-			if(NumberOfPoint() > 1)
+			
+		} else if(dat == 2){
+			if(NumberOfPoint() > 1){
 				InterFace = Frequ_Choose;
-			else
+			} else
 				return;
-		} else if(dat == 4)
+			
+		} else if(dat == 4){
 			InterFace = Read_Data;
+			
+		}
 		
 	} else if (InterFace == Test_GUI){           //µ±ÏÔÊ¾Ò³ÃæÎª²âÊÔ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
-		if(dat == 1)
+		
+		if(dat == 1){
 			InterFace = GateWay_Decide;
-		else if(dat == 2)
+			
+		} else if(dat == 3){
 			InterFace = Address_Option;
-		else if(dat == 3){
-			if(NumberOfPoint() > 1)
+			
+		} else if(dat == 2){
+			if(NumberOfPoint() > 1){
 				InterFace = Frequ_Option;
-			else
+				
+			} else
 				return;
-		} else if(dat == 4)
+			
+		} else if(dat == 4){
 			InterFace = Debug_Option;
-		else if(dat == 5)
+			
+		} else if(dat == 5){
 			InterFace = Light_Dim;
-		else if(dat == 6)
+			
+		} else if(dat == 6){
 			InterFace = On_And_Off;
+			
+		}
 		
 	} else if (InterFace == Project_Dir){            //µ±ÏÔÊ¾Ò³ÃæÎªÏîÄ¿Ñ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
 		
 		if(dat == 1){
 			Project = Pro_BinHu;
+			
 		} else if(dat == 2){
 			Project = Pro_ChanYeYuan;
+			
 		} else if(dat == 3){
 			Project = Pro_DaMing;
+			
 		}
 	
-		tmp[0] = Open_GUI;
+		tmp[0] = Open_GUI;                              /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾Ö÷²Ëµ¥*/
 	  tmp[1] = KEYMENU;	
 		SDTaskHandleKey((const char *)tmp, 2);
 		InterFace = Main_GUI;
-	}  else if (InterFace == GateWay_Set){             //µ±ÏÔÊ¾Ò³ÃæÎªÍø¹ØÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ   
-					 
+	}  else if (InterFace == GateWay_Set){            //µ±ÏÔÊ¾Ò³ÃæÎªÍø¹ØÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ   
+
 		tmp[0] = InterFace;
 		tmp[1] = wave;
 		SDTaskHandleWGOption((const char *)tmp, 2);	
 		
-		tmp[0] = Main_GUI;
+		tmp[0] = Main_GUI;                              /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾ÅäÖÃ½çÃæ*/
 	  tmp[1] = 2;
 	  SDTaskHandleKey((const char *)tmp, 2);
 		
@@ -632,27 +799,58 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		tmp[1] = wave;
 		SDTaskHandleWGOption((const char *)tmp, 2);	
 	
-		tmp[0] = Main_GUI;
+		tmp[0] = Main_GUI;                               /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾Î¬ÐÞ½çÃæ*/
 	  tmp[1] = 3;
 	  SDTaskHandleKey((const char *)tmp, 2);
 
 		InterFace = Service_GUI;
 		
 	} else if(InterFace == GateWay_Decide) {           //µ±ÏÔÊ¾Ò³ÃæÎªÍø¹ØÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ   
-		
+
 		tmp[0] = InterFace;
 		tmp[1] = wave;
 		SDTaskHandleWGOption((const char *)tmp, 2);	
 		
-		tmp[0] = Main_GUI;
+		tmp[0] = Main_GUI;                                /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾²âÊÔ½çÃæ*/
 	  tmp[1] = 4;
 	  SDTaskHandleKey((const char *)tmp, 2);
 		
 		InterFace = Test_GUI;
-	}
+	} else if(InterFace == Frequ_Set) {                 //µ±ÏÔÊ¾Ò³ÃæÎªÆµµãÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷
+
 		
-	wave = 1;                                           //Ò³ÃæÇÐ»»ºó£¬ÏÔÁÁµÚÒ»ÐÐ
+		tmp[0] = Main_GUI;                                /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾ÅäÖÃ½çÃæ*/
+	  tmp[1] = 2;
+	  SDTaskHandleKey((const char *)tmp, 2);
+		
+		InterFace = Config_GUI;
+		
+	} else if(InterFace == Frequ_Choose) {              //µ±ÏÔÊ¾Ò³ÃæÎªÆµµãÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷
+
+		tmp[0] = Main_GUI;															  /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾Î¬ÐÞ½çÃæ*/
+	  tmp[1] = 3;
+	  SDTaskHandleKey((const char *)tmp, 2);
+		
+		InterFace = Service_GUI;
+		
+	} else if(InterFace == Frequ_Option) {              //µ±ÏÔÊ¾Ò³ÃæÎªÆµµãÑ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷
+			
+		tmp[0] = Main_GUI;														    /*·µ»ØÉÏÒ»¼¶£¬ÏÔÊ¾²âÊÔ½çÃæ*/
+	  tmp[1] = 4;
+	  SDTaskHandleKey((const char *)tmp, 2);
+		
+		InterFace = Test_GUI;
+	} 
+		
+	wave = 1;                                            //Ò³ÃæÇÐ»»ºó£¬ÏÔÁÁµÚÒ»ÐÐ
 	KeyConfirm = NOKEY;
+}
+
+void __DisplayWGInformation(void){
+	if(times > 20){
+		times = 0;
+		DisplayInformation();
+	}
 }
 
 void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼äÀ´»ØÇÐ»»
@@ -663,7 +861,7 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 			IME = 0;
 	}
 	
-	if(times > 40){
+	if(times > 10){
 		times = 0;
 		InputChange();
 	}
@@ -687,13 +885,6 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 	}	
 }
 
-extern unsigned char NumOfPage(void);
-
-unsigned char ProMaxPage(void){              //È·ÈÏÏÔÊ¾ÀàÐÍµÄ×î´óÒ³Êý
-	MaxPage = NumOfPage();
-	return page;
-}
-
 static bool U3IRQ_Enable = false;             //Ê¹ÄÜ´®¿Ú3½ÓÊÕÊý¾Ý
 
 bool Com3IsOK(void){
@@ -712,13 +903,16 @@ void TIM3_IRQHandler(void){
 		times++;
 	}
 	
-	key_driver(keycode());                  
+	key_driver(keycode()); 
+	
+	if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide) && (InterFace != Config_Set) && (InterFace != Intro_GUI))
+		__DisplayWGInformation();
+	
+	if(InterFace == Config_Set)
+		__handleSwitchInput();
 	
 	if(KeyConfirm == NOKEY)
 		return;
-	
-	if(KeyConfirm == KEYDIS)
-		DisplayInformation();
 	
 	if(KeyConfirm == KEYMENU){
 		
@@ -760,7 +954,6 @@ void TIM3_IRQHandler(void){
 		wave = 1;
 		page = 1;
 		KeyConfirm = NOKEY;
-		return;
 	}
 	
 	ProMaxPage();
@@ -769,7 +962,7 @@ void TIM3_IRQHandler(void){
 
 		__handleOpenOption();	
 	} else if(InterFace == Config_GUI){
-	
+
 		__handleOpenOption();
 	} else if(InterFace == Service_GUI){
 
@@ -787,21 +980,24 @@ void TIM3_IRQHandler(void){
 
 		__handleOpenOption();
 	} else if(InterFace == Config_Set){
-		__handleSwitchInput();
+		
 		__handleAdvanceSet();		
 	} else if(InterFace == GateWay_Set){
-
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Choose){
-
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Decide){
-		
 		__handleOpenOption();
-	} else if(InterFace == Address_Option)
+	} else if(InterFace == Frequ_Set){
+
 		__handleOpenOption();
-	else if(InterFace == Debug_Option)
+	} else if(InterFace == Frequ_Choose){
+
 		__handleOpenOption();
+	} else if(InterFace == Frequ_Option){
+
+		__handleOpenOption();
+	}
 	
 	KeyConfirm = NOKEY;
 }
