@@ -3202,7 +3202,15 @@ bool SDTaskHandleKey(const char *dat, int len) {
 	return false;
 }
 
-extern char PageNumBer(void);
+static char NumOfFrequ = 0;                //频点个数
+
+static unsigned char GateWayName[40] = {0};
+
+extern char ProMaxPage(void);
+
+unsigned char *GWname(void){
+	return &GateWayName[0];
+}
 
 static void __OpenMainGUI(char *dat, char *msg){
 	unsigned char buf[512];
@@ -3240,7 +3248,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 	}
 	
 	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){
-		switch (PageNumBer()){
+		switch (ProMaxPage()){
 			case 1:
 				for(i = 0; i < 15; i++){
 					f_gets(buf, 64, &fsrc);
@@ -3300,10 +3308,25 @@ static void __OpenMainGUI(char *dat, char *msg){
 	f_mount(&fs, "0:", NULL);	
 }
 
+static unsigned char NumOfOpt = 0;       //选项数目
+static unsigned char LastPro = 0;        //前一个项目
+
+unsigned char NumOfPage(void){
+	return (NumOfOpt/15 + 1);
+}
+
 extern pro DeterProject(void);
 
 static char *FileName(char *msg){
-	unsigned char tmp[32], buf[16];
+	unsigned char tmp[32], buf[40];
+	unsigned char i;
+	
+	if(LastPro != DeterProject()){
+		buf[0] = 0;
+		NumOfFrequ = 0;
+		GateWayName[0] = 0;
+		LastPro = DeterProject();
+  }
 	
 	if(DeterProject() == 1){
 		sprintf(buf, "%s", "滨湖");
@@ -3372,7 +3395,27 @@ static char *FileName(char *msg){
 		}
 	}
 	
-
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
+	if (result != FR_OK) {
+		NumOfOpt = 1;
+		return tmp;
+	}	
+	
+	
+	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);	
+	
+	if (result != FR_OK) {
+		NumOfOpt = 1;
+		return tmp;
+	}	
+	
+	for(i = 0; i < 255; i++){
+		f_gets(buf, 40, &fsrc);
+		if(strlen(buf) < 4){
+			NumOfOpt = i + 1;
+			break;
+		}	
+	}
 	
 	return tmp;
 }
@@ -3383,15 +3426,9 @@ static void __SDHandleKey(SDTaskMsg *message){
 	__OpenMainGUI(FileName(p), p);
 }
 
-static unsigned char GateWayName[40] = {0};
-
-unsigned char *GWname(void){
-	return &GateWayName[0];
+char NumberOfPoint(void){
+	return NumOfFrequ;
 }
-
-extern char ProMaxPage(void);
-
-static char NumOfFrequ = 1;                //频点个数
 
 static unsigned char FrequPoint1 = 0x0F;   //频点1 
 static unsigned char NetID1 = 0xFF;        //网络ID1

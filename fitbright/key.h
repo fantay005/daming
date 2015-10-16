@@ -71,7 +71,7 @@ typedef enum{
 	KEYOK,
 	KEYMENU = 150,
 	KEYINPT,
-	KEYDEL,
+	KEYDIS,
 	KEYRETURN,
 }KeyPress;
 
@@ -100,6 +100,10 @@ typedef enum{
 	Debug_Option,    //测试模式下，读镇流器数据*/
 	Light_Dim,       //调光
 	On_And_Off,      //开关灯
+	
+	Frequ_Set,       //配置模式下，频点选择
+	Frequ_Choose,    //维修模式下，频点选择
+	Frequ_Option,    //测试模式下，频点选择
 	
 //	WG_List_Set,     //网关目录
 //	WG_List_Repair,

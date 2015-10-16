@@ -87,9 +87,9 @@ static xQueueHandle __KeyQueue;
 #define KEY_7        GPIO_ReadInputDataBit(GPIO_KEY_UP,Pin_Key_UP)
 #define KEY_8        GPIO_ReadInputDataBit(GPIO_KEY_DOWN,Pin_Key_DOWN)
 #define KEY_9        GPIO_ReadInputDataBit(GPIO_KEY_0,Pin_Key_0)
-#define KEY_RET      GPIO_ReadInputDataBit(GPIO_KEY_1,Pin_Key_1)
+#define KEY_INPUT    GPIO_ReadInputDataBit(GPIO_KEY_1,Pin_Key_1)
 #define KEY_0        GPIO_ReadInputDataBit(GPIO_KEY_2,Pin_Key_2)
-#define KEY_DEL      GPIO_ReadInputDataBit(GPIO_KEY_3,Pin_Key_3)
+#define KEY_DIS      GPIO_ReadInputDataBit(GPIO_KEY_3,Pin_Key_3)
 #define KEY_DN       GPIO_ReadInputDataBit(GPIO_KEY_4,Pin_Key_4)
 #define KEY_2        GPIO_ReadInputDataBit(GPIO_KEY_5,Pin_Key_5)
 #define KEY_LF       GPIO_ReadInputDataBit(GPIO_KEY_DEL,Pin_Key_DEL)
@@ -98,7 +98,7 @@ static xQueueHandle __KeyQueue;
 #define KEY_OK       GPIO_ReadInputDataBit(GPIO_KEY_LF,Pin_Key_LF)
 #define KEY_3        GPIO_ReadInputDataBit(GPIO_KEY_INPT,Pin_Key_INPT)
 #define KEY_UP       GPIO_ReadInputDataBit(GPIO_KEY_MODE,Pin_Key_MODE)
-#define KEY_INPUT    GPIO_ReadInputDataBit(GPIO_KEY_RT,Pin_Key_RT)
+#define KEY_RET      GPIO_ReadInputDataBit(GPIO_KEY_RT,Pin_Key_RT)
 
 /*重新对按键进行定义*/
 
@@ -235,7 +235,7 @@ void TIM3_Init(void){
 
 static char IME = 0;                    //字母和数字输入法切换，当为1时，1~6输出为A~F
 
-KeyPress keycode(void){
+KeyPress keycode(void){                 //检测有变化按键，需被确认
 	if(KEY_0 == 0){
 		return KEY0;
 	} else if(KEY_1 == 0){
@@ -264,8 +264,8 @@ KeyPress keycode(void){
 		return KEYLF;
 	} else if(KEY_RT == 0){
 		return KEYRT;
-	} else if(KEY_DEL == 0){
-		return KEYDEL;
+	} else if(KEY_DIS == 0){
+		return KEYDIS;
 	} else if(KEY_MENU == 0){
 		return KEYMENU;
 	} else if(KEY_INPUT == 0){
@@ -283,7 +283,7 @@ static KeyPress KeyConfirm = NOKEY;         //上电后按键的初始状态
 
 static Dis_Type  InterFace = Open_GUI;      //上电后显示界面的初始状态
 
-void key_driver(KeyPress code)
+void key_driver(KeyPress code)              //检测有效按键
 {
 	static uint32_t key_state = KEY_STATE_0;
 	static KeyPress	code_last = NOKEY;
@@ -310,7 +310,7 @@ void key_driver(KeyPress code)
 	}
 }
 
-static void InputChange(void){
+static void InputChange(void){                   //显示当前输入法
 	char tmp[5];
 	if(IME == 0)
 			strcpy(tmp, "123");
@@ -319,9 +319,9 @@ static void InputChange(void){
 		Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
 }
 
-static char times = 0;
-static char count = 0;
-static char dat[9];
+static char times = 0;             //定时器中断计数
+static char count = 0;             //输入数字键的个数
+static char dat[9];                //输入数字键组合
 
 extern void ili9320_SetLight(char line);
 
@@ -332,7 +332,7 @@ static unsigned char MaxPage = 1;  //最大页数
 
 static unsigned char OptDecide = 0; //确定选项
 
-bool DisStatus(char type){
+bool DisStatus(char type){              //判断Dis_Type类型下哪种类型值在按下确认键后，需要被单独处理
 	switch (type){
 		case 2:
 			return true;
@@ -359,11 +359,7 @@ bool DisStatus(char type){
 	}	
 }
 
-char PageNumBer(void){
-	return page;
-}
-
-void ChooseLine(void){
+void ChooseLine(void){                         //确定行数，和页数
 	unsigned char tmp[2];
 	
 	if(KeyConfirm == KEYUP){
@@ -435,7 +431,7 @@ void ChooseLine(void){
 
 
 	
-void __handleAdvanceSet(void){
+void __handleAdvanceSet(void){                          //高级配置类型下，按键处理函数
 	portBASE_TYPE xHigherPriorityTaskWoken;
 	char tmp[12] = {0};
 	
@@ -499,6 +495,7 @@ void __handleAdvanceSet(void){
 
 
 static pro Project = Pro_Null;                      //初始化项目为无
+static unsigned char FrequencyDot = 0;              //初始频点为无
 
 pro DeterProject(void){
 	return Project;
@@ -506,37 +503,51 @@ pro DeterProject(void){
 
 extern unsigned char *GWname(void);
 
-void DisplayInformation(void){
-	char buf[40];
+extern char NumberOfPoint(void);
+
+void DisplayInformation(void){                       //显示选择的项目，网关，频点等
+	char buf[40], tmp[6];
+	
+	if(NumberOfPoint() == 1){
+		FrequencyDot = 1;
+	}
+	
+  if(FrequencyDot == 1){
+		sprintf(tmp, "/频点1");
+	} else if(FrequencyDot == 2){
+		sprintf(tmp, "/频点2");
+	} else {
+		tmp[0] = 0;
+	}
 	
 	if(Project == Pro_BinHu){
-		sprintf(buf, "%s%s", " 滨湖/", GWname());
+		sprintf(buf, "%s%s%s", "滨湖/", GWname(), tmp);
 	} else if(Project == Pro_ChanYeYuan){
-		sprintf(buf, "%s%s", " 产业园/", GWname());
+		sprintf(buf, "%s%s%s", "产业园/", GWname(), tmp);
 	} else if(Project == Pro_DaMing){
-		sprintf(buf, "%s%s", " 公司/", GWname());
+		sprintf(buf, "%s%s%s", "公司/", GWname(), tmp);
 	}
 	
 	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
 }
 
-void __handleOpenOption(void){
+void __handleOpenOption(void){                 //键值操作TFT显示
 	unsigned char dat;
 	unsigned char tmp[2];
 	
   ChooseLine();	
 	
-	if(OptDecide == 0)
+	if(OptDecide == 0)                //检测是否有需要处理的确认键按下
 		return;
 	
 	OptDecide = 0;                    //取消确认
 	
 	dat = wave;
 
-	if(InterFace == Main_GUI){
-		if(dat == 1)
+	if(InterFace == Main_GUI){                   //当显示页面为主菜单时，键值操作改变页面
+		if(dat == 1){
 			InterFace = Project_Dir;
-		else if(dat == 2)
+		} else if(dat == 2)
 			InterFace = Config_GUI;
 		else if(dat == 3)
 			InterFace = Service_GUI;
@@ -544,37 +555,53 @@ void __handleOpenOption(void){
 			InterFace = Test_GUI;
 		else if(dat == 5)
 			InterFace = Intro_GUI;
-	} else if (InterFace == Config_GUI){
+	} else if (InterFace == Config_GUI){         //当显示页面为配置界面时，键值操作改变页面
 		if(dat == 1)
 			InterFace = GateWay_Set;
 		else if(dat == 2)
 			InterFace = Address_Set;
-		else if(dat == 3)
+		else if(dat == 3){
+			if(NumberOfPoint() > 1)
+				InterFace = Frequ_Set;
+			else
+				return;
+		} else if(dat == 4)
 			InterFace = Config_Set;
-		else if(dat == 4)
+		else if(dat == 5)
 			InterFace = Config_DIS;
 		
-	} else if (InterFace == Service_GUI){
+	} else if (InterFace == Service_GUI){        //当显示页面为维修界面时，键值操作改变页面
 		if(dat == 1)
 			InterFace = GateWay_Choose;
 		else if(dat == 2)
 			InterFace = Address_Choose;
-		else if(dat == 3)
+		else if(dat == 3){
+			if(NumberOfPoint() > 1)
+				InterFace = Frequ_Choose;
+			else
+				return;
+		} else if(dat == 4)
 			InterFace = Read_Data;
 		
-	} else if (InterFace == Test_GUI){
+	} else if (InterFace == Test_GUI){           //当显示页面为测试界面时，键值操作改变页面
 		if(dat == 1)
 			InterFace = GateWay_Decide;
 		else if(dat == 2)
 			InterFace = Address_Option;
-		else if(dat == 3)
+		else if(dat == 3){
+			if(NumberOfPoint() > 1)
+				InterFace = Frequ_Option;
+			else
+				return;
+		} else if(dat == 4)
 			InterFace = Debug_Option;
-		else if(dat == 4)
-			InterFace = Light_Dim;
 		else if(dat == 5)
+			InterFace = Light_Dim;
+		else if(dat == 6)
 			InterFace = On_And_Off;
 		
-	} else if (InterFace == Project_Dir){
+	} else if (InterFace == Project_Dir){            //当显示页面为项目选择界面时，键值操作改变页面
+		
 		if(dat == 1){
 			Project = Pro_BinHu;
 		} else if(dat == 2){
@@ -582,13 +609,13 @@ void __handleOpenOption(void){
 		} else if(dat == 3){
 			Project = Pro_DaMing;
 		}
-		
+	
 		tmp[0] = Open_GUI;
 	  tmp[1] = KEYMENU;	
 		SDTaskHandleKey((const char *)tmp, 2);
 		InterFace = Main_GUI;
-	}  else if (InterFace == GateWay_Set){
-					
+	}  else if (InterFace == GateWay_Set){             //当显示页面为网关选择界面时，键值操作改变页面   
+					 
 		tmp[0] = InterFace;
 		tmp[1] = wave;
 		SDTaskHandleWGOption((const char *)tmp, 2);	
@@ -599,7 +626,7 @@ void __handleOpenOption(void){
 		
 		InterFace = Config_GUI;
 		
-	} else if(InterFace == GateWay_Choose) {
+	} else if(InterFace == GateWay_Choose) {           //当显示页面为网关选择界面时，键值操作改变页面   
 		
 		tmp[0] = InterFace;
 		tmp[1] = wave;
@@ -611,7 +638,7 @@ void __handleOpenOption(void){
 
 		InterFace = Service_GUI;
 		
-	} else if(InterFace == GateWay_Decide) {
+	} else if(InterFace == GateWay_Decide) {           //当显示页面为网关选择界面时，键值操作改变页面   
 		
 		tmp[0] = InterFace;
 		tmp[1] = wave;
@@ -624,11 +651,11 @@ void __handleOpenOption(void){
 		InterFace = Test_GUI;
 	}
 		
-	wave = 1;
+	wave = 1;                                           //页面切换后，显亮第一行
 	KeyConfirm = NOKEY;
 }
 
-void __handleSwitchInput(void){
+void __handleSwitchInput(void){                       //1~7键在“1~7”与“A~L”间来回切换
 	if(KeyConfirm == KEYINPT){
 		if(IME == 0)
 			IME = 1;
@@ -660,12 +687,10 @@ void __handleSwitchInput(void){
 	}	
 }
 
-char ProMaxPage(void){
-	if(Project == Pro_BinHu)
-		MaxPage = 4;
-	else
-		MaxPage = 1;
-	
+extern unsigned char NumOfPage(void);
+
+unsigned char ProMaxPage(void){              //确认显示类型的最大页数
+	MaxPage = NumOfPage();
 	return page;
 }
 
@@ -687,12 +712,12 @@ void TIM3_IRQHandler(void){
 		times++;
 	}
 	
-	key_driver(keycode());
+	key_driver(keycode());                  
 	
 	if(KeyConfirm == NOKEY)
 		return;
 	
-	if(KeyConfirm == KEYDEL)
+	if(KeyConfirm == KEYDIS)
 		DisplayInformation();
 	
 	if(KeyConfirm == KEYMENU){
@@ -711,19 +736,19 @@ void TIM3_IRQHandler(void){
 	    dat[1] = KEYMENU;
 	    SDTaskHandleKey((const char *)dat, 2);
 		
-		} else if(InterFace == GateWay_Set || InterFace == Address_Set || InterFace == Config_Set || InterFace == Config_DIS){
+		} else if(InterFace == GateWay_Set || InterFace == Address_Set || InterFace == Config_Set || InterFace == Config_DIS || InterFace == Frequ_Set){
 			InterFace = Config_GUI;
 			
 			dat[0] = Main_GUI;
 	    dat[1] = 2;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data ){
+		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data || InterFace == Frequ_Choose){
 			InterFace = Service_GUI;
 			
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == On_And_Off){
+		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == On_And_Off || InterFace == Frequ_Option){
 			InterFace = Test_GUI;
 			
 			dat[0] = Main_GUI;
@@ -738,38 +763,40 @@ void TIM3_IRQHandler(void){
 		return;
 	}
 	
+	ProMaxPage();
+	
 	if(InterFace == Main_GUI){
-		MaxPage = 1;
+
 		__handleOpenOption();	
 	} else if(InterFace == Config_GUI){
-		MaxPage = 1;
+	
 		__handleOpenOption();
 	} else if(InterFace == Service_GUI){
-		MaxPage = 1;
+
 		__handleOpenOption();
 	} else if(InterFace == Test_GUI){
-		MaxPage = 1;
+
 		__handleOpenOption();
 	} else if(InterFace == Intro_GUI){
-		MaxPage = 1;
+
 		__handleOpenOption();
 	} else if(InterFace == Project_Dir){
-		MaxPage = 1;
+
 		__handleOpenOption();
 	} else if(InterFace == Light_Dim){
-		MaxPage = 1;
+
 		__handleOpenOption();
 	} else if(InterFace == Config_Set){
 		__handleSwitchInput();
 		__handleAdvanceSet();		
 	} else if(InterFace == GateWay_Set){
-		ProMaxPage();
+
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Choose){
-		ProMaxPage();
+
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Decide){
-		ProMaxPage();
+		
 		__handleOpenOption();
 	} else if(InterFace == Address_Option)
 		__handleOpenOption();
