@@ -89,7 +89,7 @@ static xQueueHandle __KeyQueue;
 #define KEY_9        GPIO_ReadInputDataBit(GPIO_KEY_0,Pin_Key_0)
 #define KEY_INPUT    GPIO_ReadInputDataBit(GPIO_KEY_1,Pin_Key_1)
 #define KEY_0        GPIO_ReadInputDataBit(GPIO_KEY_2,Pin_Key_2)
-#define KEY_DIS      GPIO_ReadInputDataBit(GPIO_KEY_3,Pin_Key_3)
+#define KEY_CONF     GPIO_ReadInputDataBit(GPIO_KEY_3,Pin_Key_3)
 #define KEY_DN       GPIO_ReadInputDataBit(GPIO_KEY_4,Pin_Key_4)
 #define KEY_2        GPIO_ReadInputDataBit(GPIO_KEY_5,Pin_Key_5)
 #define KEY_LF       GPIO_ReadInputDataBit(GPIO_KEY_DEL,Pin_Key_DEL)
@@ -264,8 +264,8 @@ KeyPress keycode(void){                 //¼ì²âÓĞ±ä»¯°´¼ü£¬Ğè±»È·ÈÏ
 		return KEYLF;
 	} else if(KEY_RT == 0){
 		return KEYRT;
-	} else if(KEY_DIS == 0){
-		return KEYDIS;
+	} else if(KEY_CONF == 0){
+		return KEYCONF;
 	} else if(KEY_MENU == 0){
 		return KEYMENU;
 	} else if(KEY_INPUT == 0){
@@ -281,6 +281,7 @@ KeyPress keycode(void){                 //¼ì²âÓĞ±ä»¯°´¼ü£¬Ğè±»È·ÈÏ
 
 static KeyPress KeyConfirm = NOKEY;         //ÉÏµçºó°´¼üµÄ³õÊ¼×´Ì¬
 static Dis_Type  InterFace = Open_GUI;      //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
+static Dis_Type  LastFace = Open_GUI;       //ÉÏÒ»¸öÏÔÊ¾½çÃæ
 
 char StatusOfInterface(void){
 	return InterFace;
@@ -322,39 +323,31 @@ static void InputChange(void){                   //ÏÔÊ¾µ±Ç°ÊäÈë·¨
 		Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
 }
 
-static char times = 0;             		//¶¨Ê±Æ÷ÖĞ¶Ï¼ÆÊı
-static char count = 0;            	  //ÊäÈëÊı×Ö¼üµÄ¸öÊı
-static char dat[9];               	  //ÊäÈëÊı×Ö¼ü×éºÏ
-static unsigned char wave = 1;    	  //ĞĞÊı
-static unsigned char page = 1;    	  //Ò³Êı
-static unsigned char MaxPage = 1; 	  //×î´óÒ³Êı
-static unsigned char MaxLine = 1;     //Ò»Ò³×î´óĞĞÊı£¬¼´×î¶àµÄÑ¡Ïî
-static unsigned char OptDecide = 0; 	//È·¶¨Ñ¡Ïî
-static pro Project = Pro_Null;                      //³õÊ¼»¯ÏîÄ¿ÎªÎŞ
-static unsigned char FrequencyDot = 0;              //³õÊ¼ÆµµãÎªÎŞ
-static unsigned int  ZigBAddr = 0;     //³õÊ¼ZigBeeµØÖ·Öµ
+static char times = 1;             			//¶¨Ê±Æ÷ÖĞ¶Ï¼ÆÊı
+static char count = 0;            	 	  //ÊäÈëÊı×Ö¼üµÄ¸öÊı
+static char dat[9];               	 	  //ÊäÈëÊı×Ö¼ü×éºÏ
+static unsigned char wave = 1;    	 	  //ĞĞÊı
+static unsigned char page = 1;    	 	  //Ò³Êı
+static unsigned char MaxPage = 1; 	 	  //×î´óÒ³Êı
+static unsigned char MaxLine = 1;     	//Ò»Ò³×î´óĞĞÊı£¬¼´×î¶àµÄÑ¡Ïî
+static unsigned char OptDecide = 0; 		//È·¶¨Ñ¡Ïî
+pro Project = Pro_Null;          //³õÊ¼»¯ÏîÄ¿ÎªÎŞ
+unsigned char FrequencyDot = 0;  //³õÊ¼ÆµµãÎªÎŞ
+unsigned int  ZigBAddr = 1;     	//³õÊ¼ZigBeeµØÖ·Öµ
+char Config_Enable = 0;          //ÅäÖÃ¼üÊ¹ÄÜÅäÖÃÄ£¿é¹¦ÄÜ£¬1ÎªÅäÖÃ£¬2Îª
 
-void ValueAlter(char p){                            //¸Ä±äÆµµãµÄÖµ
-	FrequencyDot = p;
-}
 
 extern unsigned char NumOfPage(void);
 
-unsigned char ProMaxPage(void){              //È·ÈÏÏÔÊ¾ÀàĞÍµÄ×î´óÒ³Êı
+unsigned char ProMaxPage(void){         //È·ÈÏÏÔÊ¾ÀàĞÍµÄ×î´óÒ³Êı
 	MaxPage = NumOfPage() / 15 + 1;
 	return page;
 }
 
-pro DeterProject(void){
-	return Project;
-}
-
-extern unsigned char *GWname(void);
-
-extern char NumberOfPoint(void);
+extern unsigned char *GWname(void);      //Íø¹ØÃû³Æ
 
 bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍÖµÔÚ°´ÏÂÈ·ÈÏ¼üºó£¬ĞèÒª±»µ¥¶À´¦Àí
-	char tmp[2];
+	char tmp[40];
 	
 	sprintf((char *)tmp, "%s", GWname());
 	switch (type){
@@ -368,6 +361,8 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					if(NumOfFrequ < 2)   //Ö»ÓĞÒ»¸öÆµµã×´¿öÏÂ
 						return false;
 					return true;
 				case 3:
@@ -388,6 +383,8 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					if(NumOfFrequ < 2)   //Ö»ÓĞÒ»¸öÆµµã×´¿öÏÂ
 						return false;
 					return true;
 				case 3:
@@ -416,6 +413,8 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
+						return false;
+					if(NumOfFrequ < 2)   //Ö»ÓĞÒ»¸öÆµµã×´¿öÏÂ
 						return false;
 					return true;
 				case 3:
@@ -446,9 +445,10 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 			if(tmp[0] == 0)            //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
 				return false;
 			return true;
-		case 12:
+		case 12:                     //Ã»ÓĞÑ¡ÔñÏîÄ¿×´¿öÏÂ
 			if(Project == Pro_Null)
 				return false;
+			
 			return true;
 		case 13:
 			if(tmp[0] == 0)            //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
@@ -459,7 +459,7 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 				return false;
 			return true;
 		case 15:
-			if(Project == Pro_Null)
+			if(Project == Pro_Null)    //Ã»ÓĞÑ¡ÔñÏîÄ¿×´¿öÏÂ
 				return false;
 			return true;
 		case 16:
@@ -639,14 +639,16 @@ void __handleAdvanceSet(void){                          //¸ß¼¶ÅäÖÃÀàĞÍÏÂ£¬°´¼ü´¦
 } 
 
 void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬ÆµµãµÈ
-	char buf[40], tmp[6];
+	char buf[80], tmp[12], dat[5], i, para[20] = {0};
 	
 	
-  if((FrequencyDot == 1) || (NumberOfPoint() == 1)){
-		sprintf(tmp, "/Æµµã1");
+  if((FrequencyDot == 1) && (NumOfFrequ == 1)){      //ÅĞ¶ÏÓĞÎŞÆµµã
+		sprintf(tmp, "/Î¨Ò»Æµµã/");
+	} else if(FrequencyDot == 1){
+		sprintf(tmp, "/µÚÒ»Æµµã/");
 	} else if(FrequencyDot == 2){
-		sprintf(tmp, "/Æµµã2");
-	} else if((FrequencyDot == 0) && (NumberOfPoint() != 1)){
+		sprintf(tmp, "/µÚ¶şÆµµã/");
+	} else if((FrequencyDot == 0) && (NumOfFrequ != 1)){
 		tmp[0] = 0;
 	} else {
 		tmp[0] = 0;
@@ -655,15 +657,39 @@ void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬Æµµ
 	if(Project == Pro_Null)
 		return;
 	
-	if(Project == Pro_BinHu){
-		sprintf(buf, "%s%s%s", "±õºş/", GWname(), tmp);
-	} else if(Project == Pro_ChanYeYuan){
-		sprintf(buf, "%s%s%s", "²úÒµÔ°/", GWname(), tmp);
-	} else if(Project == Pro_DaMing){
-		sprintf(buf, "%s%s%s", "¹«Ë¾/", GWname(), tmp);
+	if(tmp[0] != 0){   
+		sprintf(dat, "%4d", ZigBAddr);
+		for(i = 0; i < 4; i++){
+			if(dat[i] == ' ')
+				dat[i] = '0';
+		}
+	} else {
+		dat[0] = 0;
 	}
 	
+	if(Project == Pro_BinHu){
+		sprintf(para, "%s", "ºÏ·Ê/±õºş/");
+	} else if(Project == Pro_ChanYeYuan){
+		sprintf(para, "%s", "ºÏ·Ê/ÊñÉ½²úÒµÔ°/");
+	} else if(Project == Pro_DaMing){
+		sprintf(para, "%s", "ºÏ·Ê/´óÃ÷½ÚÄÜ/");
+	}
+	
+	sprintf(buf, "%s%s%s%s", para, GWname(), tmp, dat);
 	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
+}
+
+void __AddrConfig(void){                     //ÉèÖÃZigBeeµØÖ·½çÃæÏÔÊ¾
+	char buf[5], i;
+	
+	sprintf(buf, "%4d", ZigBAddr);
+	for(i =0; i < 4; i++){
+		if(buf[i] == ' ')
+			buf[i] = '0';
+	}
+	
+	Ili9320TaskClear("C", 1);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 }
 
 void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
@@ -703,14 +729,14 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			InterFace = GateWay_Set;
 			
 		} else if(dat == 2){
-			if(NumberOfPoint() > 1){
+			if(NumOfFrequ > 1){
 				InterFace = Frequ_Set;
 			}else
 				return;
 			
 		} else if(dat == 3){
 			InterFace = Address_Set;
-			
+			__AddrConfig();
 		} else if(dat == 4){
 			InterFace = Config_Set;
 		
@@ -728,7 +754,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			InterFace = Address_Choose;
 			
 		} else if(dat == 2){
-			if(NumberOfPoint() > 1){
+			if(NumOfFrequ > 1){
 				InterFace = Frequ_Choose;
 			} else
 				return;
@@ -747,7 +773,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			InterFace = Address_Option;
 			
 		} else if(dat == 2){
-			if(NumberOfPoint() > 1){
+			if(NumOfFrequ > 1){
 				InterFace = Frequ_Option;
 				
 			} else
@@ -847,8 +873,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 }
 
 void __DisplayWGInformation(void){
-	if(times > 20){
-		times = 0;
+	if(times%20 == 0){
 		DisplayInformation();
 	}
 }
@@ -861,8 +886,7 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 			IME = 0;
 	}
 	
-	if(times > 10){
-		times = 0;
+	if(times%10 == 0){
 		InputChange();
 	}
 		
@@ -885,14 +909,38 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 	}	
 }
 
-static bool U3IRQ_Enable = false;             //Ê¹ÄÜ´®¿Ú3½ÓÊÕÊı¾İ
+static char U3IRQ_Enable = 0;             //Ê¹ÄÜ´®¿Ú3½ÓÊÕÊı¾İ
 
-bool Com3IsOK(void){
-	if(InterFace == Config_Set)
-		U3IRQ_Enable = true;
+char Com3IsOK(void){
+	if(InterFace == Address_Set)
+		U3IRQ_Enable = 1;
+	else if(InterFace == Config_Set)
+		U3IRQ_Enable = 2;
 	else
-		U3IRQ_Enable = false;
+		U3IRQ_Enable = 0;
 	return U3IRQ_Enable;
+}   
+
+void __handleAddrValue(void){
+	if((ZigBAddr > 2000) && (ZigBAddr < 3000))
+			ZigBAddr = ZigBAddr - 2000;
+	
+	if(KeyConfirm == KEYLF){
+		
+	} else if(KeyConfirm == KEYRT){
+	
+	} else if(KeyConfirm == KEYUP){
+		ZigBAddr--;
+		if(ZigBAddr < 1)
+			ZigBAddr = 1;
+	} else if(KeyConfirm == KEYDN){
+		ZigBAddr++;
+		if(ZigBAddr > 999)
+			ZigBAddr = 1;
+	} else if(KeyConfirm == KEYCONF){
+		Config_Enable = 1;
+		ConfigTaskSendData("1", 2);
+	}
 }
 
 void TIM3_IRQHandler(void){	
@@ -901,6 +949,8 @@ void TIM3_IRQHandler(void){
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
 		times++;
+		if(times > 100)
+			times = 1;
 	}
 	
 	key_driver(keycode()); 
@@ -908,11 +958,14 @@ void TIM3_IRQHandler(void){
 	if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide) && (InterFace != Config_Set) && (InterFace != Intro_GUI))
 		__DisplayWGInformation();
 	
-	if(InterFace == Config_Set)
+	if((InterFace == Config_Set) || (InterFace == Address_Set)) 
 		__handleSwitchInput();
-	
+		
 	if(KeyConfirm == NOKEY)
 		return;
+	
+	if(InterFace != Address_Set)
+		Config_Enable = 0;
 	
 	if(KeyConfirm == KEYMENU){
 		
@@ -956,6 +1009,11 @@ void TIM3_IRQHandler(void){
 		KeyConfirm = NOKEY;
 	}
 	
+	if(LastFace != InterFace){
+		LastFace = InterFace;
+		page = 1;
+	}
+	
 	ProMaxPage();
 	
 	if(InterFace == Main_GUI){
@@ -997,6 +1055,9 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Frequ_Option){
 
 		__handleOpenOption();
+	} else if(InterFace == Address_Set){
+
+		__handleAddrValue();
 	}
 	
 	KeyConfirm = NOKEY;
@@ -1041,7 +1102,7 @@ static void __KeyTask(void *parameter) {
 void KeyInit(void) {
 	key_gpio_init();
 	TIM3_Init();
-	__KeyQueue = xQueueCreate(5, sizeof(KeyTaskMsg *));
+	__KeyQueue = xQueueCreate(10, sizeof(KeyTaskMsg *));
 	xTaskCreate(__KeyTask, (signed portCHAR *) "KEY", KEY_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
 

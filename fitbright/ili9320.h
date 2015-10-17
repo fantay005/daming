@@ -185,6 +185,8 @@
 #endif
 
 void BackColorSet(void);
+
+bool Ili9320TaskDisFrequDot(const char *dat, int len);
 bool Ili9320TaskLightLine(const char *dat, int len);
 bool Ili9320TaskUpAndDown(const char *dat, int len);
 bool Ili9320TaskDisGateWay(const char *dat, int len);

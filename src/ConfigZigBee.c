@@ -12,6 +12,8 @@
 #include "ili9320.h"
 #include "display.h"
 #include "ConfigZigbee.h"
+#include "key.h"
+#include "sdcard.h"
 
 #define SERx         USART3
 #define SERx_IRQn    USART3_IRQn
@@ -20,9 +22,14 @@
 #define Pin_SERx_RX  GPIO_Pin_11
 #define GPIO_SERx    GPIOB
 
-#define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
+
+#define waitTime    20
+#define delayTime   100
 
 static xQueueHandle __ConfigQueue;
+
+static ZigBee_Param ConfigMsg = {"0001", "SHUNCOM ", "3", "2", "FF", "F", "2", "2", "4", "1", "2", "1"};
 
 static void __ConfigInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
@@ -115,40 +122,10 @@ bool ConfigTaskSendData(const char *dat, int len) {
 	return false;
 }
 
-//bool ConfigTaskRecieveModifyData(const char *dat, int len) {
-//	ConfigTaskMsg *message = __ConfigCreateMessage(CONFIG_MODIFY_DATA, dat, len);
-//	if (pdTRUE != xQueueSend(__ConfigQueue, &message, configTICK_RATE_HZ * 5)) {
-//		__ConfigDestroyMessage(message);
-//		return true;
-//	}
-//	return false;
-//}
-
-//static char isSHUNCOM = 0;
-
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 
-//static inline void __handheldRecievSafeCode(unsigned char data) {
-//	if (data == 0x0A) {
-//		ConfigTaskMsg *message;
-//		portBASE_TYPE xHigherPriorityTaskWoken = pdFALSE;
-//		const char *buf = "SHUNCOM";
-//		buffer[bufferIndex++] = 0;
-//		message = __ConfigCreateMessage(CONFIG_SEND_DATA, buf, strlen(buf) + 1);
-//		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &message, &xHigherPriorityTaskWoken)) {
-//			if (xHigherPriorityTaskWoken) {
-//				taskYIELD();
-//			}
-//		} 
-//		isSHUNCOM = 0;
-//		bufferIndex = 0;
-//	} else if (data != 0x0D) {
-//		buffer[bufferIndex++] = data;
-//	}
-//}
-
-extern bool Com3IsOK(void);
+extern char Com3IsOK(void);   //判断配置模式下是否为快速设置或高级设置状态
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -158,7 +135,7 @@ void USART3_IRQHandler(void) {
 	}
 
 	data = USART_ReceiveData(SERx);
-//	USART_SendData(USART1, data);
+	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
 
 	if(!Com3IsOK())
@@ -178,13 +155,130 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
+		
 	} 
 }
 
+static char Open_DisPlay = 0;            //打开显示标志位
 
 static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-	Ili9320TaskOrderDis(p, strlen(p) + 1);
+	char i;
+	
+	if(Com3IsOK() == 2){
+		Ili9320TaskOrderDis(p, strlen(p) + 1);
+	} else if(Com3IsOK() == 1){
+		if(!Config_Enable)
+				return;
+
+		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr("1");
+		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr("SHUNCOM");
+			vTaskDelay(delayTime);
+			ConfigComSendStr("3");
+		} else if(strncasecmp(p, "节点地址:", 9) == 0){
+			sprintf(ConfigMsg.MAC_ADDR, "%4d", ZigBAddr);
+			for(i = 0; i < 4; i++){
+				if(ConfigMsg.MAC_ADDR[i] == ' ')
+					ConfigMsg.MAC_ADDR[i] = '0';
+			}	
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.MAC_ADDR);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("2");
+		} else if(strncasecmp(p, "节点名称:", 9) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.NODE_NAME);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("4");
+		} else if(strncasecmp(p, "节点类型:", 9) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.NODE_TYPE);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("1");
+		} else if(strncasecmp(p, "网络类型:", 9) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.NET_TYPE);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("5");
+		} else if(strncasecmp(p, "网络ID:", 7) == 0){
+			if(FrequencyDot == 1){
+				sprintf(ConfigMsg.NET_ID, "%2X", NetID1);
+				for(i = 0; i < 4; i++){
+					if(ConfigMsg.MAC_ADDR[i] == ' ')
+						ConfigMsg.MAC_ADDR[i] = '0';
+				}	
+			} else if(FrequencyDot == 2){
+				sprintf(ConfigMsg.NET_ID, "%2X", NetID2);
+				for(i = 0; i < 4; i++){
+					if(ConfigMsg.MAC_ADDR[i] == ' ')
+						ConfigMsg.MAC_ADDR[i] = '0';
+				}	
+			}
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.NET_ID);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("6");
+		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
+			if(FrequencyDot == 1){
+				sprintf(ConfigMsg.FREQUENCY, "%X", FrequPoint1);
+			} else if(FrequencyDot == 2){
+				sprintf(ConfigMsg.FREQUENCY, "%X", FrequPoint2);
+			}				
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.FREQUENCY);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("7");
+		} else if(strncasecmp(p, "地址编码:", 9) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.ADDR_CODE);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("8");
+		} else if(strncasecmp(p, "发送模式:", 9) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.TX_TYPE);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("9");
+		} else if(strncasecmp(p, "波特率:", 7) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.BAUDRATE);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("A");
+		} else if(strncasecmp(p, "校 验:", 6) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.DATA_PARITY);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("B");
+		} else if(strncasecmp(p, "数据位:", 7) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.DATA_BIT);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("F");
+		} else if(strncasecmp(p, "数据源地址:", 11) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr(ConfigMsg.SRC_ADR);
+			vTaskDelay(delayTime);
+			ConfigComSendStr("E");
+		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
+			Open_DisPlay = 1;
+			Ili9320TaskClear("C", 1);
+			Config_Enable = 2;                  //配置地址成功，进入收尾阶段
+		} else if((strncasecmp(p, "请选择设置参数:", 15) == 0) && (Config_Enable == 2)){
+			Open_DisPlay = 0;		
+			Config_Enable = 0;                  //配置地址成功，暂停配置
+			vTaskDelay(delayTime);
+			ConfigComSendStr("D");
+			ZigBAddr++;                         //地址自动加一	
+		}	
+		
+		if(Open_DisPlay){
+			Ili9320TaskOrderDis(p, strlen(p) + 1);
+		}
+		
+	}
 }
 
 static void __TaskHandleSend(ConfigTaskMsg *msg){
@@ -193,10 +287,6 @@ static void __TaskHandleSend(ConfigTaskMsg *msg){
 	ConfigComSendStr(p);
 }
 
-//static void __TaskHandleModify(ConfigTaskMsg *msg){
-//	char *p = __ConfigGetMsgData(msg);
-//	
-//}
 typedef struct {
 	ConfigTaskMessageType type;
 	void (*handlerFunc)(ConfigTaskMsg *);
@@ -233,7 +323,7 @@ static void __ConfigTask(void *parameter) {
 void ConfigInit(void) {
 	__ConfigInitHardware();
 	__ConfigInitUsart(38400);
-	__ConfigQueue = xQueueCreate(15, sizeof(ConfigTaskMsg *));
+	__ConfigQueue = xQueueCreate(30, sizeof(ConfigTaskMsg *));
 	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

@@ -2,18 +2,18 @@
 #define __COMMZIGBEE_H__
 
 typedef struct{
-	unsigned char  MAC_ADDR[4];
-	unsigned char  NODE_NAME[8];
-	unsigned char  NODE_TYPE[8];
-	unsigned char  NET_TYPE[6];
-	unsigned char  NET_ID[4];
-	unsigned char  FREQUENCY[4];
-	unsigned char  DATA_TYPE[5];
-	unsigned char  TX_TYPE[6];
-	unsigned char  BAUDRATE[6];
-	unsigned char  DATA_PARITY[6];
-	unsigned char  DATA_BIT[5];
-	unsigned char  SRC_ADR[9];
+	char  MAC_ADDR[5];
+	char  NODE_NAME[9];
+  char  NODE_TYPE[2];
+	char  NET_TYPE[2];
+	char  NET_ID[3];
+	char  FREQUENCY[2];
+	char  ADDR_CODE[2];
+	char  TX_TYPE[2];
+	char  BAUDRATE[2];
+	char  DATA_PARITY[2];
+	char  DATA_BIT[2];
+	char  SRC_ADR[2];
 }ZigBee_Param;
 	
 

@@ -3058,6 +3058,12 @@ static FRESULT result;
 static FATFS fs;
 static UINT br;
 
+char NumOfFrequ = 0;                //频点个数
+unsigned char FrequPoint1 = 0x0F;   //频点1 
+unsigned char NetID1 = 0xFF;        //网络ID1
+unsigned char FrequPoint2 = 0x0F;   //频点2
+unsigned char NetID2 = 0xFF;        //网络ID
+
 extern void LCD_WriteRAM(u16 RGB_Code);
 extern void TFT_SetXY(u16 x,u16 y);
 
@@ -3210,13 +3216,12 @@ void FirstIntoInterface(void){         //更换一个新的界面
 		Ili9320TaskLightLine(tmp, 1);
 }
 
-static char NumOfFrequ = 0;                //频点个数
+
 
 static char GateWayName[40] = {0};
 
 extern char ProMaxPage(void);
 
-extern void ValueAlter(char p);
 
 char *GWname(void){
 	return &GateWayName[0];
@@ -3227,10 +3232,9 @@ static void __OpenMainGUI(char *dat, char *msg){
 	short i;
 	
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
-	printf("%s.\n", FR_Table[result]);
 	
 	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);	
-	printf("%s.\n", FR_Table[result]);
+
 	if(!result){
 		Ili9320TaskClear("C", 1);
 	}else{
@@ -3257,6 +3261,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 					f_gets(buf, 64, &fsrc);
 					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 				}
+				Ili9320TaskDisFrequDot((const char *)buf, 2);
 				break;
 			default:
 				break;
@@ -3307,7 +3312,6 @@ static void __OpenMainGUI(char *dat, char *msg){
 	
 	for(;;){
 		result = f_read(&fsrc, buf, 508, &br);
-		printf("%s.\n", FR_Table[result]);
 		
 		if (result || br == 0) 
 			break;	
@@ -3340,24 +3344,23 @@ unsigned char NumOfPage(void){
 	return NumOfOpt;
 }
 
-extern pro DeterProject(void);
-
 static char *FileName(char *msg){         //根据参数，选择文件名称
 	char tmp[32], buf[40];
 	unsigned char i;
 	
-	if(LastPro != DeterProject()){
+	if(LastPro != Project){
 		buf[0] = 0;
 		NumOfFrequ = 0;
 		GateWayName[0] = 0;
-		LastPro = DeterProject();
+		FrequencyDot = 0;
+		LastPro = Project;
   }
 	
-	if(DeterProject() == 1){
+	if(Project == 1){
 		sprintf(buf, "%s", "滨湖");
-	} else if(DeterProject() == 2){
+	} else if(Project == 2){
 		sprintf(buf, "%s", "产业园");
-	} else if(DeterProject() == 3){
+	} else if(Project == 3){
 		sprintf(buf, "%s", "大明");
 	}
 	
@@ -3383,7 +3386,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 				sprintf(tmp, "0:界面/%s.txt",  "简介" );
 				break;
 			default:
-				tmp[0] = 0;
+				tmp[0] = 0;                              //不用打开文件
 				break;
 		}
 	} else if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){
@@ -3396,13 +3399,14 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 				if(NumOfFrequ > 1)
 					sprintf(tmp, "0:界面/%s.txt", "频点");
 				else
-					tmp[0] = 0;
+					tmp[0] = 0;                            //不用打开文件
 				break;
 			case 4:
 				Ili9320TaskClear("C", 1);
+				tmp[0] = 0;                              //不用打开文件
 				break;
 			default:
-				tmp[0] = 0;
+				tmp[0] = 0;                             //不用打开文件
 				break;
 		}
 	} else if(msg[0] == Test_GUI){
@@ -3436,7 +3440,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 		}
 	} else if((msg[0] == Frequ_Set) || (msg[0] == Frequ_Choose) || (msg[0] == Frequ_Option)){
 		
-		ValueAlter(msg[1]);
+		FrequencyDot = msg[1];
 		tmp[0] = 0;
 	} else {
 		tmp[0] = 0;
@@ -3467,27 +3471,17 @@ static void __SDHandleKey(SDTaskMsg *message){
 	__OpenMainGUI(FileName(p), p);
 }
 
-char NumberOfPoint(void){
-	return NumOfFrequ;
-}
-
-static unsigned char FrequPoint1 = 0x0F;   //频点1 
-static unsigned char NetID1 = 0xFF;        //网络ID1
-
-static unsigned char FrequPoint2 = 0x0F;   //频点2
-static unsigned char NetID2 = 0xFF;        //网络ID
-
 static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	char tmp[32], buf[64];
 	char i;
 	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char *p = __SDGetMsgData(message);
 	
-	if(DeterProject() == 1){
+	if(Project == 1){
 		sprintf(buf, "%s", "滨湖");
-	} else if(DeterProject() == 2){
+	} else if(Project == 2){
 		sprintf(buf, "%s", "产业园");
-	} else if(DeterProject() == 3){
+	} else if(Project == 3){
 		sprintf(buf, "%s", "大明");
 	}
 	
@@ -3541,7 +3535,7 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	}
 	
 	NumOfFrequ = 1;
-	ValueAlter(1);
+	FrequencyDot = 1;
 	
 	f_gets(buf, 64, &fsrc);
 	if(strlen(buf) < 4)
@@ -3569,7 +3563,7 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	}
 	
 	NumOfFrequ = 2;
-	ValueAlter(0);
+	FrequencyDot = 0;
 }
 
 typedef struct {
@@ -3613,7 +3607,6 @@ void SDInit(void) {
 		printf( " \r\n SD_Init 初始化成功 \r\n " );		
 	}	else {
 		printf("\r\n SD_Init 初始化失败 \r\n" );
-		printf("\r\n 返回的Status的值为： %d \r\n",Status );
 	}
 	
 	Pic_Viewer("logo");

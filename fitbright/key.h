@@ -71,7 +71,7 @@ typedef enum{
 	KEYOK,
 	KEYMENU = 150,
 	KEYINPT,
-	KEYDIS,
+	KEYCONF,
 	KEYRETURN,
 }KeyPress;
 
@@ -117,6 +117,11 @@ typedef enum{
 	Pro_ChanYeYuan,
 	Pro_DaMing,
 }pro;
+
+extern pro Project;                 //初始化项目为无
+extern unsigned char FrequencyDot;  //初始频点为无
+extern unsigned int  ZigBAddr ;     //初始ZigBee地址值
+extern char Config_Enable;          //配置键使能配置模块功能
 
 void key_init(void);
 void KEY(void);
