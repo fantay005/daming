@@ -354,6 +354,20 @@ unsigned char ProMaxPage(void){         //È·ÈÏÏÔÊ¾ÀàĞÍµÄ×î´óÒ³Êı
 	return page;
 }
 
+static char U3IRQ_Enable = 0;             //Ê¹ÄÜ´®¿Ú3½ÓÊÕÊı¾İ
+
+char Com3IsOK(void){
+	if(InterFace == Address_Set)
+		U3IRQ_Enable = 1;
+	else if(InterFace == Config_Set)
+		U3IRQ_Enable = 2;
+	else if(InterFace == Config_DIS)
+		U3IRQ_Enable = 3;
+	else
+		U3IRQ_Enable = 0;
+	return U3IRQ_Enable;
+}   
+
 extern unsigned char *GWname(void);      //Íø¹ØÃû³Æ
 
 bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍÖµÔÚ°´ÏÂÈ·ÈÏ¼üºó£¬ĞèÒª±»µ¥¶À´¦Àí
@@ -381,7 +395,7 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 						return false;
 					return true;
 				case 4:
-					msg = __KeyCreateMessage(KEY_SEND_DATA, "SHUNCOM", 8);
+					msg = __KeyCreateMessage(KEY_SEND_DATA, "SHUNCOM\r\n", 10);
 					xQueueSend(__KeyQueue, &msg, 10);				
 					return true;
 				case 5:
@@ -457,6 +471,8 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 		case 9:
 			if(tmp[0] == 0)            //Ã»ÓĞÑ¡ÔñÍø¹Ø×´¿öÏÂ
 				return false;
+			return true;
+		case 11:
 			return true;
 		case 12:                     //Ã»ÓĞÑ¡ÔñÏîÄ¿×´¿öÏÂ
 			if(Project == Pro_Null)
@@ -752,7 +768,8 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		
 		} else if(dat == 5){
 			InterFace = Config_DIS;
-		
+			Ili9320TaskClear("C", 2);
+			
 		}
 		
 	} else if (InterFace == Service_GUI){        //µ±ÏÔÊ¾Ò³ÃæÎªÎ¬ĞŞ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
@@ -876,7 +893,12 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 	  SDTaskHandleKey((const char *)tmp, 2);
 		
 		InterFace = Test_GUI;
-	} 
+	} else if(InterFace == Config_DIS){
+		Config_Enable = 1;
+		
+		Ili9320TaskClear("C", 1);
+		ConfigTaskSendData("1\r\n", 4);
+	}
 		
 	wave = 1;                                            //Ò³ÃæÇĞ»»ºó£¬ÏÔÁÁµÚÒ»ĞĞ
 	KeyConfirm = NOKEY;
@@ -921,18 +943,6 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 		}
 	}	
 }
-
-static char U3IRQ_Enable = 0;             //Ê¹ÄÜ´®¿Ú3½ÓÊÕÊı¾İ
-
-char Com3IsOK(void){
-	if(InterFace == Address_Set)
-		U3IRQ_Enable = 1;
-	else if(InterFace == Config_Set)
-		U3IRQ_Enable = 2;
-	else
-		U3IRQ_Enable = 0;
-	return U3IRQ_Enable;
-}   
 
 bool HexSwitchDec = 0;                               //16½øÖÆÓë10½øÖÆÇĞ»»£¬ 0Î»10½øÖÆ£¬1Îª16½øÖÆ
 
@@ -1028,7 +1038,7 @@ void TIM3_IRQHandler(void){
 	if(KeyConfirm == NOKEY)
 		return;
 	
-	if(InterFace != Address_Set)
+	if((InterFace != Address_Set) || (InterFace != Config_DIS))
 		Config_Enable = 0;
 	
 	if(KeyConfirm == KEYMENU){
@@ -1122,6 +1132,9 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Address_Set){
 
 		__handleAddrValue();
+	} else if(InterFace == Config_DIS){
+
+		__handleOpenOption();
 	}
 	
 	KeyConfirm = NOKEY;

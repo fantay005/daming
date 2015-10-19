@@ -167,6 +167,33 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 	
 	if(Com3IsOK() == 2){
 		Ili9320TaskOrderDis(p, strlen(p) + 1);
+		
+	} else if(Com3IsOK() == 3){
+		if(!Config_Enable)
+				return;
+		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr("1");
+		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			vTaskDelay(waitTime);
+			ConfigComSendStr("SHUNCOM");
+			vTaskDelay(delayTime);
+			ConfigComSendStr("SHUNCOM");
+		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
+			Open_DisPlay = 1;
+			Ili9320TaskClear("C", 1);
+			Config_Enable = 2;                  //配置地址成功，进入收尾阶段
+		} else if((strncasecmp(p, "请选择设置参数:", 15) == 0) && (Config_Enable == 2)){
+			Open_DisPlay = 0;		
+			Config_Enable = 0;                  //配置地址成功，暂停配置
+			vTaskDelay(delayTime);
+			ConfigComSendStr("D");
+		}	
+		
+		if(Open_DisPlay){
+			Ili9320TaskOrderDis(p, strlen(p) + 1);
+		}
+			
 	} else if(Com3IsOK() == 1){
 		if(!Config_Enable)
 				return;
