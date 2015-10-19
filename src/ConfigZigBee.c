@@ -180,11 +180,15 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			vTaskDelay(delayTime);
 			ConfigComSendStr("3");
 		} else if(strncasecmp(p, "½ÚµãµØÖ·:", 9) == 0){
-			sprintf(ConfigMsg.MAC_ADDR, "%4d", ZigBAddr);
-			for(i = 0; i < 4; i++){
-				if(ConfigMsg.MAC_ADDR[i] == ' ')
-					ConfigMsg.MAC_ADDR[i] = '0';
-			}	
+			if(HexSwitchDec){
+				if((ZigBAddr > 0x2000) && (ZigBAddr < 0x3000))
+					ZigBAddr = ZigBAddr - 0x2000;
+				sprintf(ConfigMsg.MAC_ADDR, "%04X", ZigBAddr);
+			} else {
+				if((ZigBAddr > 2000) && (ZigBAddr < 3000))
+					ZigBAddr = ZigBAddr - 2000;
+				sprintf(ConfigMsg.MAC_ADDR, "%04d", ZigBAddr);
+			}
 			vTaskDelay(waitTime);
 			ConfigComSendStr(ConfigMsg.MAC_ADDR);
 			vTaskDelay(delayTime);

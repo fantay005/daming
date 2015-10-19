@@ -37,6 +37,7 @@
 #include "font_dot_array.h"
 #include "zklib.h"
 #include "sdcard.h"
+#include "key.h"
 
 #define ILI_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
 
@@ -46,13 +47,12 @@ static xQueueHandle __Ili9320Queue;
 
 #define BackColor     CYAN
 #define EnLight       WHITE
+#define TestColor     YELLOW
 
 #define LED_DOT_WIDTH 320
 
 
 static unsigned char arrayBuffer[128];
-
-static char Exist32Font;
 
 u16 DeviceCode;
 
@@ -713,7 +713,23 @@ void ili9320_Clear(u16 Color)
    {
      LCD->LCD_RAM=Color;
    }
-	 Exist32Font = 0;
+}
+
+/****************************************************************************
+清除一行数据
+
+*****************************************************************************/
+
+void TFT_ClearLine(u16 row)
+{
+  u32 index = (row - 1) * 320;
+	u32 MaxIndex = index + 320 * 16 - 1;
+  ili9320_SetCursor(index,0); 
+  LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+  for(;index<MaxIndex;index++)
+   {
+     LCD->LCD_RAM=BackColor;
+   }
 }
 
 /****************************************************************************
@@ -825,17 +841,13 @@ void ili9320_SetWindows(u16 StartX,u16 StartY,u16 EndX,u16 EndY)
 
 /******************************************************************************/
 
-void ili9320_Darken(u8 Line, u16 Color)
+void ili9320_Darken(u8 row, u16 Color)
 {
 	u32 index=0;
 	
-	if(Exist32Font){
-		Line = 24 + Line * 18;
-	} else {
-		Line = 14 + (Line - 1) * 18;
-	}
+	row = 14 + (row - 1) * 18;
 	
-  ili9320_SetCursor(Line*320,0); 
+  ili9320_SetCursor(row*320,0); 
   LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
   for(index=0; index<16*320; index++)
   {
@@ -946,6 +958,81 @@ void ili9320_SetLight(char line){
 	 }
   }
 }
+
+
+/****************************************************************************
+点亮一个数字
+
+
+*****************************************************************************/
+
+void ili9320_LightByte(char numb){
+	int i, j, line, row, remain;
+	u16 data;
+	
+	j = (numb - 1) * 8 % 320;         //列数
+	i = (numb * 8 - 1) / 320 * 16;    //行数
+	line = i + 16;                    //最大行数  
+	row  = j + 8;                     //最大列数
+	remain = j;
+	
+	for(; i < line; i++){
+		for(j = remain; j < row; j++){
+			ili9320_SetCursor(j, i);      // 先为列，后为行
+			data = LCD_ReadRAM();
+			if(data != FontColor){
+				ili9320_SetCursor(j, i);
+				LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+				LCD->LCD_RAM = TestColor;
+			}
+		}
+	}
+	
+	if(numb > BaseBit + 1)
+		j = (numb - 2) * 8 % 320;              //列数
+	else
+		j = (MaxBit + BaseBit - 1) * 8 % 320;
+//	j = (numb - 1) * 8 % 320;         //列数
+	i = (numb * 8 - 1) / 320 * 16;    //行数
+	line = i + 16;                    //最大行数  
+	row  = j + 8;                     //最大列数
+	remain = j;
+
+	for(; i < line; i++){
+		for(j = remain; j < row; j++){
+			ili9320_SetCursor(j, i);
+			data = LCD_ReadRAM();
+			if(data != FontColor){
+				ili9320_SetCursor(j, i);                 
+				LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+				LCD->LCD_RAM = BackColor;
+			}
+		}
+	}
+	
+	if(numb < MaxBit + BaseBit)
+		j = numb * 8 % 320;                   //列数
+	else 
+		j = 0;
+//	j = (numb - 1) * 8 % 320;         //列数
+	i = (numb * 8 - 1) / 320 * 16;    //行数
+	line = i + 16;                    //最大行数  
+	row  = j + 8;                     //最大列数
+	remain = j;
+
+	for(; i < line; i++){
+		for(j = remain; j < row; j++){
+			ili9320_SetCursor(j, i);
+			data = LCD_ReadRAM();
+			if(data != FontColor){
+				ili9320_SetCursor(j, i);
+				LCD_WriteRAM_Prepare(); /* Prepare to write GRAM */
+				LCD->LCD_RAM = BackColor;
+			}
+		}
+	}
+}
+
 
 /****************************************************************************
 * 名    称：void ili9320_SetPoint(u16 x,u16 y,u16 point)
@@ -1342,7 +1429,7 @@ bool Ili9320TaskUpAndDown(const char *dat, int len) {
 	return false;
 }
 
-static char Line = 1;                         //当前显示页面显示到的行数
+char Line = 1;                               //当前显示页面显示到的行数
 
 static char LastLine = 1;                     //记录上次显示屏显示到的行数
 static const uint8_t *__displayNewPage = NULL;				 //记录当前页面显示不完的数据指针		
@@ -1366,7 +1453,7 @@ void ili9320_ClearLine(void)
 void __HandleDisplayFrequ(Ili9320TaskMsg *msg){
 	char buf[128];
 	
-	sprintf(buf, "%s%X%s%2X%s%X%s%2X", "频点一：", FrequPoint1, "    网络ID：", NetID1, "\r\n频点二：", FrequPoint2, "    网络ID：", NetID2);
+	sprintf(buf, "第一频点:%02X    网络ID:%02X\r\n第二频点:%02X    网络ID:%02X", FrequPoint1, NetID1,FrequPoint2, NetID2);
 	
 	Lcd_DisplayInput(0, 64, (const unsigned char *)buf);
 }
@@ -1441,8 +1528,15 @@ void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 }
 
 void __HandleCls(Ili9320TaskMsg *msg){
-	BackColorSet();
-	Line = 1;
+	char *p = __Ili9320GetMsgData(msg);
+	
+	if(p[0] == 'C'){
+		BackColorSet();		
+		Line = 1;
+	} else{
+		TFT_ClearLine(p[0] - '0');
+//		Line = p[0] - '0';
+	}
 }
 
 
@@ -1460,7 +1554,7 @@ void __HandleLightLine(Ili9320TaskMsg *msg){
 void __HandleLightByte(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 	
-	ili9320_SetLight(p[0]);
+	ili9320_LightByte(p[0]);
 }
 
 typedef struct {
@@ -1494,7 +1588,7 @@ static void __Ili9320Task(void *parameter) {
 		rc = xQueueReceive(__Ili9320Queue, &message, configTICK_RATE_HZ);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
-			printf("%s", message + 2);
+			printf("%s", (message + 2));
 			for (; map->type != ILI_NULL; ++map) {
 				if (message->type == map->type) {
 					map->handlerFunc(message);
