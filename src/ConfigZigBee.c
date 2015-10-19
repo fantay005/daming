@@ -163,7 +163,6 @@ static char Open_DisPlay = 0;            //打开显示标志位
 
 static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 	char *p = __ConfigGetMsgData(msg);
-	char i;
 	
 	if(Com3IsOK() == 2){
 		Ili9320TaskOrderDis(p, strlen(p) + 1);
@@ -237,17 +236,9 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			ConfigComSendStr("5");
 		} else if(strncasecmp(p, "网络ID:", 7) == 0){
 			if(FrequencyDot == 1){
-				sprintf(ConfigMsg.NET_ID, "%2X", NetID1);
-				for(i = 0; i < 4; i++){
-					if(ConfigMsg.MAC_ADDR[i] == ' ')
-						ConfigMsg.MAC_ADDR[i] = '0';
-				}	
+				sprintf(ConfigMsg.NET_ID, "%02X", NetID1);
 			} else if(FrequencyDot == 2){
-				sprintf(ConfigMsg.NET_ID, "%2X", NetID2);
-				for(i = 0; i < 4; i++){
-					if(ConfigMsg.MAC_ADDR[i] == ' ')
-						ConfigMsg.MAC_ADDR[i] = '0';
-				}	
+				sprintf(ConfigMsg.NET_ID, "%02X", NetID2);
 			}
 			vTaskDelay(waitTime);
 			ConfigComSendStr(ConfigMsg.NET_ID);

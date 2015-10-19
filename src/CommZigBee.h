@@ -1,6 +1,8 @@
 #ifndef __COMMZIGBEE_H__
 #define __COMMZIGBEE_H__
 
+#include "stdbool.h"
+
 typedef struct{
 	char  MAC_ADDR[5];
 	char  NODE_NAME[9];
@@ -29,5 +31,9 @@ typedef struct{
 	unsigned char  TEMP[5];
 	unsigned char  TIME[8];
 }BSN_Data;
+
+extern char HubNode;              //选择中心节点还是配置选项
+
+bool ComxTaskRecieveModifyData(const char *dat, int len);
 
 #endif

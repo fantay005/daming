@@ -10,6 +10,10 @@
 #include "misc.h"
 #include "zklib.h"
 #include "CommZigBee.h"
+#include "sdcard.h"
+#include "key.h"
+#include "ili9320.h"
+#include "norflash.h"
 
 #define COMx         USART2
 #define COMx_IRQn    USART2_IRQn
@@ -18,9 +22,17 @@
 #define Pin_COMx_RX  GPIO_Pin_3
 #define GPIO_COMx    GPIOA
 
+#define Pin_Config   GPIO_Pin_12
+#define GPIO_Config  GPIOB
+
 #define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 
+#define TimOfWait   20
+#define TimOfDelay  100
+
 static xQueueHandle __comxQueue;
+
+static ZigBee_Param CommMsg = {"0000", "SHUNCOM ", "1", "2", "FF", "F", "2", "2", "4", "1", "2", "1"};
 
 static void __CommInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
@@ -46,12 +58,12 @@ static void __CommInitHardware(void) {
 
 	GPIO_InitStructure.GPIO_Pin = Pin_COMx_RX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIO_COMx, &GPIO_InitStructure);				   //ZigBee模块的串口
+	GPIO_Init(GPIO_COMx, &GPIO_InitStructure);				       //ZigBee模块的串口
 
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_12;
+	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);				    //ZigBee模块的配置脚
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				     //ZigBee模块的配置脚
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
@@ -62,6 +74,14 @@ static void __CommInitHardware(void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+
+void StartConfig(void){
+	GPIO_ResetBits(GPIO_Config, Pin_COMx_RX);
+}
+
+void EndConfig(void){
+	GPIO_SetBits(GPIO_Config, Pin_COMx_RX);
+}
 typedef enum{
 	TYPE_RECIEVE_DATA,
 	TYPE_SEND_DATA,
@@ -99,6 +119,11 @@ static void ComxComSendChar(char c) {
 	while (USART_GetFlagStatus(COMx, USART_FLAG_TXE) == RESET);
 }
 
+void ComxComSendStr(char *str){
+	while(*str)
+		ComxComSendChar(*str++);
+}	
+
 bool ComxTaskRecieveModifyData(const char *dat, int len) {
 	ComxTaskMsg *message = __ComxCreateMessage(TYPE_MODIFY_DATA, dat, len);
 	if (pdTRUE != xQueueSend(__comxQueue, &message, configTICK_RATE_HZ * 5)) {
@@ -111,6 +136,7 @@ bool ComxTaskRecieveModifyData(const char *dat, int len) {
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;
+char HubNode = 0;                     //1为中心节点， 2为配置选项
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -119,51 +145,78 @@ void USART2_IRQHandler(void) {
 	if (USART_GetITStatus(COMx, USART_IT_RXNE) == RESET) {
 		return;
 	}
+	
+	if(!HubNode)
+		return;
+	
+	if(HubNode == 2)
+		StartConfig();
 
 	data = USART_ReceiveData(COMx);
 //	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
-
-	if(((data >= '0') && (data <= 'F')) || (data == 0x03)){
-		buffer[bufferIndex++] = data;
-		if(bufferIndex == 9) {
-			if (buffer[7] > '9') {
-				param1 = buffer[7] - '7';
-			} else {
-				param1 = buffer[7] - '0';
-			}
-			
-			if (buffer[8] > '9') {
-				param2 = buffer[8] - '7';
-			} else {
-				param2 = buffer[8] - '0';
-			}
-			
-			LenZIGB = (param1 << 4) + param2;
-		}
-	} else {
-		bufferIndex = 0;
-		LenZIGB = 0;
-	}
 	
-	if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
-		ComxTaskMsg *msg;
-		portBASE_TYPE xHigherPriorityTaskWoken;
-		buffer[bufferIndex++] = 0;
-		msg = __ComxCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
-		if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
-			if (xHigherPriorityTaskWoken) {
-				portYIELD();
+	if(HubNode == 2){
+		if ((data == 0x0A) || (data == 0x3E)){
+			ComxTaskMsg *msg;
+			portBASE_TYPE xHigherPriorityTaskWoken;
+			if(data == 0x3E)
+				buffer[bufferIndex++] = 0x3E;
+			buffer[bufferIndex++] = 0;
+			msg = __ComxCreateMessage(TYPE_MODIFY_DATA, (const char *)buffer, bufferIndex);		
+			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
+				if (xHigherPriorityTaskWoken) {
+					portYIELD();
+				}
 			}
+			bufferIndex = 0;
+		} else if (data != 0x0D) {
+			buffer[bufferIndex++] = data;
+			
+		} 
+	} else if(HubNode == 1){
+
+		if(((data >= '0') && (data <= 'F')) || (data == 0x03)){
+			buffer[bufferIndex++] = data;
+			if(bufferIndex == 9) {
+				if (buffer[7] > '9') {
+					param1 = buffer[7] - '7';
+				} else {
+					param1 = buffer[7] - '0';
+				}
+				
+				if (buffer[8] > '9') {
+					param2 = buffer[8] - '7';
+				} else {
+					param2 = buffer[8] - '0';
+				}
+				
+				LenZIGB = (param1 << 4) + param2;
+			}
+		} else {
+			bufferIndex = 0;
+			LenZIGB = 0;
 		}
-		bufferIndex = 0;
-		LenZIGB = 0;
-	} else if(bufferIndex > (LenZIGB + 12)){
-		bufferIndex = 0;
-		LenZIGB = 0;
-	} else if (data == 0x02){
-		bufferIndex = 0;
-		buffer[bufferIndex++] = data;
+		
+		if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
+			ComxTaskMsg *msg;
+			portBASE_TYPE xHigherPriorityTaskWoken;
+			buffer[bufferIndex++] = 0;
+			msg = __ComxCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
+				if (xHigherPriorityTaskWoken) {
+					portYIELD();
+				}
+			}
+			bufferIndex = 0;
+			LenZIGB = 0;
+		} else if(bufferIndex > (LenZIGB + 12)){
+			bufferIndex = 0;
+			LenZIGB = 0;
+		} else if (data == 0x02){
+			bufferIndex = 0;
+			buffer[bufferIndex++] = data;
+		}
 	}
 }
 
@@ -177,9 +230,137 @@ static void __handleSend(ComxTaskMsg *msg){
 	
 }
 
+char AllParamConf = 0;                               //配置全部参数标志位，1为全部配置，0为部分配置
+
 static void __handleModify(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
+	short buf[6];
 	
+	NorFlashRead(IPO_PARAM_CONFIG_ADDR, buf, 5);
+	if(strncasecmp((const char *)buf, "FIRST", 5) == 0){               //首次配置中心节点要全部参数配置
+		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr("1");
+		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr("SHUNCOM");
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("3");
+		} else if(strncasecmp(p, "节点地址:", 9) == 0){
+
+			sprintf(CommMsg.MAC_ADDR, "%04d", 0);		
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.MAC_ADDR);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("2");
+		} else if(strncasecmp(p, "节点名称:", 9) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.NODE_NAME);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("4");
+		} else if(strncasecmp(p, "节点类型:", 9) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.NODE_TYPE);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("1");
+		} else if(strncasecmp(p, "网络类型:", 9) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.NET_TYPE);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("5");
+		} else if(strncasecmp(p, "网络ID:", 7) == 0){
+			if(FrequencyDot == 1){
+				sprintf(CommMsg.NET_ID, "%02X", NetID1);
+			} else if(FrequencyDot == 2){
+				sprintf(CommMsg.NET_ID, "%02X", NetID2);
+			}
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.NET_ID);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("6");
+		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
+			if(FrequencyDot == 1){
+				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint1);
+			} else if(FrequencyDot == 2){
+				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint2);
+			}				
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.FREQUENCY);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("7");
+		} else if(strncasecmp(p, "地址编码:", 9) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.ADDR_CODE);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("8");
+		} else if(strncasecmp(p, "发送模式:", 9) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.TX_TYPE);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("9");
+		} else if(strncasecmp(p, "波特率:", 7) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.BAUDRATE);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("A");
+		} else if(strncasecmp(p, "校 验:", 6) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.DATA_PARITY);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("B");
+		} else if(strncasecmp(p, "数据位:", 7) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.DATA_BIT);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("F");
+		} else if(strncasecmp(p, "数据源地址:", 11) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.SRC_ADR);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("E");
+		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
+			Ili9320TaskClear("C", 1);
+		} else if(strncasecmp(p, "请选择设置参数:", 15) == 0) {
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("D");
+		}	
+		
+		NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short*)"FIRST", 5);
+	} else {                                          //从第二次开始后可每次只配置频点和网络ID
+		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr("1");
+		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			vTaskDelay(TimOfWait);
+			ComxComSendStr("SHUNCOM");
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("5");
+		} else if(strncasecmp(p, "网络ID:", 7) == 0){
+			if(FrequencyDot == 1){
+				sprintf(CommMsg.NET_ID, "%02X", NetID1);
+			} else if(FrequencyDot == 2){
+				sprintf(CommMsg.NET_ID, "%02X", NetID2);
+			}
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.NET_ID);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("6");
+		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
+			if(FrequencyDot == 1){
+				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint1);
+			} else if(FrequencyDot == 2){
+				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint2);
+			}				
+			vTaskDelay(TimOfWait);
+			ComxComSendStr(CommMsg.FREQUENCY);
+			vTaskDelay(TimOfDelay);
+			ComxComSendStr("D");
+		}
+		
+	}
+	
+	EndConfig();
+	HubNode = 1;                //开始操作镇流器
 }
 
 typedef struct {

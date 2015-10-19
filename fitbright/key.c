@@ -13,6 +13,7 @@
 #include "ConfigZigbee.h"
 #include "sdcard.h"
 #include "math.h"
+#include "CommZigBee.h"
 
 #define KEY_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
@@ -405,6 +406,8 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 				
 			}
 		case 5:
+			HubNode = 2;                  //进入维修界面就 开始配置中心节点
+		
 			switch(param){
 				case 1:
 					return true;
@@ -898,6 +901,10 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 		
 		Ili9320TaskClear("C", 1);
 		ConfigTaskSendData("1\r\n", 4);
+	} else if(InterFace == Address_Choose){
+		
+		Ili9320TaskClear("C", 1);
+		ComxTaskRecieveModifyData("1\r\n", 4);
 	}
 		
 	wave = 1;                                            //页面切换后，显亮第一行
