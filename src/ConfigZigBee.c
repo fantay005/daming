@@ -24,8 +24,8 @@
 
 #define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
-#define waitTime    20
-#define delayTime   100
+#define waitTime    50
+#define delayTime   150
 
 static xQueueHandle __ConfigQueue;
 
@@ -62,7 +62,7 @@ static void __ConfigInitHardware(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				    //ZigBee模块的配置脚
 
-	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = SERx_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
@@ -133,19 +133,22 @@ void USART3_IRQHandler(void) {
 	if (USART_GetITStatus(SERx, USART_IT_RXNE) == RESET) {
 		return;
 	}
-
-	data = USART_ReceiveData(SERx);
-	USART_SendData(USART1, data);
-	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
-
+	
 	if(!Com3IsOK())
 		return;
+	
+	data = USART_ReceiveData(SERx);
+	//USART_SendData(USART1, data);
+	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
+
+	
 	if ((data == 0x0A) || (data == 0x3E)){
 		ConfigTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		if(data == 0x3E)
 			buffer[bufferIndex++] = 0x3E;
 		buffer[bufferIndex++] = 0;
+
 		msg = __ConfigCreateMessage(CONFIG_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
 		if (pdTRUE == xQueueSendFromISR(__ConfigQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
@@ -168,17 +171,22 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 		Ili9320TaskOrderDis(p, strlen(p) + 1);
 		
 	} else if(Com3IsOK() == 3){
+		if(strlen(p) < 4)
+			return;
+		
 		if(!Config_Enable)
 				return;
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(waitTime);
 			ConfigComSendStr("1");
 		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			Line = 2;
+			Ili9320TaskOrderDis("正在读取数据，请稍候... ...", 28);
 			vTaskDelay(waitTime);
 			ConfigComSendStr("SHUNCOM");
 			vTaskDelay(delayTime);
 			ConfigComSendStr("SHUNCOM");
-		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
+		} else if((strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0) || (strncasecmp(p, "Z-BEE CONFIG:", 13) == 0)){
 			Open_DisPlay = 1;
 			Ili9320TaskClear("C", 1);
 			Config_Enable = 2;                  //配置地址成功，进入收尾阶段
@@ -201,6 +209,8 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			vTaskDelay(waitTime);
 			ConfigComSendStr("1");
 		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
+			Line = 2;
+			Ili9320TaskOrderDis("正在配置，请稍候... ...", 24);
 			vTaskDelay(waitTime);
 			ConfigComSendStr("SHUNCOM");
 			vTaskDelay(delayTime);
@@ -284,7 +294,7 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			ConfigComSendStr(ConfigMsg.SRC_ADR);
 			vTaskDelay(delayTime);
 			ConfigComSendStr("E");
-		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
+		} else if((strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0)|| (strncasecmp(p, "Z-BEE CONFIG:", 13) == 0)){
 			Open_DisPlay = 1;
 			Ili9320TaskClear("C", 1);
 			Config_Enable = 2;                  //配置地址成功，进入收尾阶段

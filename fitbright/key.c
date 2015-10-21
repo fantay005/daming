@@ -14,6 +14,7 @@
 #include "sdcard.h"
 #include "math.h"
 #include "CommZigBee.h"
+#include "norflash.h"
 
 #define KEY_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
@@ -323,7 +324,7 @@ static void InputChange(void){                   //ÏÔÊ¾µ±Ç°ÊäÈë·¨
 	else
 		strcpy(tmp, "ABC");
 	
-	if(!HexSwitchDec)
+	if((!HexSwitchDec) && ((InterFace == Address_Set) || (InterFace == Address_Choose)))
 		strcpy(tmp, "   ");
 	Ili9320TaskInputDis(tmp, strlen(tmp) + 1);
 }
@@ -337,6 +338,7 @@ static unsigned char MaxPage = 1; 	 	  //×î´óÒ³Êý
 static unsigned char MaxLine = 1;     	//Ò»Ò³×î´óÐÐÊý£¬¼´×î¶àµÄÑ¡Ïî
 static unsigned char OptDecide = 0; 		//È·¶¨Ñ¡Ïî
 pro Project = Pro_Null;          //³õÊ¼»¯ÏîÄ¿ÎªÎÞ
+unsigned char GateWayID = 0;     //Íø¹ØÐòÁÐºÅ
 unsigned char FrequencyDot = 0;  //³õÊ¼ÆµµãÎªÎÞ
 unsigned int  ZigBAddr = 1;     	//³õÊ¼ZigBeeµØÖ·Öµ
 char Config_Enable = 0;          //ÅäÖÃ¼üÊ¹ÄÜÅäÖÃÄ£¿é¹¦ÄÜ£¬1ÎªÅäÖÃ£¬2Îª
@@ -406,7 +408,6 @@ bool DisStatus(char type, char param){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍ
 				
 			}
 		case 5:
-			HubNode = 2;                  //½øÈëÎ¬ÐÞ½çÃæ¾Í ¿ªÊ¼ÅäÖÃÖÐÐÄ½Úµã
 		
 			switch(param){
 				case 1:
@@ -422,14 +423,16 @@ bool DisStatus(char type, char param){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍ
 						return false;
 					return true;
 				case 4:
-					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
-						return false;
-					return true;
-				case 5:
-					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
-						return false;
 					return true;
 				case 6:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 7:
+					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+						return false;
+					return true;
+				case 8:
 					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
 						return false;
 					return true;
@@ -670,6 +673,29 @@ void __handleAdvanceSet(void){                          //¸ß¼¶ÅäÖÃÀàÐÍÏÂ£¬°´¼ü´¦
   memset(dat, 0, 9);
 } 
 
+void DisplayNodeInfo(void){
+
+	
+}
+
+
+void DisplayProjet(void){
+	char buf[20] = {0};
+
+	if(Project == Pro_Null)
+		return;
+	
+	if(Project == Pro_BinHu){
+		sprintf(buf, "%s", "ºÏ·Ê/±õºþ/");
+	} else if(Project == Pro_ChanYeYuan){
+		sprintf(buf, "%s", "ºÏ·Ê/ÊñÉ½²úÒµÔ°/");
+	} else if(Project == Pro_DaMing){
+		sprintf(buf, "%s", "ºÏ·Ê/´óÃ÷½ÚÄÜ/");
+	}
+	
+	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
+}
+
 void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬ÆµµãµÈ
 	char buf[80], tmp[40], dat[10] = {0}, para[20] = {0};
 	
@@ -782,7 +808,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			
 		} else if(dat == 3){
 			InterFace = Address_Choose;
-			
+			__AddrConfig();
 		} else if(dat == 2){
 			if(NumOfFrequ > 1){
 				InterFace = Frequ_Choose;
@@ -790,6 +816,10 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 				return;
 			
 		} else if(dat == 4){
+			InterFace = Node_Set;
+			Ili9320TaskClear("C", 2);
+			
+		} else if(dat == 6){
 			InterFace = Read_Data;
 			
 		}
@@ -899,12 +929,12 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 	} else if(InterFace == Config_DIS){
 		Config_Enable = 1;
 		
-		Ili9320TaskClear("C", 1);
 		ConfigTaskSendData("1\r\n", 4);
+		Ili9320TaskClear("C", 1);
 	} else if(InterFace == Address_Choose){
 		
-		Ili9320TaskClear("C", 1);
 		ComxTaskRecieveModifyData("1\r\n", 4);
+		Ili9320TaskClear("C", 1);
 	}
 		
 	wave = 1;                                            //Ò³ÃæÇÐ»»ºó£¬ÏÔÁÁµÚÒ»ÐÐ
@@ -917,12 +947,19 @@ void __DisplayWGInformation(void){
 	}
 }
 
+void __DisplayProject(void){
+	if(times%20 == 0){
+		DisplayProjet();
+	}
+}
+
 void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼äÀ´»ØÇÐ»»
 	if(KeyConfirm == KEYINPT){
 		if(IME == 0)
 			IME = 1;
 		else
 			IME = 0;
+
 	}
 	
 	if(times%10 == 0){
@@ -951,10 +988,33 @@ void __handleSwitchInput(void){                       //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼
 	}	
 }
 
+void NodeConfig(void){
+	char tmp[40];
+	
+	sprintf((char *)tmp, "%s", GWname());
+	if(Project == Pro_Null)               //Ã»ÓÐÑ¡ÔñÏîÄ¿
+		return;
+	
+	if(tmp[0] == 0)
+		return;                             //Ã»ÓÐÑ¡ÔñÍø¹Ø
+	
+	if(FrequencyDot == 0)                 //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
+		return;
+	
+	
+}
+
+
 bool HexSwitchDec = 0;                               //16½øÖÆÓë10½øÖÆÇÐ»»£¬ 0Î»10½øÖÆ£¬1Îª16½øÖÆ
+static char Congif_Flag = 0;                         //ÊÇ·ñÔø°´ÏÂÅäÖÃ¼ü
 
 void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êý
-	char buf[8];
+	char buf[36], dat[2];
+	
+	if(Congif_Flag){
+		Ili9320TaskClear("C", 1);
+		Congif_Flag = 0;
+	}
 	
 	if(KeyConfirm == KEYLF){
 		Digits--;
@@ -978,8 +1038,18 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êý
 		}
 		ZigBAddr++;
 	} else if(KeyConfirm == KEYOK){
-		Config_Enable = 1;
-		ConfigTaskSendData("1", 2);
+		if(InterFace == Address_Choose){
+			InterFace = Service_GUI;
+			
+			dat[0] = Main_GUI;
+	    dat[1] = 3;
+	    SDTaskHandleKey((const char *)dat, 2);
+		} else {
+			Congif_Flag = 1;
+			Config_Enable = 1;
+			ConfigTaskSendData("1", 2);
+			Ili9320TaskClear("C", 1);
+		}
 	} else if(KeyConfirm == KEYCONF){
 		if(HexSwitchDec)
 			HexSwitchDec = 0;
@@ -992,7 +1062,7 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êý
 			ZigBAddr &= ~(0xF << ((4 - Digits) * 4));                //°ÑÐèÒª¸Ä±äµÄÎ»ÊýÖÃ0
 			ZigBAddr |= ((KeyConfirm - 1) << ((4 - Digits) * 4));    //ÐÞ¸ÄµØÖ·ÖµÎªÊäÈëµÄ¼üÖµ
 		} else{	
-			ZigBAddr = ZigBAddr / (int)pow(10, (5 - Digits)) * (int)pow(10, (5 - Digits)) + ZigBAddr % (int)pow(10, (4 - Digits)) + (KeyConfirm - 1) * pow(10, (4 - Digits));				
+			ZigBAddr = ZigBAddr / (int)pow(10, (5 - Digits)) * (int)pow(10, (5 - Digits)) + ZigBAddr % (int)pow(10, (4 - Digits)) + (KeyConfirm - 1) * pow(10, (4 - Digits));			
 		}
 		
 		Digits++;
@@ -1003,10 +1073,14 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êý
 	if(HexSwitchDec){
 		if(!(ZigBAddr & 0x0FFF))
 			ZigBAddr |= 0x0001;
+		if(ZigBAddr > 0xFFFF)
+			ZigBAddr = 1;
 		sprintf(buf, "%04X", ZigBAddr);
 	} else {
 		if(!(ZigBAddr % 1000))
 			ZigBAddr += 1;
+		if(ZigBAddr > 9999)
+			ZigBAddr = 1;
 		sprintf(buf, "%04d", ZigBAddr);
 	}
 	buf[4] = 0;
@@ -1035,15 +1109,25 @@ void TIM3_IRQHandler(void){
 	}
 	
 	key_driver(keycode()); 
+	if(InterFace == Main_GUI){
+		__DisplayProject();
+	}
 	
-	if((InterFace != GateWay_Set) && (InterFace != GateWay_Choose) && (InterFace != GateWay_Decide) && (InterFace != Config_Set) && (InterFace != Intro_GUI))
+	if((InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || (InterFace == Service_GUI) || (InterFace == Address_Choose))
 		__DisplayWGInformation();
 	
-	if((InterFace == Config_Set) || (InterFace == Address_Set))
+	if((InterFace == Config_Set) || (InterFace == Address_Set) || (InterFace == Config_Set)|| (InterFace == Address_Choose))
 		__handleSwitchInput();
 	
 	if(KeyConfirm == NOKEY)
 		return;
+	
+	if((InterFace == Service_GUI) && (KeyConfirm == KEYCONF)){
+		HubNode = 2;                                          //½øÈëÎ¬ÐÞ½çÃæ¾Í ¿ªÊ¼ÅäÖÃÖÐÐÄ½Úµã
+		CommxTaskSendData("1", 1);
+	}
+		
+	
 	
 	if((InterFace != Address_Set) || (InterFace != Config_DIS))
 		Config_Enable = 0;
@@ -1142,6 +1226,9 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Config_DIS){
 
 		__handleOpenOption();
+	} else if(InterFace == Address_Choose){
+	
+		__handleAddrValue();
 	}
 	
 	KeyConfirm = NOKEY;

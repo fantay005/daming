@@ -25,7 +25,7 @@
 #define Pin_Config   GPIO_Pin_12
 #define GPIO_Config  GPIOB
 
-#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
 #define TimOfWait   20
 #define TimOfDelay  100
@@ -61,9 +61,11 @@ static void __CommInitHardware(void) {
 	GPIO_Init(GPIO_COMx, &GPIO_InitStructure);				       //ZigBee模块的串口
 
 	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				     //ZigBee模块的配置脚
+	
+	GPIO_SetBits(GPIO_Config, Pin_Config);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
@@ -76,11 +78,13 @@ static void __CommInitHardware(void) {
 
 
 void StartConfig(void){
-	GPIO_ResetBits(GPIO_Config, Pin_COMx_RX);
+	GPIO_SetBits(GPIO_Config, Pin_Config);
+	vTaskDelay(500);
+	GPIO_ResetBits(GPIO_Config, Pin_Config);
 }
 
 void EndConfig(void){
-	GPIO_SetBits(GPIO_Config, Pin_COMx_RX);
+	GPIO_SetBits(GPIO_Config, Pin_Config);
 }
 typedef enum{
 	TYPE_RECIEVE_DATA,
@@ -124,6 +128,15 @@ void ComxComSendStr(char *str){
 		ComxComSendChar(*str++);
 }	
 
+bool CommxTaskSendData(const char *dat, int len) {
+	ComxTaskMsg *message = __ComxCreateMessage(TYPE_SEND_DATA, dat, len);
+	if (pdTRUE != xQueueSend(__comxQueue, &message, configTICK_RATE_HZ * 5)) {
+		__ComxDestroyMessage(message);
+		return true;
+	}
+	return false;
+}
+
 bool ComxTaskRecieveModifyData(const char *dat, int len) {
 	ComxTaskMsg *message = __ComxCreateMessage(TYPE_MODIFY_DATA, dat, len);
 	if (pdTRUE != xQueueSend(__comxQueue, &message, configTICK_RATE_HZ * 5)) {
@@ -136,7 +149,7 @@ bool ComxTaskRecieveModifyData(const char *dat, int len) {
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;
-char HubNode = 0;                     //1为中心节点， 2为配置选项
+char HubNode = 1;                     //1为中心节点， 2为配置选项
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -146,15 +159,12 @@ void USART2_IRQHandler(void) {
 		return;
 	}
 	
-	if(!HubNode)
-		return;
-	
-	if(HubNode == 2)
-		StartConfig();
-
 	data = USART_ReceiveData(COMx);
-//	USART_SendData(USART1, data);
+	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
+	
+	if(HubNode == 0)
+		return;
 	
 	if(HubNode == 2){
 		if ((data == 0x0A) || (data == 0x3E)){
@@ -171,8 +181,9 @@ void USART2_IRQHandler(void) {
 			}
 			bufferIndex = 0;
 		} else if (data != 0x0D) {
-			buffer[bufferIndex++] = data;
-			
+			buffer[bufferIndex++] = data;		
+			if(bufferIndex == 20)
+				bufferIndex++;
 		} 
 	} else if(HubNode == 1){
 
@@ -228,16 +239,20 @@ static void __handleRecieve(ComxTaskMsg *msg){
 static void __handleSend(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
 	
+	if((p[0] == '1') && (strlen(p) == 1)){
+		__CommInitUsart(38400);
+		StartConfig();	
+	}
+	vTaskDelay(TimOfDelay);
+	ComxComSendStr(p);
 }
-
-char AllParamConf = 0;                               //配置全部参数标志位，1为全部配置，0为部分配置
 
 static void __handleModify(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
-	short buf[6];
+	char buf[6];
 	
-	NorFlashRead(IPO_PARAM_CONFIG_ADDR, buf, 5);
-	if(strncasecmp((const char *)buf, "FIRST", 5) == 0){               //首次配置中心节点要全部参数配置
+	NorFlashRead(IPO_PARAM_CONFIG_ADDR, (short *)buf, 5);
+	if(strncasecmp((const char *)buf, "FIRST", 5) != 0){               //首次配置中心节点要全部参数配置
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
@@ -246,13 +261,6 @@ static void __handleModify(ComxTaskMsg *msg){
 			ComxComSendStr("SHUNCOM");
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("3");
-		} else if(strncasecmp(p, "节点地址:", 9) == 0){
-
-			sprintf(CommMsg.MAC_ADDR, "%04d", 0);		
-			vTaskDelay(TimOfWait);
-			ComxComSendStr(CommMsg.MAC_ADDR);
-			vTaskDelay(TimOfDelay);
-			ComxComSendStr("2");
 		} else if(strncasecmp(p, "节点名称:", 9) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.NODE_NAME);
@@ -323,10 +331,13 @@ static void __handleModify(ComxTaskMsg *msg){
 		} else if(strncasecmp(p, "请选择设置参数:", 15) == 0) {
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("D");
+			__CommInitUsart(9600);
 		}	
 		
 		NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short*)"FIRST", 5);
 	} else {                                          //从第二次开始后可每次只配置频点和网络ID
+		Node_Infor msg;
+		
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
@@ -337,8 +348,10 @@ static void __handleModify(ComxTaskMsg *msg){
 			ComxComSendStr("5");
 		} else if(strncasecmp(p, "网络ID:", 7) == 0){
 			if(FrequencyDot == 1){
+				msg.NetIDValue = NetID1;
 				sprintf(CommMsg.NET_ID, "%02X", NetID1);
 			} else if(FrequencyDot == 2){
+				msg.NetIDValue = NetID2;
 				sprintf(CommMsg.NET_ID, "%02X", NetID2);
 			}
 			vTaskDelay(TimOfWait);
@@ -347,15 +360,26 @@ static void __handleModify(ComxTaskMsg *msg){
 			ComxComSendStr("6");
 		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
 			if(FrequencyDot == 1){
+				msg.FrequValue = FrequPoint1;
 				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint1);
 			} else if(FrequencyDot == 2){
+				msg.FrequValue = FrequPoint2;
 				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint2);
 			}				
+			msg.NodePro  = Project;
+			msg.GateWayOrd = GateWayID;
+			msg.MaxFrequDot = NumOfFrequ;
+			msg.FrequPointth = FrequencyDot;
+	
+			NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short *)&msg, sizeof(Node_Infor *));        //配置结束后，把信息储存到FLASH中
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.FREQUENCY);
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("D");
-		}
+			
+			__CommInitUsart(9600);
+		}	
+		
 		
 	}
 	
@@ -380,7 +404,6 @@ static void __comxTask(void *parameter) {
 	ComxTaskMsg *message;
 
 	for (;;) {
-		printf("COMM: loop again\n");
 		rc = xQueueReceive(__comxQueue, &message, configTICK_RATE_HZ * 10);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
@@ -397,8 +420,8 @@ static void __comxTask(void *parameter) {
 
 
 void CommInit(void) {
-	__CommInitUsart(9600);
 	__CommInitHardware();
+	__CommInitUsart(9600);
 	__comxQueue = xQueueCreate(5, sizeof(ComxTaskMsg *));
 	xTaskCreate(__comxTask, (signed portCHAR *) "COM", COMX_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

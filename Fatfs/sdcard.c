@@ -34,6 +34,8 @@
 #include <string.h>
 #include "ili9320.h"
 #include "key.h"
+#include "CommZigBee.h"
+#include "norflash.h"
 
 #define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
 
@@ -3162,6 +3164,7 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
+	SD_HANDLE_OPEN,
 	SD_HANDLE_WG,
 	SD_HANDLE_KEY,
 	SD_NULL,
@@ -3186,6 +3189,15 @@ static SDTaskMsg *__SDCreateMessage(SDTaskMsgType type, const char *dat, unsigne
 
 static inline void *__SDGetMsgData(SDTaskMsg *message) {
 	return &message[1];
+}
+
+bool SDTaskHandleOpen(const char *dat, int len) {
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_OPEN, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
 }
 
 bool SDTaskHandleWGOption(const char *dat, int len) {
@@ -3492,10 +3504,10 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	sprintf(tmp, "0:%s/%d.txt", buf, i);
 	
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	printf("%s.\n", FR_Table[result]);
+//	printf("%s.\n", FR_Table[result]);
 	
 	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);
-	printf("%s.\n", FR_Table[result]);
+//	printf("%s.\n", FR_Table[result]);
 	
 	if (result != FR_OK) {
 		f_close(&fsrc);
@@ -3566,12 +3578,126 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	FrequencyDot = 0;
 }
 
+static char NodeMsg[80] = {0};                         //显示中心节点的内容放这里
+
+void __SDTskHandleOpenFile(SDTaskMsg *message){
+	Node_Infor msg;
+	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+	char buf[20], dat[80], tmp[40], buf1[20], buf2[30], i;
+	char point1, point2, id1, id2, OKpoint, OKid;
+	
+	NorFlashRead(NODE_INFOR_NOW_ADDR, (short *)&msg, sizeof(Node_Infor));
+
+	switch (msg.NodePro){                    //采集项目名称
+		case 1:
+			sprintf(tmp, "%s", "滨湖");
+			sprintf(buf1, "%s", "合肥/滨湖/");
+			break;
+		case 2:
+			sprintf(tmp, "%s", "产业园");
+			sprintf(buf1, "%s", "合肥/蜀山产业园/");
+			break;
+		case 3:
+			sprintf(tmp, "%s", "大明");
+			sprintf(buf1, "%s", "合肥/大明节能/");
+			break;
+		case 0xCD:
+			sprintf(buf, "%s", "自定义设置/频点:%02X/网络ID:%02X", msg.FrequValue, msg.NetIDValue);
+			sprintf(NodeMsg, "%s", buf);
+			return;		
+		default:
+			return;
+	}
+	
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
+	
+	sprintf(dat, "0:%s/%d.txt", tmp, msg.GateWayOrd);
+	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);
+	
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+	f_gets(buf2, 64, &fsrc);
+	
+	for(i = 0; i < 64; i++){                   //采集网关名称
+		if(buf2[i] == 0x0D){
+			buf2[i] = 0;
+			break;
+		}
+	}
+	
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*7s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			point1 = i;
+			break;
+		}	
+	}
+  
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*9s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			id1 = (id1 & 0xF) | (i << 4);
+		}	
+		
+		if(HexToChar[i] == tmp[1]){
+			id1 = (id1 & 0xF0) | i;
+		}	
+	}
+	
+	f_gets(buf, 64, &fsrc);
+	if(strlen(buf) < 4)
+		return;
+	sscanf(buf, "%*7s%s", tmp);
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			point2 = i;
+			break;
+		}	
+	}
+  
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*9s%s", tmp);
+	if(strlen(buf) < 4)
+		return;
+	for(i = 0; i < 16; i++){
+		if(HexToChar[i] == tmp[0]){
+			id2 = (id2 & 0x0F) | (i << 4);
+		}	
+		
+		if(HexToChar[i] == tmp[1]){
+			id2 = (id2 & 0xF0) | (i & 0x0F);
+		}	
+	}
+	
+	if(msg.MaxFrequDot == 1){                 //最大频点数
+		sprintf(dat, "唯一频点:");
+		OKpoint = point1;
+		OKid = id1;
+	} else if((msg.MaxFrequDot == 2) && (msg.FrequPointth == 1)){
+		sprintf(dat, "第一频点:");
+		OKpoint = point1;
+		OKid = id1;
+	} else if((msg.MaxFrequDot == 2) && (msg.FrequPointth == 2)){
+		sprintf(dat, "第二频点:");
+		OKpoint = point2;
+		OKid = id2;
+	}
+	
+	sprintf(buf, "%s%s/%s%02x/网络ID:%02X", buf1, tmp, dat, OKpoint, OKid);
+	sprintf(NodeMsg, "%s", buf);
+}
+
 typedef struct {
 	SDTaskMsgType type;
 	void (*handlerFunc)(SDTaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_HANDLE_OPEN, __SDTskHandleOpenFile },
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
 	{ SD_HANDLE_KEY, __SDHandleKey },
 	{ SD_NULL, NULL },

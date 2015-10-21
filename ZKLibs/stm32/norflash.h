@@ -7,7 +7,8 @@
 #include "fsmc_nor.h"
 
 
-#define IPO_PARAM_CONFIG_ADDR  (0x800000 - 4*1024)    // LAST 4K
+#define IPO_PARAM_CONFIG_ADDR  (0x800000 - 4*1024)    // LAST 4K；存储是否为第一次配置中心节点标志
+#define NODE_INFOR_NOW_ADDR    (0x800000 - 8*1024)    //倒数第二扇区，存储当前配置的中心节点的信息
 
 #define UNICODE_TABLE_ADDR (0x0E0000)
 #define UNICODE_TABLE_END_ADDR (UNICODE_TABLE_ADDR + 0x3B2E)

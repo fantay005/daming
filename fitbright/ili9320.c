@@ -49,19 +49,16 @@ static xQueueHandle __Ili9320Queue;
 #define EnLight       WHITE
 #define TestColor     YELLOW
 
+#define NOdeColor     BLUE            //中心节点信息颜色
+#define DealColor     MAGENTA         //待处理提示信息颜色
+#define InPutColor    RED             //输入法颜色
+
 #define LED_DOT_WIDTH 320
 
 
 static unsigned char arrayBuffer[128];
 
 u16 DeviceCode;
-
-//const char *brief = "  ★合肥大明节能科技股份有限公司是以高强度气体放电（称HID）灯用电子镇流器为主导，集研发、制造、销售为一体的高新技术企业。公司依托相关单位，拥有一支以专业技术和研发人员为主体的优秀团队，推出FITBR系列大功率电子镇流器108种，FITBR产品优良的设计、高可靠性的品质、显著的节能效益得到了国内外专家和客户的认可和接受。本公司\
-//所有的产品都通过了ISO9001：2008以及CE、ROHS认证。大明公司将本着\"精益求精、追求卓越\"的理念，通过不断的科技创新，将\"FITBR\"打造成为国内外知名品牌，推动国家乃至全球绿色照明的持续发展。";
-
-//const char *addr = "地址：合肥市蜀山产业园振兴路6号厂房4楼";
-
-//const char *teleph= "电话：0551-65398793 / 65398791";
 
 /* Private typedef -----------------------------------------------------------*/
 typedef struct
@@ -683,7 +680,17 @@ const unsigned char *Lcd_LineDisplay16(char line, const unsigned char *str){
 
 const unsigned char *Lcd_DisplayInput(int x, int y, const unsigned char *str){
 	
-	return LedDisplayGB2312String(x, y, str, 16, MAGENTA, BackColor);
+	return LedDisplayGB2312String(x, y, str, 16, InPutColor, BackColor);
+}
+
+const unsigned char *Lcd_DisplayDeal(int x, int y, const unsigned char *str){
+	
+	return LedDisplayGB2312String(x, y, str, 16, DealColor, BackColor);
+}
+
+const unsigned char *Lcd_DisplayNode(int x, int y, const unsigned char *str){
+	
+	return LedDisplayGB2312String(x, y, str, 16, NOdeColor, BackColor);
 }
 
 const unsigned char *Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
@@ -1347,7 +1354,7 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return NULL;
 }
 
-bool Ili9320TaskDisFrequDot(const char *dat, int len){
+bool Ili9320TaskDisFrequDot(const char *dat, int len){                               //显示双频点数据信息
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_DISPLAY_FREQU, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1384,7 +1391,7 @@ bool Ili9320TaskLightLine(const char *dat, int len) {                           
 	return false;
 }
 
-bool Ili9320TaskChangeInterface(const char *dat, int len) {                         //高级设置中，上下页切换                         
+bool Ili9320TaskChangeInterface(const char *dat, int len) {                                              
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_CHANGE_INTERFACE, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1411,7 +1418,7 @@ bool Ili9320TaskOrderDis(const char *dat, int len) {                            
 	return false;
 }
 
-bool Ili9320TaskClear(const char *dat, int len) {
+bool Ili9320TaskClear(const char *dat, int len) {                                 //	清屏
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_CLEAR_SCREEN, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1420,7 +1427,7 @@ bool Ili9320TaskClear(const char *dat, int len) {
 	return false;
 }
 
-bool Ili9320TaskUpAndDown(const char *dat, int len) {
+bool Ili9320TaskUpAndDown(const char *dat, int len) {                              //高级设置中，上下页切换    
 	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_UPANDDOWN_PAGE, dat, len);
 	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -1455,7 +1462,7 @@ void __HandleDisplayFrequ(Ili9320TaskMsg *msg){
 	
 	sprintf(buf, "第一频点:%02X    网络ID:%02X\r\n第二频点:%02X    网络ID:%02X", FrequPoint1, NetID1,FrequPoint2, NetID2);
 	
-	Lcd_DisplayInput(0, 64, (const unsigned char *)buf);
+	Lcd_DisplayDeal(0, 64, (const unsigned char *)buf);
 }
 
 void __HandleInput(Ili9320TaskMsg *msg){
@@ -1465,7 +1472,7 @@ void __HandleInput(Ili9320TaskMsg *msg){
 
 void __HandleDisChoice(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
-	Lcd_DisplayInput(0, 208, (const unsigned char *)p);
+	Lcd_DisplayDeal(0, 208, (const unsigned char *)p);
 }
 
 void __HandleUpAndDown(Ili9320TaskMsg *msg){
@@ -1535,7 +1542,7 @@ void __HandleCls(Ili9320TaskMsg *msg){
 		Line = 1;
 	} else{
 		TFT_ClearLine(p[0] - '0');
-//		Line = p[0] - '0';
+		Line = p[0] - '0' + 1;
 	}
 }
 

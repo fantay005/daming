@@ -72,6 +72,7 @@ extern void ZigbeeConfigDisplay(void);
 extern void ConfigInit(void);
 extern void KeyInit(void);
 extern void SDTest(void);
+extern void CommInit(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -80,9 +81,10 @@ int main(void) {
 	NorFlashInit();
 	Ili9320Init();
 	SDInit();
-	ConfigInit();
+	//ConfigInit();
 	KeyInit();
 
+	CommInit();
 	printf("\n=============================================\n");
 	printf("%s", Version());
 	printf("\n=============================================\n");

@@ -106,6 +106,8 @@ typedef enum{
 	Frequ_Choose,    		//维修模式下，频点选择
 	Frequ_Option,    		//测试模式下，频点选择
 	
+	Node_Set = 23,      //自定义设置中心节点，维修模式下
+	
 //	WG_List_Set,     //网关目录
 //	WG_List_Repair,
 //	WG_List_Test,
@@ -120,6 +122,7 @@ typedef enum{
 }pro;
 
 extern pro Project;                 //初始化项目为无
+extern unsigned char GateWayID;     //网关序列号
 extern unsigned char FrequencyDot;  //初始频点为无
 extern unsigned int  ZigBAddr ;     //初始ZigBee地址值
 extern char Config_Enable;          //配置键使能配置模块功能
