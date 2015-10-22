@@ -3248,8 +3248,9 @@ static void __OpenMainGUI(char *dat, char *msg){
 	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);	
 
 	if(!result){
-		Ili9320TaskClear("C", 1);
+		Ili9320TaskClear("C", 2);
 	}else{
+		
 		return;
 	}
 	
@@ -3414,7 +3415,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 					tmp[0] = 0;                            //不用打开文件
 				break;
 			case 4:
-				Ili9320TaskClear("C", 1);
+				Ili9320TaskClear("C", 2);
 				tmp[0] = 0;                              //不用打开文件
 				break;
 			default:
@@ -3463,6 +3464,8 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 	
 	if (result != FR_OK) {
 		NumOfOpt = 1;
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
 		return tmp;
 	}	
 	
@@ -3473,6 +3476,9 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 			break;
 		}	
 	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
 	
 	return tmp;
 }
@@ -3574,6 +3580,9 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		}	
 	}
 	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+	
 	NumOfFrequ = 2;
 	FrequencyDot = 0;
 }
@@ -3649,8 +3658,11 @@ void __SDTskHandleOpenFile(SDTaskMsg *message){
 	}
 	
 	f_gets(buf, 64, &fsrc);
-	if(strlen(buf) < 4)
+	if(strlen(buf) < 4){
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
 		return;
+	}
 	sscanf(buf, "%*7s%s", tmp);
 	for(i = 0; i < 16; i++){
 		if(HexToChar[i] == tmp[0]){
@@ -3661,8 +3673,11 @@ void __SDTskHandleOpenFile(SDTaskMsg *message){
   
 	f_gets(buf, 64, &fsrc);
 	sscanf(buf, "%*9s%s", tmp);
-	if(strlen(buf) < 4)
+	if(strlen(buf) < 4){
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
 		return;
+	}
 	for(i = 0; i < 16; i++){
 		if(HexToChar[i] == tmp[0]){
 			id2 = (id2 & 0x0F) | (i << 4);
@@ -3686,6 +3701,9 @@ void __SDTskHandleOpenFile(SDTaskMsg *message){
 		OKpoint = point2;
 		OKid = id2;
 	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
 	
 	sprintf(buf, "%s%s/%s%02x/网络ID:%02X", buf1, tmp, dat, OKpoint, OKid);
 	sprintf(NodeMsg, "%s", buf);

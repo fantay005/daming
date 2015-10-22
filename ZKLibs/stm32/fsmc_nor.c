@@ -93,7 +93,7 @@ void FSMC_NOR_Init(void) {
 	/* Enable FSMC Bank1_NOR Bank */
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);
 	
-//	FSMC_NOR_Reset();
+	FSMC_NOR_Reset();
 	
 	FSMC_NOR_ReadID(&t);
 	printf("%x\r\n", t.Manufacturer_Code);

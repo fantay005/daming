@@ -739,7 +739,7 @@ void __AddrConfig(void){                     //设置ZigBee地址界面显示
 		sprintf(buf, "\r\n%04X", ZigBAddr);
 	else
 		sprintf(buf, "\r\n%04d", ZigBAddr);
-	Ili9320TaskClear("C", 1);
+	Ili9320TaskClear("C", 2);
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	
 	buf[0] = Digits + BaseBit;
@@ -930,11 +930,11 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 		Config_Enable = 1;
 		
 		ConfigTaskSendData("1\r\n", 4);
-		Ili9320TaskClear("C", 1);
+		Ili9320TaskClear("C", 2);
 	} else if(InterFace == Address_Choose){
 		
 		ComxTaskRecieveModifyData("1\r\n", 4);
-		Ili9320TaskClear("C", 1);
+		Ili9320TaskClear("C", 2);
 	}
 		
 	wave = 1;                                            //页面切换后，显亮第一行
@@ -1012,7 +1012,7 @@ void __handleAddrValue(void){	                            //配置ZigBee地址函数
 	char buf[36], dat[2];
 	
 	if(Congif_Flag){
-		Ili9320TaskClear("C", 1);
+		Ili9320TaskClear("C", 2);
 		Congif_Flag = 0;
 	}
 	
@@ -1048,7 +1048,7 @@ void __handleAddrValue(void){	                            //配置ZigBee地址函数
 			Congif_Flag = 1;
 			Config_Enable = 1;
 			ConfigTaskSendData("1", 2);
-			Ili9320TaskClear("C", 1);
+			Ili9320TaskClear("C", 2);
 		}
 	} else if(KeyConfirm == KEYCONF){
 		if(HexSwitchDec)
@@ -1088,7 +1088,7 @@ void __handleAddrValue(void){	                            //配置ZigBee地址函数
 	Line = 2;
 	
 	if(lastData != ZigBAddr){
-		Ili9320TaskClear("1", 1);
+		Ili9320TaskClear("1", 2);
 		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	}
 	
@@ -1124,11 +1124,10 @@ void TIM3_IRQHandler(void){
 	
 	if((InterFace == Service_GUI) && (KeyConfirm == KEYCONF)){
 		HubNode = 2;                                          //进入维修界面就 开始配置中心节点
-		CommxTaskSendData("1", 1);
+		CommxTaskSendData("1", 2);
 	}
 		
-	
-	
+		
 	if((InterFace != Address_Set) || (InterFace != Config_DIS))
 		Config_Enable = 0;
 	

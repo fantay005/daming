@@ -188,7 +188,7 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			ConfigComSendStr("SHUNCOM");
 		} else if((strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0) || (strncasecmp(p, "Z-BEE CONFIG:", 13) == 0)){
 			Open_DisPlay = 1;
-			Ili9320TaskClear("C", 1);
+			Ili9320TaskClear("C", 2);
 			Config_Enable = 2;                  //配置地址成功，进入收尾阶段
 		} else if((strncasecmp(p, "请选择设置参数:", 15) == 0) && (Config_Enable == 2)){
 			Open_DisPlay = 0;		
@@ -296,7 +296,7 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			ConfigComSendStr("E");
 		} else if((strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0)|| (strncasecmp(p, "Z-BEE CONFIG:", 13) == 0)){
 			Open_DisPlay = 1;
-			Ili9320TaskClear("C", 1);
+			Ili9320TaskClear("C", 2);
 			Config_Enable = 2;                  //配置地址成功，进入收尾阶段
 		} else if((strncasecmp(p, "请选择设置参数:", 15) == 0) && (Config_Enable == 2)){
 			Open_DisPlay = 0;		

@@ -78,13 +78,22 @@ static void __CommInitHardware(void) {
 
 
 void StartConfig(void){
-	GPIO_SetBits(GPIO_Config, Pin_Config);
-	vTaskDelay(500);
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);	
+	
 	GPIO_ResetBits(GPIO_Config, Pin_Config);
 }
 
 void EndConfig(void){
-	GPIO_SetBits(GPIO_Config, Pin_Config);
+	GPIO_InitTypeDef GPIO_InitStructure;
+	//GPIO_SetBits(GPIO_Config, Pin_Config);
+	GPIO_InitStructure.GPIO_Pin = Pin_Config;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				       //ZigBee模块的串口
 }
 typedef enum{
 	TYPE_RECIEVE_DATA,
@@ -182,8 +191,6 @@ void USART2_IRQHandler(void) {
 			bufferIndex = 0;
 		} else if (data != 0x0D) {
 			buffer[bufferIndex++] = data;		
-			if(bufferIndex == 20)
-				bufferIndex++;
 		} 
 	} else if(HubNode == 1){
 
@@ -252,7 +259,7 @@ static void __handleModify(ComxTaskMsg *msg){
 	char buf[6];
 	
 	NorFlashRead(IPO_PARAM_CONFIG_ADDR, (short *)buf, 5);
-	if(strncasecmp((const char *)buf, "FIRST", 5) != 0){               //首次配置中心节点要全部参数配置
+	if(strncasecmp((const char *)buf, "FIRST", 5) == 0){                  //首次配置中心节点要全部参数配置
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
@@ -270,7 +277,7 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.NODE_TYPE);
 			vTaskDelay(TimOfDelay);
-			ComxComSendStr("1");
+			ComxComSendStr("2");
 		} else if(strncasecmp(p, "网络类型:", 9) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.NET_TYPE);
@@ -327,14 +334,18 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("E");
 		} else if(strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0){
-			Ili9320TaskClear("C", 1);
-		} else if(strncasecmp(p, "请选择设置参数:", 15) == 0) {
+			vTaskDelay(TimOfDelay);
+			EndConfig();
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("D");
+			vTaskDelay(TimOfDelay * 5);
 			__CommInitUsart(9600);
+			HubNode = 1;                //开始操作镇流器
+			
+			NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short*)"FIRST", 5);
 		}	
 		
-		NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short*)"FIRST", 5);
+		
 	} else {                                          //从第二次开始后可每次只配置频点和网络ID
 		Node_Infor msg;
 		
@@ -378,13 +389,13 @@ static void __handleModify(ComxTaskMsg *msg){
 			ComxComSendStr("D");
 			
 			__CommInitUsart(9600);
+			HubNode = 1;                //开始操作镇流器
+			EndConfig();
 		}	
 		
 		
 	}
 	
-	EndConfig();
-	HubNode = 1;                //开始操作镇流器
 }
 
 typedef struct {
