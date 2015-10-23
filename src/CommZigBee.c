@@ -1,6 +1,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "stdlib.h"
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
@@ -25,12 +26,14 @@
 #define Pin_Config   GPIO_Pin_12
 #define GPIO_Config  GPIOB
 
-#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
+#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 
 #define TimOfWait   20
 #define TimOfDelay  100
 
 static xQueueHandle __comxQueue;
+
+extern char NodeAble;
 
 static ZigBee_Param CommMsg = {"0000", "SHUNCOM ", "1", "2", "FF", "F", "2", "2", "4", "1", "2", "1"};
 
@@ -78,22 +81,18 @@ static void __CommInitHardware(void) {
 
 
 void StartConfig(void){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	
-	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_Config, &GPIO_InitStructure);	
-	
+//	GPIO_InitTypeDef GPIO_InitStructure;
+//	
+//	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
+//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+//	GPIO_Init(GPIO_Config, &GPIO_InitStructure);	
+//	
 	GPIO_ResetBits(GPIO_Config, Pin_Config);
 }
 
 void EndConfig(void){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	//GPIO_SetBits(GPIO_Config, Pin_Config);
-	GPIO_InitStructure.GPIO_Pin = Pin_Config;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				       //ZigBee模块的串口
+	GPIO_SetBits(GPIO_Config, Pin_Config);
 }
 typedef enum{
 	TYPE_RECIEVE_DATA,
@@ -135,9 +134,16 @@ static void ComxComSendChar(char c) {
 void ComxComSendStr(char *str){
 	while(*str)
 		ComxComSendChar(*str++);
+}
+
+void ComxComSendLenth(char *str, unsigned char len){
+	unsigned char i;
+	
+	for(i = 0; i < len; i++)
+		ComxComSendChar(*str++);
 }	
 
-bool CommxTaskSendData(const char *dat, int len) {
+bool CommxTaskSendData(const char *dat, unsigned char len) {
 	ComxTaskMsg *message = __ComxCreateMessage(TYPE_SEND_DATA, dat, len);
 	if (pdTRUE != xQueueSend(__comxQueue, &message, configTICK_RATE_HZ * 5)) {
 		__ComxDestroyMessage(message);
@@ -158,7 +164,7 @@ bool ComxTaskRecieveModifyData(const char *dat, int len) {
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;
-char HubNode = 1;                     //1为中心节点， 2为配置选项
+char HubNode = 0;                     //1为中心节点， 2为配置选项
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -238,31 +244,28 @@ void USART2_IRQHandler(void) {
 	}
 }
 
-static void __handleRecieve(ComxTaskMsg *msg){
-	char *p = __ComxGetMsgData(msg);
-	
-}
 
 static void __handleSend(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
+	unsigned char len = msg->length;
 	
 	if((p[0] == '1') && (strlen(p) == 1)){
 		__CommInitUsart(38400);
 		StartConfig();	
 	}
 	vTaskDelay(TimOfDelay);
-	ComxComSendStr(p);
+	ComxComSendLenth(p, len);
 }
 
 static void __handleModify(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
-	char buf[6];
 	
-	NorFlashRead(IPO_PARAM_CONFIG_ADDR, (short *)buf, 5);
-	if(strncasecmp((const char *)buf, "FIRST", 5) == 0){                  //首次配置中心节点要全部参数配置
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
+			
+			Line = 11;
+			Ili9320TaskOrderDis("正在配置，请稍候... ...", 26);
 		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("SHUNCOM");
@@ -274,7 +277,7 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("4");
 		} else if(strncasecmp(p, "节点类型:", 9) == 0){
-			vTaskDelay(TimOfWait);
+			vTaskDelay(TimOfWait); 
 			ComxComSendStr(CommMsg.NODE_TYPE);
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("2");
@@ -338,64 +341,127 @@ static void __handleModify(ComxTaskMsg *msg){
 			EndConfig();
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("D");
-			vTaskDelay(TimOfDelay * 5);
+			vTaskDelay(TimOfDelay * 3);
 			__CommInitUsart(9600);
 			HubNode = 1;                //开始操作镇流器
 			
-			NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short*)"FIRST", 5);
+			Line = 11;
+			Ili9320TaskOrderDis("配置成功！", 11);
+			NodeAble = 1;
 		}	
-		
-		
-	} else {                                          //从第二次开始后可每次只配置频点和网络ID
-		Node_Infor msg;
-		
-		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
-			vTaskDelay(TimOfWait);
-			ComxComSendStr("1");
-		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
-			vTaskDelay(TimOfWait);
-			ComxComSendStr("SHUNCOM");
-			vTaskDelay(TimOfDelay);
-			ComxComSendStr("5");
-		} else if(strncasecmp(p, "网络ID:", 7) == 0){
-			if(FrequencyDot == 1){
-				msg.NetIDValue = NetID1;
-				sprintf(CommMsg.NET_ID, "%02X", NetID1);
-			} else if(FrequencyDot == 2){
-				msg.NetIDValue = NetID2;
-				sprintf(CommMsg.NET_ID, "%02X", NetID2);
-			}
-			vTaskDelay(TimOfWait);
-			ComxComSendStr(CommMsg.NET_ID);
-			vTaskDelay(TimOfDelay);
-			ComxComSendStr("6");
-		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
-			if(FrequencyDot == 1){
-				msg.FrequValue = FrequPoint1;
-				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint1);
-			} else if(FrequencyDot == 2){
-				msg.FrequValue = FrequPoint2;
-				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint2);
-			}				
-			msg.NodePro  = Project;
-			msg.GateWayOrd = GateWayID;
-			msg.MaxFrequDot = NumOfFrequ;
-			msg.FrequPointth = FrequencyDot;
+}
+
+static void __handleRecieve(ComxTaskMsg *msg){
+	char *p = __ComxGetMsgData(msg);
+	char addr[5], status[3], dim[3], inVol[5], inCur[5], inPow[5], lightVol[5], PFCVol[5], temp[4], time[7], tmp[20], buf[40];
+	int i;
 	
-			NorFlashWrite(IPO_PARAM_CONFIG_ADDR, (const short *)&msg, sizeof(Node_Infor *));        //配置结束后，把信息储存到FLASH中
-			vTaskDelay(TimOfWait);
-			ComxComSendStr(CommMsg.FREQUENCY);
-			vTaskDelay(TimOfDelay);
-			ComxComSendStr("D");
-			
-			__CommInitUsart(9600);
-			HubNode = 1;                //开始操作镇流器
-			EndConfig();
-		}	
-		
-		
+	if(!StartRead)                                           //判断是否发出读取镇流器数据指令
+		return;
+	
+	if(strlen(p) != 76)                                      //判断是否为读取的镇流器数据帧
+		return;
+	
+	sscanf(p, "%*1s%4s", addr);
+	
+	if(HexSwitchDec){                                        //判断地址是否一致,
+	 if(strtol((const char *)addr, NULL, 16) != ZigBAddr)
+			return;
+  } else {
+		if(atoi((const char *)addr) != ZigBAddr)
+			return;
 	}
 	
+	Ili9320TaskClear("C", 2);
+	
+	sprintf(buf, "ZigB地址:  %s", addr);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*11s%2s", status);
+	
+	switch(strtol((const char *)status, NULL, 16)){
+		case 0:
+			sprintf(tmp, "从运行");
+			break;
+		case 1:
+			sprintf(tmp, "关闭(软)");
+			break;
+		case 2:
+			sprintf(tmp, "主运行(满功率)");
+			break;
+		case 5:
+			sprintf(tmp, "主运行(非满功率)");
+			break;
+		case 0x11:
+			sprintf(tmp, "启动失败");
+			break;
+		case 0x12:
+			sprintf(tmp, "输入过压");
+			break;
+		case 0x13:
+			sprintf(tmp, "输入欠压");
+			break;
+		case 0x14:
+			sprintf(tmp, "温度异常");
+			break;
+		case 0x15:
+			sprintf(tmp, "功率过高");
+			break;
+		case 0x16:
+			sprintf(tmp, "输出短路");
+			break;
+		case 0x17:
+			sprintf(tmp, "灯管寿终");
+			break;
+		default:
+			tmp[0] = 0;
+			break;			
+	}
+	
+	sprintf(buf, "运行状态:  %s", tmp);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*9s%2s", dim);
+	i = strtol((const char *)addr, NULL, 16);
+	sprintf(buf, "调光值  :    %3d%%", i);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*13s%4s", inVol);
+	i = atoi((const char *)inVol);
+	sprintf(buf, "输入电压:  %3d.%dV", i/10, i%10);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*17s%4s", inCur);
+	i = atoi((const char *)inCur);
+	sprintf(buf, "输入电流:  %2d.%2dA", i/100, i%100);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*21s%4s", inPow);
+	i = atoi((const char *)inPow);
+	sprintf(buf, "输入功率:  %5dW", i);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*25s%4s", lightVol);
+	i = atoi((const char *)lightVol);
+	sprintf(buf, "灯管电压:  %3d.%dV", i/10, i%10);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*29s%4s", PFCVol);
+	i = atoi((const char *)PFCVol);
+	sprintf(buf, "PFC电压 :  %3d.%dV", i/10, i%10);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*33s%2s", temp);
+	i = strtol((const char *)temp, NULL, 16);
+	sprintf(buf, "BSN 温度:  %5d℃", i & 0x7F);
+//	buf[strlen(buf) - 2] = 0xA1; 
+//	buf[strlen(buf) - 1] = 0xE6;  
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	sscanf(p, "%*37s%6s", time);
+	i = strtol((const char *)time, NULL, 16);
+	sprintf(buf, "运行时间:  %d小时%02d分钟", i/60, i%60);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 }
 
 typedef struct {
@@ -415,7 +481,7 @@ static void __comxTask(void *parameter) {
 	ComxTaskMsg *message;
 
 	for (;;) {
-		rc = xQueueReceive(__comxQueue, &message, configTICK_RATE_HZ * 10);
+		rc = xQueueReceive(__comxQueue, &message, configTICK_RATE_HZ * 2);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -433,7 +499,7 @@ static void __comxTask(void *parameter) {
 void CommInit(void) {
 	__CommInitHardware();
 	__CommInitUsart(9600);
-	__comxQueue = xQueueCreate(5, sizeof(ComxTaskMsg *));
+	__comxQueue = xQueueCreate(10, sizeof(ComxTaskMsg *));
 	xTaskCreate(__comxTask, (signed portCHAR *) "COM", COMX_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

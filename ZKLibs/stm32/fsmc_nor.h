@@ -16,7 +16,7 @@
 #ifndef __FSMC_NOR_H
 #define __FSMC_NOR_H
 
-#define Bank1_NOR2_ADDR       ((long)0x6400ff000000)
+#define Bank1_NOR2_ADDR       ((long)0x64000000)
 
 /* Includes ------------------------------------------------------------------*/
 

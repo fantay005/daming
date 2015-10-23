@@ -22,7 +22,7 @@
 #define Pin_SERx_RX  GPIO_Pin_11
 #define GPIO_SERx    GPIOB
 
-#define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
+#define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 
 #define waitTime    50
 #define delayTime   150
@@ -134,13 +134,12 @@ void USART3_IRQHandler(void) {
 		return;
 	}
 	
-	if(!Com3IsOK())
-		return;
-	
 	data = USART_ReceiveData(SERx);
 	//USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
-
+	
+	if(!Com3IsOK())
+		return;
 	
 	if ((data == 0x0A) || (data == 0x3E)){
 		ConfigTaskMsg *msg;
@@ -355,7 +354,7 @@ static void __ConfigTask(void *parameter) {
 void ConfigInit(void) {
 	__ConfigInitHardware();
 	__ConfigInitUsart(38400);
-	__ConfigQueue = xQueueCreate(30, sizeof(ConfigTaskMsg *));
-	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	__ConfigQueue = xQueueCreate(10, sizeof(ConfigTaskMsg *));
+	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
 

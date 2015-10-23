@@ -81,7 +81,7 @@ int main(void) {
 	NorFlashInit();
 	Ili9320Init();
 	SDInit();
-	//ConfigInit();
+	ConfigInit();
 	KeyInit();
 
 	CommInit();

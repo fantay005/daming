@@ -30,17 +30,11 @@ typedef struct{
 	unsigned char  TIME[8];
 }BSN_Data;
 
-typedef struct{
-	unsigned char NodePro;             //当前中心节点所属项目
-	unsigned char GateWayOrd;          //当前网关在项目中的编号
-	unsigned char MaxFrequDot;         //当前网关最大的频点数
-	unsigned char FrequPointth;        //第几频点
-	unsigned char FrequValue;          //频点值
-	unsigned char NetIDValue;          //网络ID值
-}Node_Infor;
+
 
 extern char HubNode;              //选择中心节点还是配置选项
 
-bool CommxTaskSendData(const char *dat, int len);
+bool ComxTaskRecieveModifyData(const char *dat, int len);
+bool CommxTaskSendData(const char *dat, unsigned char len);
 
 #endif

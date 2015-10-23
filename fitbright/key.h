@@ -128,8 +128,9 @@ extern unsigned int  ZigBAddr ;     //初始ZigBee地址值
 extern char Config_Enable;          //配置键使能配置模块功能
 extern char Digits;                 //点亮、修改地址的位数
 extern char MaxBit;                 //最大位数
-extern char BaseBit;           //初始数字的 起始位
-extern bool HexSwitchDec;      //十六进制与十进制切换
+extern char BaseBit;                //初始数字的 起始位
+extern bool HexSwitchDec;           //十六进制与十进制切换
+extern char StartRead;              //开始读取镇流器数据
 
 void key_init(void);
 void KEY(void);

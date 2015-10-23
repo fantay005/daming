@@ -27,7 +27,6 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
-#include "semphr.h"
 #include "ff.h"
 #include "misc.h"
 #include "zklib.h"
@@ -35,7 +34,7 @@
 #include "ili9320.h"
 #include "key.h"
 #include "CommZigBee.h"
-#include "norflash.h"
+
 
 #define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
 
@@ -3007,29 +3006,29 @@ static void DMA_RxConfiguration(uint32_t *BufferDST, uint32_t BufferSize)
 
 /*********** (C) COPYRIGHT 2009 STMicroelectronics *****END OF *******/
 
-static const char *FR_Table[]= 
-{
-    "FR_OK：成功",                                      /* (0) Succeeded */
-    "FR_DISK_ERR：底层硬件错误",                      /* (1) A hard error occurred in the low level disk I/O layer */
-    "FR_INT_ERR：断言失败",                              /* (2) Assertion failed */
-    "FR_NOT_READY：物理驱动没有工作",                  /* (3) The physical drive cannot work */
-    "FR_NO_FILE：文件不存在",                          /* (4) Could not find the file */
-    "FR_NO_PATH：路径不存在",                          /* (5) Could not find the path */
-    "FR_INVALID_NAME：无效文件名",                      /* (6) The path name format is invalid */
-    "FR_DENIED：由于禁止访问或者目录已满访问被拒绝",  /* (7) Access denied due to prohibited access or directory full */
-    "FR_EXIST：由于访问被禁止访问被拒绝",              /* (8) Access denied due to prohibited access */
-    "FR_INVALID_OBJECT：文件或者目录对象无效",          /* (9) The file/directory object is invalid */
-    "FR_WRITE_PROTECTED：物理驱动被写保护",              /* (10) The physical drive is write protected */
-    "FR_INVALID_DRIVE：逻辑驱动号无效",                  /* (11) The logical drive number is invalid */
-    "FR_NOT_ENABLED：卷中无工作区",                      /* (12) The volume has no work area */
-    "FR_NO_FILESYSTEM：没有有效的FAT卷",              /* (13) There is no valid FAT volume */
-    "FR_MKFS_ABORTED：由于参数错误f_mkfs()被终止",             /* (14) The f_mkfs() aborted due to any parameter error */
-    "FR_TIMEOUT：在规定的时间内无法获得访问卷的许可",         /* (15) Could not get a grant to access the volume within defined period */
-    "FR_LOCKED：由于文件共享策略操作被拒绝",                 /* (16) The operation is rejected according to the file sharing policy */
-    "FR_NOT_ENOUGH_CORE：无法分配长文件名工作区",             /* (17) LFN working buffer could not be allocated */
-    "FR_TOO_MANY_OPEN_FILES：当前打开的文件数大于_FS_SHARE", /* (18) Number of open files > _FS_SHARE */
-    "FR_INVALID_PARAMETER：参数无效"                         /* (19) Given parameter is invalid */
-};
+//static const char *FR_Table[]= 
+//{
+//    "FR_OK：成功",                                      /* (0) Succeeded */
+//    "FR_DISK_ERR：底层硬件错误",                      /* (1) A hard error occurred in the low level disk I/O layer */
+//    "FR_INT_ERR：断言失败",                              /* (2) Assertion failed */
+//    "FR_NOT_READY：物理驱动没有工作",                  /* (3) The physical drive cannot work */
+//    "FR_NO_FILE：文件不存在",                          /* (4) Could not find the file */
+//    "FR_NO_PATH：路径不存在",                          /* (5) Could not find the path */
+//    "FR_INVALID_NAME：无效文件名",                      /* (6) The path name format is invalid */
+//    "FR_DENIED：由于禁止访问或者目录已满访问被拒绝",  /* (7) Access denied due to prohibited access or directory full */
+//    "FR_EXIST：由于访问被禁止访问被拒绝",              /* (8) Access denied due to prohibited access */
+//    "FR_INVALID_OBJECT：文件或者目录对象无效",          /* (9) The file/directory object is invalid */
+//    "FR_WRITE_PROTECTED：物理驱动被写保护",              /* (10) The physical drive is write protected */
+//    "FR_INVALID_DRIVE：逻辑驱动号无效",                  /* (11) The logical drive number is invalid */
+//    "FR_NOT_ENABLED：卷中无工作区",                      /* (12) The volume has no work area */
+//    "FR_NO_FILESYSTEM：没有有效的FAT卷",              /* (13) There is no valid FAT volume */
+//    "FR_MKFS_ABORTED：由于参数错误f_mkfs()被终止",             /* (14) The f_mkfs() aborted due to any parameter error */
+//    "FR_TIMEOUT：在规定的时间内无法获得访问卷的许可",         /* (15) Could not get a grant to access the volume within defined period */
+//    "FR_LOCKED：由于文件共享策略操作被拒绝",                 /* (16) The operation is rejected according to the file sharing policy */
+//    "FR_NOT_ENOUGH_CORE：无法分配长文件名工作区",             /* (17) LFN working buffer could not be allocated */
+//    "FR_TOO_MANY_OPEN_FILES：当前打开的文件数大于_FS_SHARE", /* (18) Number of open files > _FS_SHARE */
+//    "FR_INVALID_PARAMETER：参数无效"                         /* (19) Given parameter is invalid */
+//};
 
 
 void  NVIC_Config (void) {
@@ -3463,7 +3462,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);	
 	
 	if (result != FR_OK) {
-		NumOfOpt = 1;
+
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);	
 		return tmp;
@@ -3483,11 +3482,13 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 	return tmp;
 }
 
+
 static void __SDHandleKey(SDTaskMsg *message){
 	char *p = __SDGetMsgData(message);
 	
 	__OpenMainGUI(FileName(p), p);
 }
+
 
 static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	char tmp[32], buf[64];
@@ -3503,9 +3504,9 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		sprintf(buf, "%s", "大明");
 	}
 	
-	i = ProMaxPage() - 1;
+	i = ProMaxPage() - 1;                //当前页数            
 	i = i * 15;
-	i = p[1] + i;
+	i = p[1] + i;                        //当前选项
 	
 	sprintf(tmp, "0:%s/%d.txt", buf, i);
 	
@@ -3531,9 +3532,9 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	sprintf(GateWayName, "%s", buf);
 	
 	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*7s%s", tmp);
+
 	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
+		if(HexToChar[i] == buf[7]){
 			FrequPoint1 = i;
 			break;
 		}	
@@ -3541,13 +3542,13 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
   
 	
 	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*9s%s", tmp);
+
 	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
+		if(HexToChar[i] == buf[9]){
 			NetID1 = (NetID1 & 0xF) | (i << 4);
 		}	
 		
-		if(HexToChar[i] == tmp[1]){
+		if(HexToChar[i] == buf[10]){
 			NetID1 = (NetID1 & 0xF0) | i;
 		}	
 	}
@@ -3558,24 +3559,23 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	f_gets(buf, 64, &fsrc);
 	if(strlen(buf) < 4)
 		return;
-	sscanf(buf, "%*7s%s", tmp);
 	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
+		if(HexToChar[i] == buf[7]){
 			FrequPoint2 = i;
 			break;
 		}	
 	}
   
 	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*9s%s", tmp);
+
 	if(strlen(buf) < 4)
 		return;
 	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
+		if(HexToChar[i] == buf[9]){
 			NetID2 = (NetID1 & 0x0F) | (i << 4);
 		}	
 		
-		if(HexToChar[i] == tmp[1]){
+		if(HexToChar[i] == buf[10]){
 			NetID2 = (NetID1 & 0xF0) | (i & 0x0F);
 		}	
 	}
@@ -3587,135 +3587,12 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	FrequencyDot = 0;
 }
 
-static char NodeMsg[80] = {0};                         //显示中心节点的内容放这里
-
-void __SDTskHandleOpenFile(SDTaskMsg *message){
-	Node_Infor msg;
-	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
-	char buf[20], dat[80], tmp[40], buf1[20], buf2[30], i;
-	char point1, point2, id1, id2, OKpoint, OKid;
-	
-	NorFlashRead(NODE_INFOR_NOW_ADDR, (short *)&msg, sizeof(Node_Infor));
-
-	switch (msg.NodePro){                    //采集项目名称
-		case 1:
-			sprintf(tmp, "%s", "滨湖");
-			sprintf(buf1, "%s", "合肥/滨湖/");
-			break;
-		case 2:
-			sprintf(tmp, "%s", "产业园");
-			sprintf(buf1, "%s", "合肥/蜀山产业园/");
-			break;
-		case 3:
-			sprintf(tmp, "%s", "大明");
-			sprintf(buf1, "%s", "合肥/大明节能/");
-			break;
-		case 0xCD:
-			sprintf(buf, "%s", "自定义设置/频点:%02X/网络ID:%02X", msg.FrequValue, msg.NetIDValue);
-			sprintf(NodeMsg, "%s", buf);
-			return;		
-		default:
-			return;
-	}
-	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	
-	sprintf(dat, "0:%s/%d.txt", tmp, msg.GateWayOrd);
-	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);
-	
-	if (result != FR_OK) {
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);		
-	}
-	f_gets(buf2, 64, &fsrc);
-	
-	for(i = 0; i < 64; i++){                   //采集网关名称
-		if(buf2[i] == 0x0D){
-			buf2[i] = 0;
-			break;
-		}
-	}
-	
-	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*7s%s", tmp);
-	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
-			point1 = i;
-			break;
-		}	
-	}
-  
-	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*9s%s", tmp);
-	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
-			id1 = (id1 & 0xF) | (i << 4);
-		}	
-		
-		if(HexToChar[i] == tmp[1]){
-			id1 = (id1 & 0xF0) | i;
-		}	
-	}
-	
-	f_gets(buf, 64, &fsrc);
-	if(strlen(buf) < 4){
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
-		return;
-	}
-	sscanf(buf, "%*7s%s", tmp);
-	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
-			point2 = i;
-			break;
-		}	
-	}
-  
-	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*9s%s", tmp);
-	if(strlen(buf) < 4){
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
-		return;
-	}
-	for(i = 0; i < 16; i++){
-		if(HexToChar[i] == tmp[0]){
-			id2 = (id2 & 0x0F) | (i << 4);
-		}	
-		
-		if(HexToChar[i] == tmp[1]){
-			id2 = (id2 & 0xF0) | (i & 0x0F);
-		}	
-	}
-	
-	if(msg.MaxFrequDot == 1){                 //最大频点数
-		sprintf(dat, "唯一频点:");
-		OKpoint = point1;
-		OKid = id1;
-	} else if((msg.MaxFrequDot == 2) && (msg.FrequPointth == 1)){
-		sprintf(dat, "第一频点:");
-		OKpoint = point1;
-		OKid = id1;
-	} else if((msg.MaxFrequDot == 2) && (msg.FrequPointth == 2)){
-		sprintf(dat, "第二频点:");
-		OKpoint = point2;
-		OKid = id2;
-	}
-	
-	f_close(&fsrc);
-	f_mount(&fs, "0:", NULL);	
-	
-	sprintf(buf, "%s%s/%s%02x/网络ID:%02X", buf1, tmp, dat, OKpoint, OKid);
-	sprintf(NodeMsg, "%s", buf);
-}
-
 typedef struct {
 	SDTaskMsgType type;
 	void (*handlerFunc)(SDTaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
-	{ SD_HANDLE_OPEN, __SDTskHandleOpenFile },
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
 	{ SD_HANDLE_KEY, __SDHandleKey },
 	{ SD_NULL, NULL },
@@ -3754,6 +3631,6 @@ void SDInit(void) {
 	}
 	
 	Pic_Viewer("logo");
-	__SDHCQueue = xQueueCreate(15, sizeof(SDTaskMsg *));
-	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	__SDHCQueue = xQueueCreate(5, sizeof(SDTaskMsg *));
+	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

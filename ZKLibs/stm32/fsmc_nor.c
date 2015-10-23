@@ -4,8 +4,8 @@
 #include "fsmc_nor.h"
 #include <stdio.h>
 
-#define BlockErase_Timeout    ((long)0x00119400)
-#define ChipErase_Timeout     ((long)0x00232800)
+#define BlockErase_Timeout    ((long)0x00A00000)
+#define ChipErase_Timeout     ((long)0x30000000)
 #define Program_Timeout       ((long)0x00001400)
 
 /*******************************************************************************
@@ -93,7 +93,7 @@ void FSMC_NOR_Init(void) {
 	/* Enable FSMC Bank1_NOR Bank */
 	FSMC_NORSRAMCmd(FSMC_Bank1_NORSRAM2, ENABLE);
 	
-	FSMC_NOR_Reset();
+	//FSMC_NOR_Reset();
 	
 	FSMC_NOR_ReadID(&t);
 	printf("%x\r\n", t.Manufacturer_Code);

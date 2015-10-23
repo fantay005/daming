@@ -49,7 +49,7 @@ static xQueueHandle __Ili9320Queue;
 #define EnLight       WHITE
 #define TestColor     YELLOW
 
-#define NOdeColor     BLUE            //中心节点信息颜色
+#define NodeColor     BLUE            //中心节点信息颜色
 #define DealColor     MAGENTA         //待处理提示信息颜色
 #define InPutColor    RED             //输入法颜色
 
@@ -690,7 +690,7 @@ const unsigned char *Lcd_DisplayDeal(int x, int y, const unsigned char *str){
 
 const unsigned char *Lcd_DisplayNode(int x, int y, const unsigned char *str){
 	
-	return LedDisplayGB2312String(x, y, str, 16, NOdeColor, BackColor);
+	return LedDisplayGB2312String(x, y, str, 16, NodeColor, BackColor);
 }
 
 const unsigned char *Lcd_DisplayChinese16(int x, int y, const unsigned char *str){
@@ -1318,6 +1318,7 @@ void BackColorSet(void){
 }
 
 typedef enum{
+	ILI_DISPLAY_NODE,
 	ILI_LIGHT_BYTE,
 	ILI_LIGHT_LINE,
 	ILI_DISPLAY_FREQU,
@@ -1334,7 +1335,7 @@ typedef struct {
 	/// Message type.
 	Ili9320TaskMsgType type;
 	/// Message lenght.
-	int length;
+	unsigned short length;
 } Ili9320TaskMsg;
 
 static Ili9320TaskMsg *__Ili9320CreateMessage(Ili9320TaskMsgType type, const char *dat, int len) {
@@ -1352,6 +1353,16 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return &message[1];
 	else
 		return NULL;
+}
+
+bool Ili9320TaskDisNode(const char *dat, int len){                               //显示中心节点频点和网络ID
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_DISPLAY_NODE, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+	
 }
 
 bool Ili9320TaskDisFrequDot(const char *dat, int len){                               //显示双频点数据信息
@@ -1475,6 +1486,12 @@ void __HandleDisChoice(Ili9320TaskMsg *msg){
 	Lcd_DisplayDeal(0, 208, (const unsigned char *)p);
 }
 
+void __HandleDisNode(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	
+	Lcd_DisplayNode(0, 176, (const unsigned char *)p);
+}
+
 void __HandleUpAndDown(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 	
@@ -1558,6 +1575,7 @@ void __HandleLightLine(Ili9320TaskMsg *msg){
 	ili9320_SetLight(p[0]);
 }
 
+
 void __HandleLightByte(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 	
@@ -1571,6 +1589,7 @@ typedef struct {
 
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_DISPLAY_NODE,  __HandleDisNode },
 	{ ILI_DISPLAY_FREQU, __HandleDisplayFrequ },
 	{ ILI_LIGHT_BYTE, __HandleLightByte },
 	{ ILI_LIGHT_LINE, __HandleLightLine },
@@ -1610,7 +1629,7 @@ static void __Ili9320Task(void *parameter) {
 
 void Ili9320Init(void) {
 	ili9320_Initializtion();
-	__Ili9320Queue = xQueueCreate(20, sizeof(Ili9320TaskMsg *));
-	xTaskCreate(__Ili9320Task, (signed portCHAR *) "ILI9320", ILI_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	__Ili9320Queue = xQueueCreate(50, sizeof(Ili9320TaskMsg *));
+	xTaskCreate(__Ili9320Task, (signed portCHAR *) "ILI9320", ILI_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5, NULL);
 }
 
