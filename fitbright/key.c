@@ -284,7 +284,7 @@ KeyPress keycode(void){                 //¼ì²âÓĞ±ä»¯°´¼ü£¬Ğè±»È·ÈÏ
 }
 
 static KeyPress KeyConfirm = NOKEY;         //ÉÏµçºó°´¼üµÄ³õÊ¼×´Ì¬
-static Dis_Type  InterFace = Open_GUI;      //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
+Dis_Type  InterFace = Open_GUI;      //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
 static Dis_Type  LastFace = Open_GUI;       //ÉÏÒ»¸öÏÔÊ¾½çÃæ
 
 char StatusOfInterface(void){
@@ -342,11 +342,17 @@ pro Project = Pro_Null;          //³õÊ¼»¯ÏîÄ¿ÎªÎŞ
 unsigned char GateWayID = 0;     //Íø¹ØĞòÁĞºÅ
 unsigned char FrequencyDot = 0;  //³õÊ¼ÆµµãÎªÎŞ
 unsigned int  ZigBAddr = 1;     	//³õÊ¼ZigBeeµØÖ·Öµ
-char Config_Enable = 0;          //ÅäÖÃ¼üÊ¹ÄÜÅäÖÃÄ£¿é¹¦ÄÜ£¬1ÎªÅäÖÃ£¬2Îª
+char Config_Enable = 0;          //ÅäÖÃ¼üÊ¹ÄÜÅäÖÃÄ£¿é¹¦ÄÜ£¬1Îª¿ªÊ¼ÅäÖÃ£¬2Îª¼´½«½áÊøÅäÖÃ
+static char ParamOrAddr = 1;     //µØÖ·ºÍµÆÊôĞÔÇĞ»»±êÖ¾£¬1ÎªµØÖ·£¬2ÎªµÆÊôĞÔ
 
 char Digits = 1;             //µãÁÁ¡¢ĞŞ¸ÄµØÖ·µÄÎ»Êı
 char MaxBit = 4;             //×î´óÎ»Êı
 char BaseBit = 40;           //³õÊ¼Êı×ÖµÄ ÆğÊ¼Î»
+
+static unsigned int Loop = 0;        //»ØÂ·
+static unsigned int MainRoad = 0;    //Ö÷µÀ
+static unsigned int AssistRoad = 0;  //¸¨µÀ
+static unsigned char Flood = 0;      //Í¶¹â
 
 static char lastData = 0;    //ÉÏÒ»´ÎĞŞ¸ÄµÄZigBeeµØÖ·µÄÖµ
 
@@ -384,7 +390,7 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 			return true;
 		case 3:
 			return true;
-		case 4:
+		case 4:                         //ÅäÖÃÄ£Ê½ÏÂ
 			
 			switch(param){
 				case 1:
@@ -409,7 +415,7 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 					return false;
 				
 			}
-		case 5:
+		case 5:                          //Î¬ĞŞÄ£Ê½ÏÂ                        
 
 		
 			switch(param){
@@ -449,7 +455,7 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 					return false;
 				
 			}
-		case 6:
+		case 6:                         //²âÊÔÄ£Ê½ÏÂ
 			USART_Cmd(USART3, DISABLE);
 			USART_Cmd(USART2,ENABLE);
 		
@@ -467,14 +473,22 @@ bool DisStatus(char type, char param){              //ÅĞ¶ÏDis_TypeÀàĞÍÏÂÄÄÖÖÀàĞÍ
 						return false;
 					return true;
 				case 4:
-					if(ZigBAddr == 0)         //Ã»ÓĞÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
-						return false;
 					return true;
 				case 5:
-					if(ZigBAddr == 0)         //Ã»ÓĞÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
+					if(FrequencyDot == 0)     //Ã»ÓĞÑ¡ÔñÆµµã×´¿öÏÂ
 						return false;
 					return true;
 				case 6:
+					if(FrequencyDot == 0)     //Ã»ÓĞÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					return true;
+				case 7:
+					if(FrequencyDot == 0)     //Ã»ÓĞÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					return true;
+				case 8:
+					if(FrequencyDot == 0)     //Ã»ÓĞÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
 					return true;
 				default:
 					return false;
@@ -550,6 +564,8 @@ char JudgeMaxNum(void){
 	else
 		MaxLine = NumOfPage()%15;
 	
+	if(InterFace == Light_Attrib)
+		MaxLine = 4;
 	return MaxLine;
 }
 
@@ -619,11 +635,11 @@ void ChooseLine(void){                         //È·¶¨ĞĞÊı£¬ºÍÒ³Êı
 	tmp[0] = wave;
 	tmp[1] = 0;
 	i = InterFace;
-	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != On_And_Off))
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != Light_Attrib))
 		Ili9320TaskLightLine((const char *)tmp, strlen((const char *)tmp));
 }
 
-
+static char DimmValue = 0;               //µ÷¹âÖµ
 	
 void __handleAdvanceSet(void){                          //¸ß¼¶ÅäÖÃÀàĞÍÏÂ£¬°´¼ü´¦Àíº¯Êı
 	portBASE_TYPE xHigherPriorityTaskWoken;
@@ -750,6 +766,37 @@ char NodeAble = 0;            //ÖĞĞÄ½ÚµãÊÇ·ñÒÑ¾­ÅäÖÃ
 static char NodeFrequ = 0;   //ÖĞĞÄ½ÚµãµÄÆµµã
 static char NodeID = 0;      //ÖĞĞÄ½ÚµãµÄÍøÂçID
 
+void LightParamDisplay(void){
+	char buf[40];
+	
+	if(Loop)
+		sprintf(buf, " »ØÂ·Ñ¡Ôñ:  %-8X", Loop);
+	else
+		sprintf(buf, " »ØÂ·Ñ¡Ôñ:");	
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+
+	if(MainRoad)
+		sprintf(buf, " Ö÷µÀÑ¡Ôñ:  %-8X", MainRoad);		
+	else
+		sprintf(buf, " Ö÷µÀÑ¡Ôñ:");
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+
+	if(AssistRoad)
+		sprintf(buf, " ¸¨µÀÑ¡Ôñ:  %-8X", AssistRoad);	
+	else
+		sprintf(buf, " ¸¨µÀÑ¡Ôñ:");
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	if(Flood)
+		sprintf(buf, " Í¶¹âÑ¡Ôñ:  ¡öÊÇ   ¡õ·ñ");
+	else
+		sprintf(buf, " Í¶¹âÑ¡Ôñ:  ¡õÊÇ   ¡ö·ñ");
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+
+}
+
 void DisplayNode(void){
 	char buf[40];
 	
@@ -760,6 +807,7 @@ void DisplayNode(void){
 	}
 	Ili9320TaskDisNode(buf, strlen(buf) + 1);
 }
+
 
 void __AddrConfig(void){                     //ÉèÖÃZigBeeµØÖ·½çÃæÏÔÊ¾
 	char buf[5];
@@ -774,6 +822,79 @@ void __AddrConfig(void){                     //ÉèÖÃZigBeeµØÖ·½çÃæÏÔÊ¾
 	buf[0] = Digits + BaseBit;
 	buf[1] = 0;
 	Ili9320TaskLightByte(buf, strlen(buf) + 1);
+}
+
+extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
+
+void ParamDimm(unsigned char ctl[2]){                      //°´ÊôĞÔµ÷¹â
+	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
+	char ret[32], *p, tmp[5], *buf;
+	char i, j, len;
+	
+	buf = ret;
+	if(ParamOrAddr == 2){
+		if(Flood)
+			*buf++ = 0x08;
+		else
+			*buf++ = 0x09;
+		
+		for(i = 0, j = 0; i < 8; i++){
+			if((Loop >> (i * 4)) & 0x0F)
+				j++;
+		}
+		*buf++ = HexToChar[j];
+		
+		for(i = 0, j = 0; i < 8; i++){
+			if((MainRoad >> (i * 4)) & 0x0F)
+				j++;
+		}
+		*buf++ = HexToChar[j];
+		
+		for(i = 0, j = 0; i < 8; i++){
+			if((AssistRoad >> (i * 4)) & 0x0F)
+				j++;
+		}
+		*buf++ = HexToChar[j];
+		
+		if(InterFace == Light_Dim){
+			*buf++ = HexToChar[(wave * 10 + 40) >> 4] ;
+			*buf++ = HexToChar[(wave * 10 + 40) & 0x0F];
+		} else if(InterFace == Test_GUI){
+			if(wave == 7)
+				*buf++ = '0';
+			else if(wave == 8)
+				*buf++ = '1';	
+		}
+			
+		sprintf(buf, "%X%X%X", Loop, MainRoad, AssistRoad);
+		
+	} else if(ParamOrAddr == 1){
+		
+		if(HexSwitchDec){
+			sprintf(tmp, "%04X", ZigBAddr);
+		} else {
+			sprintf(tmp, "%04d", ZigBAddr);
+		}
+		sprintf(buf, "B000");
+		
+		buf += 4;
+		if(InterFace == Light_Dim){
+			*buf++ = HexToChar[(wave * 10 + 40) >> 4] ;
+			*buf++ = HexToChar[(wave * 10 + 40) & 0x0F];
+		} else if(InterFace == Test_GUI){
+			if(wave == 7)
+				*buf++ = '0';
+			else if(wave == 8)
+				*buf++ = '1';	
+		}
+	
+		sprintf(buf, "%s", tmp);
+	}
+	
+	p = DataSendToBSN((unsigned char *)ctl, (unsigned char *)"FFFF", ret, &len);
+	CommxTaskSendData(p, len);
+	vPortFree(p);
+	
 }
 
 
@@ -909,7 +1030,12 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			
 		} else if(dat == 3){
 			InterFace = Address_Option;
-			
+			ParamOrAddr = 1;
+			Loop = 0;        //»ØÂ·
+			MainRoad = 0;    //Ö÷µÀ
+			AssistRoad = 0;  //¸¨µÀ
+			Flood = 0;      //Í¶¹â
+			__AddrConfig();
 		} else if(dat == 2){
 			if(NumOfFrequ > 1){
 				InterFace = Frequ_Option;
@@ -921,11 +1047,56 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			InterFace = Debug_Option;
 			
 		} else if(dat == 5){
+			char tmp[2] = {1, 0};
+			
+			InterFace = Light_Attrib;
+			Ili9320TaskClear("C", 2);
+			Line = 1;
+			LightParamDisplay();
+			MaxPage = 1;           //Ò³Êı
+			Ili9320TaskLightLine(tmp, 1);
+		} else if(dat == 6){
 			InterFace = Light_Dim;
 			
-		} else if(dat == 6){
-			InterFace = On_And_Off;
+		} else if(dat == 7){
+			char ret[32], tmp[5];
 			
+			ParamDimm("05");
+			
+			if(HexSwitchDec){
+				sprintf(tmp, "%04X", ZigBAddr);
+			} else {
+				sprintf(tmp, "%04d", ZigBAddr);
+			}
+			if(ParamOrAddr == 1)
+				sprintf(ret, "µØÖ·: %s£¬¿ªµÆÖ¸ÁîÒÑ·¢³ö£¡", tmp);
+			else if(ParamOrAddr == 2)
+				sprintf(ret, "¿ªµÆ(¸ù¾İµÆ²Î)Ö¸ÁîÒÑ·¢³ö£¡");
+			Line = 10;
+			Ili9320TaskOrderDis(ret, strlen(ret) + 1);
+			
+			KeyConfirm = NOKEY;
+			return;
+		} else if(dat == 8){
+			char ret[32], tmp[5];
+			
+			ParamDimm("05");
+			
+			if(HexSwitchDec){
+				sprintf(tmp, "%04X", ZigBAddr);
+			} else {
+				sprintf(tmp, "%04d", ZigBAddr);
+			}
+			
+			if(ParamOrAddr == 1)
+				sprintf(ret, "µØÖ·: %s£¬¹ØµÆÖ¸ÁîÒÑ·¢³ö£¡", tmp);
+			else if(ParamOrAddr == 2)
+				sprintf(ret, "¹ØµÆ(¸ù¾İµÆ²Î)Ö¸ÁîÒÑ·¢³ö£¡");
+			Line = 10;
+			Ili9320TaskOrderDis(ret, strlen(ret) + 1);
+			
+			KeyConfirm = NOKEY;
+			return;
 		}
 		
 	} else if (InterFace == Project_Dir){            //µ±ÏÔÊ¾Ò³ÃæÎªÏîÄ¿Ñ¡Ôñ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
@@ -1015,10 +1186,160 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		Ili9320TaskClear("C", 2);
 	}  else if(InterFace == Read_Data){
 		Ili9320TaskClear("C", 2);
+		StartRead = 1;
+	} else if(InterFace == Light_Dim) {
+		char ret[32];
+		
+		if(wave == 1){
+			DimmValue = 50;
+		} else if(wave == 2){
+			DimmValue = 60;
+		} else if(wave == 3){
+			DimmValue = 70;
+		} else if(wave == 4){
+			DimmValue = 80;
+		} else if(wave == 5){
+			DimmValue = 90;
+		} else if(wave == 6){
+			DimmValue = 100;
+		}
+		ParamDimm("04");
+		
+		sprintf(ret, "%d%%µ÷¹âÖ¸ÁîÒÑ·¢³ö£¡", DimmValue);
+		Line = 10;
+		Ili9320TaskOrderDis(ret, strlen(ret) + 1);
+		KeyConfirm = NOKEY;
+		return;
 	}
 		
 	wave = 1;                                            //Ò³ÃæÇĞ»»ºó£¬ÏÔÁÁµÚÒ»ĞĞ
 	KeyConfirm = NOKEY;
+}
+
+void AttributeDisplay(void){
+	char buf[40];
+	
+	if(wave == 1){
+		Line = 1;
+		if(Loop)
+			sprintf(buf, " »ØÂ·Ñ¡Ôñ:  %-8X", Loop);
+		else
+			sprintf(buf, " »ØÂ·Ñ¡Ôñ:");	
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		
+	} else if(wave == 2){
+		Line = 2;
+		if(MainRoad)
+			sprintf(buf, " Ö÷µÀÑ¡Ôñ:  %-8X", MainRoad);		
+		else
+			sprintf(buf, " Ö÷µÀÑ¡Ôñ:");
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		
+	} else if(wave == 3){
+		Line = 3;
+		if(AssistRoad)
+			sprintf(buf, " ¸¨µÀÑ¡Ôñ:  %-8X", AssistRoad);	
+		else
+			sprintf(buf, " ¸¨µÀÑ¡Ôñ:");
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		
+	} else if(wave == 4){
+		Line = 4;
+		if(Flood)
+			sprintf(buf, " Í¶¹âÑ¡Ôñ:  ¡öÊÇ   ¡õ·ñ");
+		else
+			sprintf(buf, " Í¶¹âÑ¡Ôñ:  ¡õÊÇ   ¡ö·ñ");
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	}
+}
+
+void __handleSetAttribute(void){
+	char tmp[2] = {1, 0};
+
+	if(KeyConfirm == KEYUP){
+		wave--;
+		if(wave < 1)
+			wave = MaxLine;	
+	} else if (KeyConfirm == KEYDN){
+		wave++;
+		if(wave > MaxLine)		
+			wave = 1;
+	} else if(KeyConfirm == KEYLF){
+		if(wave == 4){
+			Flood = 1;	
+		} else if(wave == 1){
+			Loop >>= 4;
+		}	else if(wave == 2){
+			MainRoad >>= 4;
+		}	else if(wave == 3){
+			AssistRoad >>= 4;
+		}	
+		
+	 } else if(KeyConfirm == KEYRT){
+		 if(wave == 4)
+			 Flood = 0;	
+	
+	 } else if(KeyConfirm == KEYOK){
+		InterFace = Test_GUI;
+			
+		dat[0] = Main_GUI;
+	  dat[1] = 4;
+	  SDTaskHandleKey((const char *)dat, 2);
+		
+		wave = 1;
+		return;
+	} else if((KeyConfirm > KEY0) && (KeyConfirm < KEY9)){
+		if(wave == 1){
+			if((Loop & 0xF) < (KeyConfirm - 1))
+				Loop = (Loop << 4) | (KeyConfirm - 1);
+		} else if(wave == 2){
+			if((MainRoad & 0xF) < (KeyConfirm - 1))
+				MainRoad = (MainRoad << 4) | (KeyConfirm - 1);
+		} else if(wave == 3){
+			if((AssistRoad & 0xF) < (KeyConfirm - 1))
+				AssistRoad = (AssistRoad << 4) | (KeyConfirm - 1);
+		}
+
+	}
+	
+	AttributeDisplay();
+
+	tmp[0] = wave;
+	Ili9320TaskLightLine(tmp, 1);
+}
+
+void DisplayAttribute(void){
+	char buf[80], tmp[10], i;
+	
+	if(Flood)
+		sprintf(tmp, "ÒÑÑ¡Ôñ");
+	else
+		sprintf(tmp, "Î´Ñ¡Ôñ");
+	
+	if((Loop != 0) || (MainRoad != 0) || (AssistRoad != 0) || (Flood != 0)){
+		ParamOrAddr = 2;
+		ZigBAddr = 1;
+		sprintf(buf, "»ØÂ·Ñ¡Ôñ: %-8X  Ö÷µÀÑ¡Ôñ: %-8X  ¸¨µÀÑ¡Ôñ: %-8X  Í¶¹âµÆ  : %s", Loop, MainRoad, AssistRoad, tmp);	
+	} else {
+		return;
+	}
+	
+	if(Loop == 0){
+		for(i = 0; i < 8; i++)
+			buf[10 + i] = ' ';
+	} 
+	
+	if(MainRoad == 0){
+		for(i = 0; i < 8; i++)
+			buf[30 + i] = ' ';
+	}
+	
+	if(AssistRoad == 0){
+		for(i = 0; i < 8; i++)
+			buf[50 + i] = ' ';
+	}
+	
+	Ili9320TaskDisLightParam(buf, strlen(buf) + 1);
 }
 
 void __DisplayWGInformation(void){                 //ÏÔÊ¾ÏîÄ¿¡¢Íø¹Ø¡¢ÆµµãµÆĞÅÏ¢
@@ -1037,6 +1358,11 @@ void __DisplayNode(void){                       //ÏÔÊ¾ÖĞĞÄ½ÚµãµÄÆµµãºÍÍøÂçID
 	if(times%40 == 0){
 		DisplayNode();
 	}
+}
+
+void __DisplayLightPara(void){
+	if(times%40 == 0)
+		DisplayAttribute();
 }
 
 void __handleSetNode(void){
@@ -1078,7 +1404,6 @@ void __handleSwitchInput(void){                   //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼äÀ´»
 	}	
 }
 
-extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
 
 void __handleBSNData(void){                           //´¦Àí¶ÁÕòÁ÷Æ÷Êı¾İ 
 	const char *buf = "\r\nÕıÔÚ¶ÁÈ¡ÕòÁ÷Æ÷Êı¾İ£¬ÇëÉÔºò... ...";
@@ -1139,6 +1464,12 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êı
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
 	    SDTaskHandleKey((const char *)dat, 2);
+		} else if(InterFace == Address_Option){
+			InterFace = Test_GUI;
+			
+			dat[0] = Main_GUI;
+	    dat[1] = 4;
+	    SDTaskHandleKey((const char *)dat, 2);
 		} else {
 			Congif_Flag = 1;
 			Config_Enable = 1;
@@ -1190,7 +1521,6 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êı
 	buf[0] = Digits + BaseBit;
 	buf[1] = 0;
 	Ili9320TaskLightByte(buf, strlen(buf) + 1);
-	
 }
 
 void TIM3_IRQHandler(void){	
@@ -1209,11 +1539,15 @@ void TIM3_IRQHandler(void){
 		__DisplayProject();
 	}
 	
-	if(InterFace == Service_GUI){
+	if((InterFace == Service_GUI) || (InterFace == Test_GUI) || (InterFace == Address_Option) || (InterFace == Light_Dim)){
 		__DisplayNode();
 	}
 	
-	if((InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || (InterFace == Service_GUI) || (InterFace == Address_Choose))
+	if((InterFace == Test_GUI) || (InterFace == Light_Dim)) {
+		__DisplayLightPara();
+	}
+	
+	if((InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || (InterFace == Service_GUI) || (InterFace == Address_Choose) || (InterFace == Test_GUI) || (InterFace == Address_Option) || (InterFace == Light_Dim))
 		__DisplayWGInformation();
 	
 	if((InterFace == Config_Set) || (InterFace == Address_Set) || (InterFace == Config_Set)|| (InterFace == Address_Choose))
@@ -1222,7 +1556,7 @@ void TIM3_IRQHandler(void){
 	if(KeyConfirm == NOKEY)
 		return;
 	
-	if((InterFace == Service_GUI) && (KeyConfirm == KEYCONF) && (FrequencyDot != 0)){
+	if(((InterFace == Service_GUI) || (InterFace == Test_GUI))&& (KeyConfirm == KEYCONF) && (FrequencyDot != 0)){
 		HubNode = 2;                                          //½øÈëÎ¬ĞŞ½çÃæ¾Í ¿ªÊ¼ÅäÖÃÖĞĞÄ½Úµã
 		CommxTaskSendData("1", 2);
 		
@@ -1238,7 +1572,7 @@ void TIM3_IRQHandler(void){
 		return;
 	}		
 		
-	if((InterFace != Address_Set) || (InterFace != Config_DIS))
+	if((InterFace != Address_Set) && (InterFace != Config_DIS))
 		Config_Enable = 0;
 	
 	if(KeyConfirm == KEYMENU){
@@ -1269,7 +1603,7 @@ void TIM3_IRQHandler(void){
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == On_And_Off || InterFace == Frequ_Option){
+		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == Light_Attrib || InterFace == Frequ_Option){
 			InterFace = Test_GUI;
 			
 			dat[0] = Main_GUI;
@@ -1313,14 +1647,18 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Light_Dim){
 
 		__handleOpenOption();
+		
 	} else if(InterFace == Config_Set){
 		
 		__handleAdvanceSet();		
 	} else if(InterFace == GateWay_Set){
+		
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Choose){
+		
 		__handleOpenOption();
 	} else if(InterFace == GateWay_Decide){
+		
 		__handleOpenOption();
 	} else if(InterFace == Frequ_Set){
 
@@ -1346,7 +1684,13 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Node_Set){
 		
 		__handleSetNode();
-	}
+	} else if(InterFace == Light_Attrib){
+		
+		__handleSetAttribute();
+	} else if(InterFace == Address_Option){
+	
+		__handleAddrValue();
+	} 
 	
 	KeyConfirm = NOKEY;
 }

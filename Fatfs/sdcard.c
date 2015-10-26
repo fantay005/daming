@@ -3223,7 +3223,7 @@ void FirstIntoInterface(void){         //更换一个新的界面
 	char tmp[2] = {1, 0}, i;
 	i = StatusOfInterface();
 	
-	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != On_And_Off))
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != Light_Attrib))
 		Ili9320TaskLightLine(tmp, 1);
 }
 
@@ -3258,7 +3258,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 		f_mount(&fs, "0:", NULL);		
 	}
 	
-	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI) || (msg[0] == Test_GUI)){      //网关和频点选择进入
+	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){      //网关和频点选择进入
 		switch (msg[1]){
 			case 1:
 				for(i = 0; i < 15; i++){
@@ -3282,7 +3282,38 @@ static void __OpenMainGUI(char *dat, char *msg){
 		f_mount(&fs, "0:", NULL);	
 		FirstIntoInterface();
 		return;
-	} 
+	} else if(msg[0] == Test_GUI){
+		switch (msg[1]){
+			case 1:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 2:
+				if(NumOfFrequ < 2)
+					break;
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				Ili9320TaskDisFrequDot((const char *)buf, 2);
+				break;
+			case 6:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			default:
+				break;
+		}
+		
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		FirstIntoInterface();
+		return;
+	}
 	
 	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){  //网关选项下，左右键进入
 		switch (ProMaxPage()){
@@ -3430,7 +3461,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 			case 2:
 				sprintf(tmp, "0:界面/%s.txt", "频点");
 				break;
-			case 4:
+			case 6:
 				sprintf(tmp, "0:界面/%s.txt",  "调光");
 				break;
 			default:

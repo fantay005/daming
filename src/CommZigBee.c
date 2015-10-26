@@ -264,7 +264,7 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
 			
-			Line = 11;
+			Line = 10;
 			Ili9320TaskOrderDis("正在配置，请稍候... ...", 26);
 		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
 			vTaskDelay(TimOfWait);
@@ -345,7 +345,7 @@ static void __handleModify(ComxTaskMsg *msg){
 			__CommInitUsart(9600);
 			HubNode = 1;                //开始操作镇流器
 			
-			Line = 11;
+			Line = 10;
 			Ili9320TaskOrderDis("配置成功！", 11);
 			NodeAble = 1;
 		}	
@@ -353,7 +353,7 @@ static void __handleModify(ComxTaskMsg *msg){
 
 static void __handleRecieve(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
-	char addr[5], status[3], dim[3], inVol[5], inCur[5], inPow[5], lightVol[5], PFCVol[5], temp[4], time[7], tmp[20], buf[40];
+	char addr[5], status[3], dim[3], inVol[5], inCur[5], inPow[5], lightVol[5], PFCVol[5], temp[4], time[7], Vis[3], tmp[20], buf[40];
 	int i;
 	
 	if(!StartRead)                                           //判断是否发出读取镇流器数据指令
@@ -422,8 +422,12 @@ static void __handleRecieve(ComxTaskMsg *msg){
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	
 	sscanf(p, "%*9s%2s", dim);
-	i = strtol((const char *)addr, NULL, 16);
-	sprintf(buf, "调光值  :    %3d%%", i);
+	if(strncmp(dim, "00", 2) == 0)
+		sprintf(buf, "调光值  :  自动调光");
+	else {
+		i = strtol((const char *)addr, NULL, 16);
+		sprintf(buf, "调光值  :    %3d%%", i);
+	}
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	
 	sscanf(p, "%*13s%4s", inVol);
@@ -458,10 +462,20 @@ static void __handleRecieve(ComxTaskMsg *msg){
 //	buf[strlen(buf) - 1] = 0xE6;  
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	
+	sscanf(p, "%*35s%2s", Vis);
+	i = atoi((const char *)Vis);
+	sprintf(buf, "软件版本:    %d.%d", i/10, i%10);
+	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
 	sscanf(p, "%*37s%6s", time);
 	i = strtol((const char *)time, NULL, 16);
 	sprintf(buf, "运行时间:  %d小时%02d分钟", i/60, i%60);
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	
+	Line = 12;
+	Ili9320TaskOrderDis(p, strlen(p) + 1);
+	
+	StartRead = 0;
 }
 
 typedef struct {

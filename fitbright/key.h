@@ -100,7 +100,7 @@ typedef enum{
 	Address_Option,  		//测试模式下，ZigBee地址选择
 	Debug_Option,    		//测试模式下，读镇流器数据*/
 	Light_Dim,       		//调光
-	On_And_Off,      		//开关灯
+	Light_Attrib,      	//测试模式下，灯属性选择
 	
 	Frequ_Set = 20,     //配置模式下，频点选择
 	Frequ_Choose,    		//维修模式下，频点选择
@@ -108,9 +108,8 @@ typedef enum{
 	
 	Node_Set = 23,      //自定义设置中心节点，维修模式下
 	
-//	WG_List_Set,     //网关目录
-//	WG_List_Repair,
-//	WG_List_Test,
+	
+
 }Dis_Type;
 
 
@@ -131,6 +130,7 @@ extern char MaxBit;                 //最大位数
 extern char BaseBit;                //初始数字的 起始位
 extern bool HexSwitchDec;           //十六进制与十进制切换
 extern char StartRead;              //开始读取镇流器数据
+extern Dis_Type  InterFace;
 
 void key_init(void);
 void KEY(void);

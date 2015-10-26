@@ -52,6 +52,7 @@ static xQueueHandle __Ili9320Queue;
 #define NodeColor     BLUE            //中心节点信息颜色
 #define DealColor     MAGENTA         //待处理提示信息颜色
 #define InPutColor    RED             //输入法颜色
+#define ParamColor    BRRED           //显示灯参颜色
 
 #define LED_DOT_WIDTH 320
 
@@ -681,6 +682,11 @@ const unsigned char *Lcd_LineDisplay16(char line, const unsigned char *str){
 const unsigned char *Lcd_DisplayInput(int x, int y, const unsigned char *str){
 	
 	return LedDisplayGB2312String(x, y, str, 16, InPutColor, BackColor);
+}
+
+const unsigned char *Lcd_DisplayLightParam(int x, int y, const unsigned char *str){
+	
+	return LedDisplayGB2312String(x, y, str, 16, ParamColor, BackColor);
 }
 
 const unsigned char *Lcd_DisplayDeal(int x, int y, const unsigned char *str){
@@ -1318,6 +1324,7 @@ void BackColorSet(void){
 }
 
 typedef enum{
+	ILI_DISPLAY_PARAM,
 	ILI_DISPLAY_NODE,
 	ILI_LIGHT_BYTE,
 	ILI_LIGHT_LINE,
@@ -1353,6 +1360,16 @@ static inline void *__Ili9320GetMsgData(Ili9320TaskMsg *message) {
 		return &message[1];
 	else
 		return NULL;
+}
+
+bool Ili9320TaskDisLightParam(const char *dat, int len){                               //显示选择的灯参数
+	Ili9320TaskMsg *message = __Ili9320CreateMessage(ILI_DISPLAY_PARAM, dat, len);
+	if (pdTRUE != xQueueSend(__Ili9320Queue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+	
 }
 
 bool Ili9320TaskDisNode(const char *dat, int len){                               //显示中心节点频点和网络ID
@@ -1468,6 +1485,12 @@ void ili9320_ClearLine(void)
    }
 }
 
+void __HandleLightPara(Ili9320TaskMsg *msg){
+	char *p = __Ili9320GetMsgData(msg);
+	
+	Lcd_DisplayLightParam(0, 160, (const unsigned char *)p);
+}
+
 void __HandleDisplayFrequ(Ili9320TaskMsg *msg){
 	char buf[128];
 	
@@ -1489,7 +1512,7 @@ void __HandleDisChoice(Ili9320TaskMsg *msg){
 void __HandleDisNode(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 	
-	Lcd_DisplayNode(0, 176, (const unsigned char *)p);
+	Lcd_DisplayNode(0, 192, (const unsigned char *)p);
 }
 
 void __HandleUpAndDown(Ili9320TaskMsg *msg){
@@ -1505,7 +1528,7 @@ void __HandleUpAndDown(Ili9320TaskMsg *msg){
 void __HandleOrderDisplay(Ili9320TaskMsg *msg){
 	char *p = __Ili9320GetMsgData(msg);
 
-	if(Line == 1){
+	if((Line == 1) && (InterFace != Light_Attrib)){
 		BackColorSet();
 	}
 	
@@ -1589,6 +1612,7 @@ typedef struct {
 
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ ILI_DISPLAY_PARAM, __HandleLightPara },
 	{ ILI_DISPLAY_NODE,  __HandleDisNode },
 	{ ILI_DISPLAY_FREQU, __HandleDisplayFrequ },
 	{ ILI_LIGHT_BYTE, __HandleLightByte },

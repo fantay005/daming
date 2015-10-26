@@ -189,6 +189,7 @@ extern char Line;
 
 void BackColorSet(void);
 
+bool Ili9320TaskDisLightParam(const char *dat, int len);
 bool Ili9320TaskDisNode(const char *dat, int len);
 bool Ili9320TaskLightByte(const char *dat, int len);
 bool Ili9320TaskDisFrequDot(const char *dat, int len);
