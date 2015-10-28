@@ -248,6 +248,7 @@ extern unsigned char NetID1;         //利大ID1
 extern unsigned char FrequPoint2 ;   //撞泣2
 extern unsigned char NetID2;         //利大ID
 
+bool SDTaskHandleSurePosition(const char *dat, int len);
 bool SDTaskHandleOpen(const char *dat, int len);
 bool SDTaskSureOption(const char *dat, int len);
 bool SDTaskHandleWGOption(const char *dat, int len);

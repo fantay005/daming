@@ -1075,103 +1075,6 @@ void TFT_SetXY(u16 x,u16 y)
   LCD_WriteRAM_Prepare();
 }
 
-
-/****************************************************************************
-* 名    称：void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic)
-* 功    能：在指定座标范围显示一副图片
-* 入口参数：StartX     行起始座标
-*           StartY     列起始座标
-*           EndX       行结束座标
-*           EndY       列结束座标
-            pic        图片头指针
-* 出口参数：无
-* 说    明：图片取模格式为水平扫描，16位颜色模式
-* 调用方法：ili9320_DrawPicture(0,0,100,100,(u16*)demo);
-* 作    者： www.armjishu.com
-****************************************************************************/
-void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic)
-{
-  u32  i, total;
-  u16 data1,data2,data3;
-  u16 *picturepointer = pic;
-  u16 x,y;
-
-  x=StartX;
-  y=StartY;
-  
-  total = (EndX - StartX + 1)*(EndY - StartY + 1 )/2;
-
-  for (i=0;i<total;i++)
-  {
-      data1 = *picturepointer++;
-      data2 = *picturepointer++;
-      data3 = ((data1 >>3)& 0x001f) |((data1>>5) & 0x07E0) | ((data2<<8) & 0xF800);
-      ili9320_SetPoint(x,y,data3);
-      y++;
-      if(y > EndY)
-      {
-          x++;
-          y=StartY;
-      }
-
-
-      data1 = data2;
-      data2 = *picturepointer++;
-      data3 = ((data1 >>11)& 0x001f) |((data2<<3) & 0x07E0) | ((data2) & 0xF800);
-      ili9320_SetPoint(x,y,data3);
-      y++;
-      if(y > EndY)
-      {
-          x++;
-          y=StartY;
-      }
-  }
-
-}
-#if 0
-void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic)
-{
-  u32  i, total;
-  u16 data1,data2,data3;
-  u16 *picturepointer = pic;
-  //ili9320_SetWindows(StartX,StartY,EndX,EndY);
-
-  LCD_WriteReg(0x0003,(1<<12)|(0<<5)|(1<<4) ); 
-
-  ili9320_SetCursor(StartX,StartY);
-  
-  LCD_WriteRAM_Prepare();
-  total = (EndX + 1)*(EndY + 1 ) / 2;
-  for (i=0;i<total;i++)
-  {
-      data1 = *picturepointer++;
-      data2 = *picturepointer++;
-      data3 = ((data1 >>3)& 0x001f) |((data1>>5) & 0x07E0) | ((data2<<8) & 0xF800);
-      LCD_WriteRAM(data3);
-      data1 = data2;
-      data2 = *picturepointer++;
-      data3 = ((data1 >>11)& 0x001f) |((data2<<3) & 0x07E0) | ((data2) & 0xF800);
-      LCD_WriteRAM(data3);
-  }
-
-  LCD_WriteReg(0x0003,(1<<12)|(1<<5)|(1<<4) ); 
-}
-#endif
-/*
-void ili9320_DrawPicture(u16 StartX,u16 StartY,u16 EndX,u16 EndY,u16 *pic)
-{
-  u32  i, total;
-  ili9320_SetWindows(StartX,StartY,EndX,EndY);
-  ili9320_SetCursor(StartX,StartY);
-  
-  LCD_WriteRAM_Prepare();
-  total = EndX*EndY;
-  for (i=0;i<total;i++)
-  {
-      LCD_WriteRAM(*pic++);
-  }
-}
-*/
 /****************************************************************************
 * 名    称：void ili9320_PutChar(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor)
 * 功    能：在指定座标显示一个8x16点阵的ascii字符
@@ -1229,63 +1132,6 @@ void ili9320_PutChar(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor)  // Lihao
 }
 
 /****************************************************************************
-* 名    称：void ili9320_PutChar(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor)
-* 功    能：在指定座标显示一个8x16点阵的ascii字符
-* 入口参数：x          行座标
-*           y          列座标
-*           charColor  字符的颜色
-*           bkColor    字符背景颜色
-* 出口参数：无
-* 说    明：显示范围限定为可显示的ascii码
-* 调用方法：ili9320_PutChar(10,10,'a',0x0000,0xffff);
-****************************************************************************/
-void ili9320_PutChar_16x24(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor)
-{
-
-  u16 i=0;
-  u16 j=0;
-  
-  u16 tmp_char=0;
-
-  if(HyalineBackColor == bkColor)
-  {
-    for (i=0;i<24;i++)
-    {
-      tmp_char=ASCII_Table_16x24[((c-0x20)*24)+i];
-      for (j=0;j<16;j++)
-      {
-        if ( (tmp_char >> j) & 0x01 == 0x01)
-          {
-            ili9320_SetPoint(x+j,y+i,charColor); // 字符颜色
-          }
-          else
-          {
-              // do nothing // 透明背景
-          }
-      }
-    }
-  }
-  else
-  {
-    for (i=0;i<24;i++)
-    {
-      tmp_char=ASCII_Table_16x24[((c-0x20)*24)+i];
-      for (j=0;j<16;j++)
-      {
-        if ( (tmp_char >> j) & 0x01 == 0x01)
-          {
-            ili9320_SetPoint(x+j,y+i,charColor); // 字符颜色
-          }
-          else
-          {
-            ili9320_SetPoint(x+j,y+i,bkColor); // 背景颜色
-          }
-      }
-    }
-  }
-}
-
-/****************************************************************************
 * 名    称：void ili9320_BackLight(u8 status)
 * 功    能：开、关液晶背光
 * 入口参数：status     1:背光开  0:背光关
@@ -1303,20 +1149,6 @@ void ili9320_BackLight(u8 status)
   {
     Lcd_Light_OFF;
   }
-}
-
-/****************************************************************************
-* 名    称：void ili9320_Delay(vu32 nCount)
-* 功    能：延时
-* 入口参数：nCount   延时值
-* 出口参数：无
-* 说    明：
-* 调用方法：ili9320_Delay(10000);
-****************************************************************************/
-void ili9320_Delay(vu32 nCount)
-{
-   Delay(nCount);
-  //for(; nCount != 0; nCount--);
 }
 
 void BackColorSet(void){

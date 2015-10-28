@@ -1,7 +1,10 @@
 #include "stm32f10x.h"
 #include "ili9320.h"
 #include "ili9320_api.h"
+#include "key.h"
 
+extern void ili9320_SetPoint(u16 x,u16 y,u16 point);
+extern void ili9320_PutChar(u16 x,u16 y,u8 c,u16 charColor,u16 bkColor);
 
 /****************************************************************************
 * Ãû    ³Æ£ºGUI_CmpColor()
@@ -56,15 +59,6 @@ void GUI_Text(u16 x, u16 y, u8 *str, u16 Color, u16 bkColor)
   }
 }
 
-/*
-void GUI_ChineseText(u16 x, u16 y, u8 *str, u16 Color, u16 bkColor){
-	u8 i = 0;
-	
-	while(*str != '\0'){
-		ili9320_
-	}
-}
-*/
 void GUI_TextNum(u16 x, u16 y, u8 *str, u16 len,u16 Color, u16 bkColor)
 {
   u8 i=0;
@@ -309,6 +303,23 @@ void GUI_Circle(u16 cx,u16 cy,u16 r,u16 color,u8 fill)
 		else
 		{
 			delta+=((x<<2)+6);
+		}
+	}
+}
+
+void DrawCircle(short x, short y){
+	unsigned int i = 0;
+	for(;;){
+		if(InterFace != Map_Dis)
+			break;
+		i++;
+		if(i == 720000)
+			GUI_Circle(x, y, 4, RED, 1);
+		if(i == 1440000)
+			GUI_Circle(x, y, 4, YELLOW, 1);
+		if(i == 2160000){
+			GUI_Circle(x, y, 4, GREEN, 1);
+			i = 0;
 		}
 	}
 }

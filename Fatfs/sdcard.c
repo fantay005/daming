@@ -31,12 +31,13 @@
 #include "misc.h"
 #include "zklib.h"
 #include <string.h>
+#include "stdlib.h"
 #include "ili9320.h"
 #include "key.h"
 #include "CommZigBee.h"
 
 
-#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1024)
+#define SDHC_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 1280)
 
 static xQueueHandle __SDHCQueue;
 
@@ -3059,6 +3060,7 @@ static FRESULT result;
 static FATFS fs;
 static UINT br;
 
+unsigned char NumbOfOption = 0;     //项目下第几个选项
 char NumOfFrequ = 0;                //频点个数
 unsigned char FrequPoint1 = 0x0F;   //频点1 
 unsigned char NetID1 = 0xFF;        //网络ID1
@@ -3068,6 +3070,18 @@ unsigned char NetID2 = 0xFF;        //网络ID
 extern void LCD_WriteRAM(u16 RGB_Code);
 extern void TFT_SetXY(u16 x,u16 y);
 
+FRESULT OpenFile(char *name){
+	f_mount(&fs, (const TCHAR*)"0:", 1);
+	result = f_open(&fsrc, name, FA_OPEN_EXISTING | FA_READ);  
+	
+	if (result != FR_OK) {
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);		
+	}
+	 
+	return result;
+}
+
 void Pic_Viewer(const unsigned char *name)
 {
 	char data[512], buf[32]; 
@@ -3075,15 +3089,11 @@ void Pic_Viewer(const unsigned char *name)
 	unsigned int cnt,file_cnt,temp1;
 	u16 temp;
 	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	sprintf(buf, "%s%s%s", "0:界面/", name, ".bmp");
-	BackColorSet();  	
-	result = f_open(&fsrc, buf, FA_OPEN_EXISTING | FA_READ);    
-
+	result = OpenFile((char *)name);
 	if(result!=FR_OK){
 		return;
 	}
-	result = f_read(&fsrc, data, 36, &br);                            //BMP文件的头信息有50个字节
+	result = f_read(&fsrc, data, 0x36, &br);                            //BMP文件的头信息有50个字节
 	TFT_SetXY(0,0);
 	
 	if(data[0]==0x42 && data[1]==0x4D) {                                //文件的类型
@@ -3163,6 +3173,7 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
+	SD_HANDLE_POSITON,
 	SD_HANDLE_OPEN,
 	SD_HANDLE_WG,
 	SD_HANDLE_KEY,
@@ -3173,7 +3184,7 @@ typedef struct {
 	/// Message type.
 	SDTaskMsgType type;
 	/// Message lenght.
-	int length;
+	short length;
 } SDTaskMsg;
 
 static SDTaskMsg *__SDCreateMessage(SDTaskMsgType type, const char *dat, unsigned char len) {
@@ -3199,6 +3210,15 @@ bool SDTaskHandleOpen(const char *dat, int len) {
 	return false;
 }
 
+bool SDTaskHandleSurePosition(const char *dat, int len) {                 //打开地图，确认选择ZIGB的位置
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_POSITON, dat, len);
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
 bool SDTaskHandleWGOption(const char *dat, int len) {
 	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_WG, dat, len);
 	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
@@ -3217,11 +3237,9 @@ bool SDTaskHandleKey(const char *dat, int len) {
 	return false;
 }
 
-extern char StatusOfInterface(void);
-
 void FirstIntoInterface(void){         //更换一个新的界面
 	char tmp[2] = {1, 0}, i;
-	i = StatusOfInterface();
+	i = InterFace;
 	
 	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != Light_Attrib))
 		Ili9320TaskLightLine(tmp, 1);
@@ -3234,29 +3252,27 @@ static char GateWayName[40] = {0};
 extern char ProMaxPage(void);
 
 
+void EndOfFile(void){            //关闭文件，打开一个新的界面
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+	FirstIntoInterface();
+}
+
 char *GWname(void){
 	return &GateWayName[0];
 }
+
 
 static void __OpenMainGUI(char *dat, char *msg){
 	char buf[512];
 	short i;
 	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);	
-	
-	result = f_open(&fsrc, (const TCHAR*)dat, FA_OPEN_EXISTING | FA_READ);	
-
-	if(!result){
-		Ili9320TaskClear("C", 2);
-	}else{
-		
+	result = OpenFile(dat);
+	if (result != FR_OK) {
 		return;
 	}
+	Ili9320TaskClear("C", 2);
 	
-	if (result != FR_OK) {
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);		
-	}
 	
 	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){      //网关和频点选择进入
 		switch (msg[1]){
@@ -3278,9 +3294,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 			default:
 				break;
 		}
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
-		FirstIntoInterface();
+		
 		return;
 	} else if(msg[0] == Test_GUI){
 		switch (msg[1]){
@@ -3309,9 +3323,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 				break;
 		}
 		
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
-		FirstIntoInterface();
+		EndOfFile();
 		return;
 	}
 	
@@ -3347,9 +3359,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 			default:
 					break;
 		}
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
-		FirstIntoInterface();
+		EndOfFile();
 		return;
 	}
 	
@@ -3374,10 +3384,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 		}
 		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	}
-	f_close(&fsrc);
-	f_mount(&fs, "0:", NULL);	
-	
-	FirstIntoInterface();
+	EndOfFile();
 }
 
 static unsigned char NumOfOpt = 0;       //选项数目
@@ -3489,15 +3496,10 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 		tmp[0] = 0;
 	}
 	
-	f_mount(&fs, (const TCHAR*)"0:", 1);	
-	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);	
-	
+	result = OpenFile(tmp);
 	if (result != FR_OK) {
-
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);	
 		return tmp;
-	}	
+	}
 	
 	for(i = 0; i < 255; i++){																	//判断选项个数
 		f_gets(buf, 40, &fsrc);
@@ -3528,29 +3530,26 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	char *p = __SDGetMsgData(message);
 	
 	if(Project == 1){
-		sprintf(buf, "%s", "滨湖");
+		sprintf(buf, "%s", "滨湖/网关");
 	} else if(Project == 2){
-		sprintf(buf, "%s", "产业园");
+		sprintf(buf, "%s", "产业园/网关");
 	} else if(Project == 3){
-		sprintf(buf, "%s", "大明");
+		sprintf(buf, "%s", "大明/网关");
 	}
 	
 	i = ProMaxPage() - 1;                //当前页数            
 	i = i * 15;
 	i = p[1] + i;                        //当前选项
 	
+	NumbOfOption = i;
+	
 	sprintf(tmp, "0:%s/%d.txt", buf, i);
 	
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-//	printf("%s.\n", FR_Table[result]);
-	
-	result = f_open(&fsrc, (const TCHAR*)tmp, FA_OPEN_EXISTING | FA_READ);
-//	printf("%s.\n", FR_Table[result]);
-	
+	result = OpenFile(tmp);
 	if (result != FR_OK) {
-		f_close(&fsrc);
-		f_mount(&fs, "0:", NULL);		
+		return;
 	}
+	
 	f_gets(buf, 64, &fsrc);
 	
 	for(i = 0; i < 64; i++){
@@ -3618,12 +3617,103 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 	FrequencyDot = 0;
 }
 
+extern void DrawCircle(short x, short y);
+
+static unsigned int ChangeValue(unsigned int p){
+	if(p < 10)
+		p = p * 10 * 10 * 10 * 10 * 10;
+	if(p < 100)
+		p = p * 10 * 10 * 10 * 10;
+	if(p < 1000)
+		p = p * 10 * 10 * 10;
+	if(p < 10000)
+		p = p * 10 * 10;
+	if(p < 100000)
+		p = p * 10;
+	
+	return p;
+}
+
+static void __SDTaskHandlePosition(SDTaskMsg *message){
+	char tmp[32], buf[150], para[32];
+	char *p = __SDGetMsgData(message);
+	unsigned int OrgX, OrgY, EndX, EndY, PosX, PosY, i;
+	short x, y;
+	
+//	if(HexSwitchDec)
+//		addr = strtol((const char *)&p[1], NULL, 16);
+//	else
+//		addr = atoi(&p[1]);
+	
+	if(Project == 1){
+		sprintf(buf, "%s", "滨湖/地图");
+		sprintf(para, "%s", "滨湖/经纬度");
+	} else if(Project == 2){
+		sprintf(buf, "%s", "产业园/地图");
+		sprintf(para, "%s", "产业园/经纬度");
+	} else if(Project == 3){
+		sprintf(buf, "%s", "大明/地图");
+		sprintf(para, "%s", "大明/经纬度");
+	}
+	
+	sprintf(tmp, "0:%s/%d.bmp", buf, NumbOfOption);	
+	Pic_Viewer((const unsigned char *)tmp);                               //打开网关所在地图
+	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
+	result = OpenFile(tmp);
+	if (result != FR_OK) {
+		return;
+	}
+	
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+	OrgX = atoi(tmp);
+	OrgX = ChangeValue(OrgX);
+	
+	sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+	OrgY = atoi(tmp);
+	OrgY = ChangeValue(OrgY);
+	
+	f_gets(buf, 64, &fsrc);
+	sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+	EndX = atoi(tmp);
+	EndX = ChangeValue(EndX);
+	
+	sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+	EndY = atoi(tmp);
+	EndY = ChangeValue(EndY);
+	
+	for(i = 0; i < 1000; i++){
+		f_gets(buf, 150, &fsrc);
+		sscanf(buf, "%[^	]", tmp);
+		if(strncmp(tmp, p, 4) == 0){
+			sscanf(buf, "%*[^.]%*c%[^	]", tmp);
+			PosX = atoi(tmp);
+			PosX = ChangeValue(PosX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^	]", tmp);
+			PosY = atoi(tmp);
+			PosY = ChangeValue(PosY);
+			
+			x = (PosX - OrgX) * 320 / (EndX - OrgX);
+			y = (OrgY - PosY) * 240 / (OrgY - EndY);
+			
+			DrawCircle(x, y);
+			break;
+		}
+		
+		if(strlen(buf) < 10)
+			break;
+	}
+}
+
 typedef struct {
 	SDTaskMsgType type;
 	void (*handlerFunc)(SDTaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_HANDLE_POSITON, __SDTaskHandlePosition },
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
 	{ SD_HANDLE_KEY, __SDHandleKey },
 	{ SD_NULL, NULL },
@@ -3650,6 +3740,17 @@ static void __SDTask(void *parameter) {
 }
 
 
+
+void JlinkSum(int x, int y){
+	unsigned int i, j;
+	
+	i = (x - 278854) * 320 / (292705 - 278854);
+	j = (740715 - y) * 240 / (740715 - 730688);
+	
+	DrawCircle(i, j);
+}
+
+
 void SDInit(void) {
 	SD_Error Status;
 	
@@ -3661,7 +3762,8 @@ void SDInit(void) {
 		printf("\r\n SD_Init 初始化失败 \r\n" );
 	}
 	
-	Pic_Viewer("logo");
+	Pic_Viewer("0:界面/logo.bmp");
+	JlinkSum(287118, 737579);
 	__SDHCQueue = xQueueCreate(5, sizeof(SDTaskMsg *));
 	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

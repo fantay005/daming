@@ -107,6 +107,7 @@ typedef enum{
 	Frequ_Option,    		//测试模式下，频点选择
 	
 	Node_Set = 23,      //自定义设置中心节点，维修模式下
+	Map_Dis,            //显示地址所在点，维修模式下
 	
 	
 

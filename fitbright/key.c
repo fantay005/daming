@@ -432,12 +432,8 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 						return false;
 					return true;
 				case 4:
-					return true;
-				case 6:
-					if(ZigBAddr == 0)         //没有选择ZigBee地址状况下
+					if(FrequencyDot == 0)     //没有选择频点状况下
 						return false;
-					if(HubNode == 0)
-						return false;            //没有配置中心节点
 					return true;
 				case 7:
 					if(ZigBAddr == 0)         //没有选择ZigBee地址状况下
@@ -446,6 +442,12 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 						return false;            //没有配置中心节点
 					return true;
 				case 8:
+					if(ZigBAddr == 0)         //没有选择ZigBee地址状况下
+						return false;
+					if(HubNode == 0)
+						return false;            //没有配置中心节点
+					return true;
+				case 9:
 					if(ZigBAddr == 0)         //没有选择ZigBee地址状况下
 						return false;
 					if(HubNode == 0)
@@ -969,16 +971,22 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 				return;
 			
 		} else if(dat == 4){
-			InterFace = Node_Set;
-			Ili9320TaskClear("C", 2);
+			char buf[5];
 			
-		} else if(dat == 6){
+			InterFace = Map_Dis;
+			if(HexSwitchDec)
+				sprintf(buf, "%04X", ZigBAddr);
+			else
+				sprintf(buf, "%04d", ZigBAddr);
+			
+			SDTaskHandleSurePosition(buf, strlen(buf));
+		} else if(dat == 7){
 			InterFace = Read_Data;
 			Ili9320TaskClear("C", 2);
 			StartRead = 1;
 			
 			return;
-		} else if(dat == 7){
+		} else if(dat == 8){
 			char buf[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03, 0};    //单灯关灯指令
 			char buf1[5];
 				
@@ -1000,7 +1008,7 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 			
 			KeyConfirm = NOKEY;
 			return;
-		} else if(dat == 8){
+		} else if(dat == 9){
 			char buf[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03, 0};    //单灯关灯指令
 			char buf1[5];
 				
@@ -1597,7 +1605,7 @@ void TIM3_IRQHandler(void){
 			dat[0] = Main_GUI;
 	    dat[1] = 2;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data || InterFace == Frequ_Choose){
+		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data || InterFace == Frequ_Choose || InterFace == Map_Dis){
 			InterFace = Service_GUI;
 			
 			dat[0] = Main_GUI;
