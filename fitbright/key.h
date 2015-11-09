@@ -98,7 +98,7 @@ typedef enum{
 	
 	GateWay_Decide = 15,//测试模式下，网关选择
 	Address_Option,  		//测试模式下，ZigBee地址选择
-	Debug_Option,    		//测试模式下，读镇流器数据*/
+	Real_MOnitor,    		//实时监控
 	Light_Dim,       		//调光
 	Light_Attrib,      	//测试模式下，灯属性选择
 	
@@ -108,9 +108,6 @@ typedef enum{
 	
 	Node_Set = 23,      //自定义设置中心节点，维修模式下
 	Map_Dis,            //显示地址所在点，维修模式下
-	
-	
-
 }Dis_Type;
 
 

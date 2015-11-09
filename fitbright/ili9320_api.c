@@ -308,20 +308,7 @@ void GUI_Circle(u16 cx,u16 cy,u16 r,u16 color,u8 fill)
 }
 
 void DrawCircle(short x, short y){
-	unsigned int i = 0;
-	for(;;){
-		if(InterFace != Map_Dis)
-			break;
-		i++;
-		if(i == 720000)
-			GUI_Circle(x, y, 4, RED, 1);
-		if(i == 1440000)
-			GUI_Circle(x, y, 4, YELLOW, 1);
-		if(i == 2160000){
-			GUI_Circle(x, y, 4, GREEN, 1);
-			i = 0;
-		}
-	}
+	GUI_Circle(x, y, 2, GREEN, 1);	
 }
 
 /****************************************************************************

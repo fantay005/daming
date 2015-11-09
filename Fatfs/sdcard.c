@@ -3084,7 +3084,7 @@ FRESULT OpenFile(char *name){
 
 void Pic_Viewer(const unsigned char *name)
 {
-	char data[512], buf[32]; 
+	char data[512]; 
 	u16 i;
 	unsigned int cnt,file_cnt,temp1;
 	u16 temp;
@@ -3173,6 +3173,8 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
+	SD_HANDLE_MAP,
+	SD_HANDLE_LIGHT_POINT,
 	SD_HANDLE_POSITON,
 	SD_HANDLE_OPEN,
 	SD_HANDLE_WG,
@@ -3203,11 +3205,33 @@ static inline void *__SDGetMsgData(SDTaskMsg *message) {
 
 bool SDTaskHandleOpen(const char *dat, int len) {
 	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_OPEN, dat, len);
+	
 	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
 		return true;
 	}
 	return false;
+}
+
+bool SDTaskHandleOpenMap(const char *dat, int len){                       //打开地图
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_MAP, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleDrawCircle(const char *dat, int len){                    //ZigBee地址位置在地图中显示为一个点
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_LIGHT_POINT, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+	
 }
 
 bool SDTaskHandleSurePosition(const char *dat, int len) {                 //打开地图，确认选择ZIGB的位置
@@ -3241,7 +3265,7 @@ void FirstIntoInterface(void){         //更换一个新的界面
 	char tmp[2] = {1, 0}, i;
 	i = InterFace;
 	
-	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != Light_Attrib))
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Light_Attrib))
 		Ili9320TaskLightLine(tmp, 1);
 }
 
@@ -3635,29 +3659,24 @@ static unsigned int ChangeValue(unsigned int p){
 }
 
 static void __SDTaskHandlePosition(SDTaskMsg *message){
-	char tmp[32], buf[150], para[32];
+	char tmp[32], buf[150], para[32], name[20];
 	char *p = __SDGetMsgData(message);
 	unsigned int OrgX, OrgY, EndX, EndY, PosX, PosY, i;
 	short x, y;
 	
-//	if(HexSwitchDec)
-//		addr = strtol((const char *)&p[1], NULL, 16);
-//	else
-//		addr = atoi(&p[1]);
-	
 	if(Project == 1){
-		sprintf(buf, "%s", "滨湖/地图");
+		sprintf(name, "%s", "滨湖/地图");
 		sprintf(para, "%s", "滨湖/经纬度");
 	} else if(Project == 2){
-		sprintf(buf, "%s", "产业园/地图");
+		sprintf(name, "%s", "产业园/地图");
 		sprintf(para, "%s", "产业园/经纬度");
 	} else if(Project == 3){
-		sprintf(buf, "%s", "大明/地图");
+		sprintf(name, "%s", "大明/地图");
 		sprintf(para, "%s", "大明/经纬度");
 	}
 	
-	sprintf(tmp, "0:%s/%d.bmp", buf, NumbOfOption);	
-	Pic_Viewer((const unsigned char *)tmp);                               //打开网关所在地图
+//	sprintf(tmp, "0:%s/%d.bmp", buf, NumbOfOption);	
+//	Pic_Viewer((const unsigned char *)tmp);                               //打开网关所在地图
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
 	result = OpenFile(tmp);
@@ -3665,25 +3684,41 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 		return;
 	}
 	
-	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
-	OrgX = atoi(tmp);
-	OrgX = ChangeValue(OrgX);
-	
-	sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
-	OrgY = atoi(tmp);
-	OrgY = ChangeValue(OrgY);
-	
-	f_gets(buf, 64, &fsrc);
-	sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
-	EndX = atoi(tmp);
-	EndX = ChangeValue(EndX);
-	
-	sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
-	EndY = atoi(tmp);
-	EndY = ChangeValue(EndY);
-	
 	for(i = 0; i < 1000; i++){
+		f_lseek(&fsrc, 0);
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图一", 6) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		OrgX = atoi(tmp);
+		OrgX = ChangeValue(OrgX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		OrgY = atoi(tmp);
+		OrgY = ChangeValue(OrgY);
+		
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		EndX = atoi(tmp);
+		EndX = ChangeValue(EndX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		EndY = atoi(tmp);
+		EndY = ChangeValue(EndY);
+		break;
+	}
+
+	f_lseek(&fsrc, 0);	
+	for(i = 0; i < 100; i++){  	
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "经纬度", 6) != 0)
+			continue;
+		else
+			break;
+	}
+	
+	for(i = 0; i < 1000; i++){  
 		f_gets(buf, 150, &fsrc);
 		sscanf(buf, "%[^	]", tmp);
 		if(strncmp(tmp, p, 4) == 0){
@@ -3695,16 +3730,196 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 			PosY = atoi(tmp);
 			PosY = ChangeValue(PosY);
 			
-			x = (PosX - OrgX) * 320 / (EndX - OrgX);
-			y = (OrgY - PosY) * 240 / (OrgY - EndY);
-			
-			DrawCircle(x, y);
 			break;
 		}
-		
-		if(strlen(buf) < 10)
-			break;
 	}
+	
+	if((PosX > OrgX) && (PosX < EndX) && (PosY > EndY) && (PosY < OrgY)){
+		sprintf(tmp, "0:%s/%d.bmp", name, NumbOfOption);	
+		Pic_Viewer((const unsigned char *)tmp);  
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		
+		x = (PosX - OrgX) * 320 / (EndX - OrgX);
+		y = (OrgY - PosY) * 240 / (OrgY - EndY);
+		DrawCircle(x, y);
+		
+		return;
+	} 
+	
+	f_lseek(&fsrc, 0);
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图二", 6) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		OrgX = atoi(tmp);
+		OrgX = ChangeValue(OrgX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		OrgY = atoi(tmp);
+		OrgY = ChangeValue(OrgY);
+		
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		EndX = atoi(tmp);
+		EndX = ChangeValue(EndX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		EndY = atoi(tmp);
+		EndY = ChangeValue(EndY);
+		break;
+	}
+	
+	if((PosX > OrgX) && (PosX < EndX) && (PosY > EndY) && (PosY < OrgY)){
+		sprintf(tmp, "0:%s/%d_2.bmp", name, NumbOfOption);	
+		Pic_Viewer((const unsigned char *)tmp);  
+		
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		
+		x = (PosX - OrgX) * 320 / (EndX - OrgX);
+		y = (OrgY - PosY) * 240 / (OrgY - EndY);
+		DrawCircle(x, y);
+
+		return;
+	} 
+	
+	f_lseek(&fsrc, 0);
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图三", 6) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		OrgX = atoi(tmp);
+		OrgX = ChangeValue(OrgX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		OrgY = atoi(tmp);
+		OrgY = ChangeValue(OrgY);
+		
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		EndX = atoi(tmp);
+		EndX = ChangeValue(EndX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		EndY = atoi(tmp);
+		EndY = ChangeValue(EndY);
+		break;
+	}
+	
+	if((PosX > OrgX) && (PosX < EndX) && (PosY > EndY) && (PosY < OrgY)){
+		sprintf(tmp, "0:%s/%d_3.bmp", name, NumbOfOption);	
+		Pic_Viewer((const unsigned char *)tmp);  
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		
+		x = (PosX - OrgX) * 320 / (EndX - OrgX);
+		y = (OrgY - PosY) * 240 / (OrgY - EndY);
+		DrawCircle(x, y);
+		
+		return;
+	} 
+	
+	f_lseek(&fsrc, 0);
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图四", 6) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		OrgX = atoi(tmp);
+		OrgX = ChangeValue(OrgX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		OrgY = atoi(tmp);
+		OrgY = ChangeValue(OrgY);
+		
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		EndX = atoi(tmp);
+		EndX = ChangeValue(EndX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		EndY = atoi(tmp);
+		EndY = ChangeValue(EndY);
+		break;
+	}
+	
+	if((PosX > OrgX) && (PosX < EndX) && (PosY > EndY) && (PosY < OrgY)){
+		sprintf(tmp, "0:%s/%d_4.bmp", name, NumbOfOption);	
+		Pic_Viewer((const unsigned char *)tmp);  
+		f_close(&fsrc);
+		f_mount(&fs, "0:", NULL);	
+		
+		x = (PosX - OrgX) * 320 / (EndX - OrgX);
+		y = (OrgY - PosY) * 240 / (OrgY - EndY);
+		DrawCircle(x, y);
+
+		return;
+	}
+}
+
+static void __SDTaskHandleOpenMap(SDTaskMsg *message){
+	char *p = __SDGetMsgData(message);
+	char name[24], tmp[36];
+	
+	if(Project == 1){
+		sprintf(name, "%s", "滨湖/地图");
+	} else if(Project == 2){
+		sprintf(name, "%s", "产业园/地图");
+	} else if(Project == 3){
+		sprintf(name, "%s", "大明/地图");
+	}
+	
+	sprintf(tmp, "0:%s/%d.txt", name, NumbOfOption);	
+	Pic_Viewer((const unsigned char *)tmp);  
+}
+
+static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
+	char *p = __SDGetMsgData(message);
+	char para[24], tmp[36], buf[32];
+	unsigned int OrgX, OrgY, EndX, EndY, PosX, PosY;
+	unsigned char i;
+	
+	if(Project == 1){
+		sprintf(para, "%s", "滨湖/经纬度");
+	} else if(Project == 2){
+		sprintf(para, "%s", "产业园/经纬度");
+	} else if(Project == 3){
+		sprintf(para, "%s", "大明/经纬度");
+	}
+	
+	
+	for(i = 0; i < 100; i++){
+		f_lseek(&fsrc, 0);
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图一", 6) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		OrgX = atoi(tmp);
+		OrgX = ChangeValue(OrgX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		OrgY = atoi(tmp);
+		OrgY = ChangeValue(OrgY);
+		
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		EndX = atoi(tmp);
+		EndX = ChangeValue(EndX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		EndY = atoi(tmp);
+		EndY = ChangeValue(EndY);
+		break;
+	}
+	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);		
 }
 
 typedef struct {
@@ -3713,6 +3928,8 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_HANDLE_MAP, __SDTaskHandleOpenMap },
+	{ SD_HANDLE_LIGHT_POINT, __SDTaskHandleLightOnePoint },
 	{ SD_HANDLE_POSITON, __SDTaskHandlePosition },
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
 	{ SD_HANDLE_KEY, __SDHandleKey },
@@ -3740,17 +3957,6 @@ static void __SDTask(void *parameter) {
 }
 
 
-
-void JlinkSum(int x, int y){
-	unsigned int i, j;
-	
-	i = (x - 278854) * 320 / (292705 - 278854);
-	j = (740715 - y) * 240 / (740715 - 730688);
-	
-	DrawCircle(i, j);
-}
-
-
 void SDInit(void) {
 	SD_Error Status;
 	
@@ -3763,7 +3969,6 @@ void SDInit(void) {
 	}
 	
 	Pic_Viewer("0:界面/logo.bmp");
-	JlinkSum(287118, 737579);
 	__SDHCQueue = xQueueCreate(5, sizeof(SDTaskMsg *));
 	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

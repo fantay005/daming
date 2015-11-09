@@ -394,6 +394,8 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 			
 			switch(param){
 				case 1:
+					if(Project == Pro_Null)
+						return false;
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //没有选择网关状况下
@@ -420,6 +422,8 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 		
 			switch(param){
 				case 1:
+					if(Project == Pro_Null)
+						return false;
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //没有选择网关状况下
@@ -463,6 +467,8 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 		
 			switch(param){
 				case 1:
+					if(Project == Pro_Null)
+						return false;
 					return true;
 				case 2:
 					if(tmp[0] == 0)           //没有选择网关状况下
@@ -637,7 +643,7 @@ void ChooseLine(void){                         //确定行数，和页数
 	tmp[0] = wave;
 	tmp[1] = 0;
 	i = InterFace;
-	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Debug_Option) && (i != Light_Attrib))
+	if((i != Intro_GUI) && (i != Config_Set) && (i != Config_DIS) && (i != Read_Data) && (i != Light_Attrib))
 		Ili9320TaskLightLine((const char *)tmp, strlen((const char *)tmp));
 }
 
@@ -936,8 +942,8 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 	} else if (InterFace == Config_GUI){         //当显示页面为配置界面时，键值操作改变页面
 		
 		if(dat == 1){
-			InterFace = GateWay_Set;
 			
+			InterFace = GateWay_Set;
 		} else if(dat == 2){
 			if(NumOfFrequ > 1){
 				InterFace = Frequ_Set;
@@ -959,8 +965,8 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 	} else if (InterFace == Service_GUI){        //当显示页面为维修界面时，键值操作改变页面
 
 		if(dat == 1){
-			InterFace = GateWay_Choose;
 			
+			InterFace = GateWay_Choose;
 		} else if(dat == 3){
 			InterFace = Address_Choose;
 			__AddrConfig();
@@ -1034,8 +1040,8 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 	} else if (InterFace == Test_GUI){           //当显示页面为测试界面时，键值操作改变页面
 		
 		if(dat == 1){
-			InterFace = GateWay_Decide;
 			
+			InterFace = GateWay_Decide;
 		} else if(dat == 3){
 			InterFace = Address_Option;
 			ParamOrAddr = 1;
@@ -1052,7 +1058,7 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 				return;
 			
 		} else if(dat == 4){
-			InterFace = Debug_Option;
+			InterFace = Real_MOnitor;
 			
 		} else if(dat == 5){
 			char tmp[2] = {1, 0};
@@ -1289,7 +1295,7 @@ void __handleSetAttribute(void){
 	
 	 } else if(KeyConfirm == KEYOK){
 		InterFace = Test_GUI;
-			
+		
 		dat[0] = Main_GUI;
 	  dat[1] = 4;
 	  SDTaskHandleKey((const char *)dat, 2);
@@ -1431,6 +1437,11 @@ void __handleBSNData(void){                           //处理读镇流器数据
 	
 	Line = 1;
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+}
+
+void __handleRealTime(void){                         //处理实时监控界面
+	
+	
 }
 
 bool HexSwitchDec = 0;                               //16进制与10进制切换， 0位10进制，1为16进制
@@ -1611,7 +1622,7 @@ void TIM3_IRQHandler(void){
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Decide || InterFace == Address_Option || InterFace == Debug_Option || InterFace == Light_Dim || InterFace == Light_Attrib || InterFace == Frequ_Option){
+		} else if((InterFace == GateWay_Decide) || (InterFace == Address_Option) || (InterFace == Light_Dim) || (InterFace == Light_Attrib) || (InterFace == Frequ_Option) || (InterFace == Real_MOnitor)){
 			InterFace = Test_GUI;
 			
 			dat[0] = Main_GUI;
@@ -1698,7 +1709,9 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Address_Option){
 	
 		__handleAddrValue();
-	} 
+	} else if(InterFace == Real_MOnitor){
+		__handleRealTime();
+	}
 	
 	KeyConfirm = NOKEY;
 }

@@ -146,7 +146,7 @@
 #define GBLUE                  0X07FF
 #define RED                    0xF800
 #define MAGENTA                0xF81F
-#define GREEN                  0x07E0
+#define GREEN                  0X07E0
 #define CYAN                   0x7FFF  //青色
 #define BROWN                  0XBC40  //棕色
 #define BRRED                  0XFC07  //棕红色
