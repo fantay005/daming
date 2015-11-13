@@ -52,7 +52,6 @@ static void __CommInitUsart(int baud) {
 
 static void __CommInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin =  Pin_COMx_TX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -69,16 +68,34 @@ static void __CommInitHardware(void) {
 	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				     //ZigBeeÄ£¿éµÄÅäÖÃ½Å
 	
 	GPIO_SetBits(GPIO_Config, Pin_Config);
+	
+}
 
+void OpenComxInterrupt(void){	
+	NVIC_InitTypeDef NVIC_InitStructure;
+	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = COMx_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
+	
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+void CloseComxInterrupt(void){	
+	NVIC_InitTypeDef NVIC_InitStructure;
+	
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
+	
+	NVIC_InitStructure.NVIC_IRQChannel = COMx_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+	
+	NVIC_Init(&NVIC_InitStructure);
+}
 
 void StartConfig(void){
 //	GPIO_InitTypeDef GPIO_InitStructure;
@@ -364,6 +381,12 @@ static void __handleRecieve(ComxTaskMsg *msg){
 	
 	sscanf(p, "%*1s%4s", addr);
 	
+	if(StartRead == 2){
+		
+		return;
+	}
+		
+	
 	if(HexSwitchDec){                                        //ÅÐ¶ÏµØÖ·ÊÇ·ñÒ»ÖÂ,
 	 if(strtol((const char *)addr, NULL, 16) != ZigBAddr)
 			return;
@@ -458,8 +481,7 @@ static void __handleRecieve(ComxTaskMsg *msg){
 	sscanf(p, "%*33s%2s", temp);
 	i = strtol((const char *)temp, NULL, 16);
 	sprintf(buf, "BSN ÎÂ¶È:  %5d¡æ", i & 0x7F);
-//	buf[strlen(buf) - 2] = 0xA1; 
-//	buf[strlen(buf) - 1] = 0xE6;  
+
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 	
 	sscanf(p, "%*35s%2s", Vis);
@@ -512,6 +534,7 @@ static void __comxTask(void *parameter) {
 
 void CommInit(void) {
 	__CommInitHardware();
+	OpenComxInterrupt();
 	__CommInitUsart(9600);
 	__comxQueue = xQueueCreate(10, sizeof(ComxTaskMsg *));
 	xTaskCreate(__comxTask, (signed portCHAR *) "COM", COMX_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);

@@ -3036,6 +3036,7 @@ void  NVIC_Config (void) {
   NVIC_InitTypeDef NVIC_InitStructure;
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	
 	NVIC_InitStructure.NVIC_IRQChannel = SDIO_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 1;
@@ -3043,6 +3044,7 @@ void  NVIC_Config (void) {
 	NVIC_Init(&NVIC_InitStructure);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	
 	NVIC_InitStructure.NVIC_IRQChannel = DMA2_Channel4_5_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
@@ -3173,12 +3175,15 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
+	SD_HANDLE_POLE,
+	SD_HANDLE_LAMP_PARAM,
 	SD_HANDLE_MAP,
 	SD_HANDLE_LIGHT_POINT,
 	SD_HANDLE_POSITON,
 	SD_HANDLE_OPEN,
 	SD_HANDLE_WG,
 	SD_HANDLE_KEY,
+	SD_HANDLE_ADDR,
 	SD_NULL,
 }SDTaskMsgType;
 
@@ -3213,6 +3218,26 @@ bool SDTaskHandleOpen(const char *dat, int len) {
 	return false;
 }
 
+bool SDTaskHandleAddress(const char *dat, int len) {                    //显示当前杆所有ZigBee地址
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_ADDR, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleLampParam(const char *dat, int len) {                    //显示主辅投属性
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_LAMP_PARAM, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
 bool SDTaskHandleOpenMap(const char *dat, int len){                       //打开地图
 	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_MAP, dat, len);
 	
@@ -3231,7 +3256,16 @@ bool SDTaskHandleDrawCircle(const char *dat, int len){                    //ZigB
 		return true;
 	}
 	return false;
+}
+
+bool SDTaskHandleLightPole(const char *dat, int len){                     //关闭ZigBee地址所在杆数，或邻近杆数的所有灯
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_POLE, dat, len);
 	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
 }
 
 bool SDTaskHandleSurePosition(const char *dat, int len) {                 //打开地图，确认选择ZIGB的位置
@@ -3270,8 +3304,9 @@ void FirstIntoInterface(void){         //更换一个新的界面
 }
 
 
-
-static char GateWayName[40] = {0};
+ 
+static char GateWayName[40] = {0};     //存放网关名称缓存
+static char LightParam[10] = {0};      //存放ZigBee地址主辅道属性
 
 extern char ProMaxPage(void);
 
@@ -3286,6 +3321,9 @@ char *GWname(void){
 	return &GateWayName[0];
 }
 
+char *LPAttribute(void){
+	return &LightParam[0];
+}
 
 static void __OpenMainGUI(char *dat, char *msg){
 	char buf[512];
@@ -3298,7 +3336,7 @@ static void __OpenMainGUI(char *dat, char *msg){
 	Ili9320TaskClear("C", 2);
 	
 	
-	if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){      //网关和频点选择进入
+	if(msg[0] == Config_GUI){      //网关和频点选择进入
 		switch (msg[1]){
 			case 1:
 				for(i = 0; i < 15; i++){
@@ -3319,7 +3357,38 @@ static void __OpenMainGUI(char *dat, char *msg){
 				break;
 		}
 		
+		EndOfFile();
 		return;
+	} else if(msg[0] == Service_GUI){
+		switch (msg[1]){
+			case 1:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			case 2:
+				if(NumOfFrequ < 2)
+					break;
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				Ili9320TaskDisFrequDot((const char *)buf, 2);
+				break;
+			
+			case 5:
+				for(i = 0; i < 15; i++){
+					f_gets(buf, 64, &fsrc);
+					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+				}
+				break;
+			default:
+				break;
+		}
+		
+		EndOfFile();
+		return;		
 	} else if(msg[0] == Test_GUI){
 		switch (msg[1]){
 			case 1:
@@ -3463,7 +3532,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 				tmp[0] = 0;                              //不用打开文件
 				break;
 		}
-	} else if((msg[0] == Config_GUI) || (msg[0] == Service_GUI)){
+	} else if(msg[0] == Config_GUI){
 
 		switch (msg[1]){
 			case 1:
@@ -3478,6 +3547,29 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 			case 4:
 				Ili9320TaskClear("C", 2);
 				tmp[0] = 0;                              //不用打开文件
+				break;
+			default:
+				tmp[0] = 0;                             //不用打开文件
+				break;
+		}
+	} else if(msg[0] == Service_GUI){
+		
+		switch (msg[1]){
+			case 1:
+				sprintf(tmp, "0:界面/%s.txt", buf);
+				break;
+			case 2:
+				if(NumOfFrequ > 1)
+					sprintf(tmp, "0:界面/%s.txt", "频点");
+				else
+					tmp[0] = 0;                            //不用打开文件
+				break;
+			case 4:
+				Ili9320TaskClear("C", 2);
+				tmp[0] = 0;                              //不用打开文件
+				break;
+			case 5:
+				sprintf(tmp, "0:界面/%s.txt", "灯杆");
 				break;
 			default:
 				tmp[0] = 0;                             //不用打开文件
@@ -3675,9 +3767,6 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 		sprintf(para, "%s", "大明/经纬度");
 	}
 	
-//	sprintf(tmp, "0:%s/%d.bmp", buf, NumbOfOption);	
-//	Pic_Viewer((const unsigned char *)tmp);                               //打开网关所在地图
-	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
 	result = OpenFile(tmp);
 	if (result != FR_OK) {
@@ -3863,20 +3952,311 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 	}
 }
 
+static char BufOfLoop[4];
+static char BufOfPole[4];
+
+static unsigned int TopX = 0;
+static unsigned int TopY = 0;
+static unsigned int BomX = 0;
+static unsigned int BomY = 0;
+
 static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 	char *p = __SDGetMsgData(message);
-	char name[24], tmp[36];
+	char name[24], tmp[36], buf[64], msg[20];
+	int i;
 	
 	if(Project == 1){
 		sprintf(name, "%s", "滨湖/地图");
+		sprintf(msg, "%s", "滨湖/经纬度");
 	} else if(Project == 2){
 		sprintf(name, "%s", "产业园/地图");
+		sprintf(msg, "%s", "产业园/经纬度");
 	} else if(Project == 3){
 		sprintf(name, "%s", "大明/地图");
+		sprintf(msg, "%s", "大明/经纬度");
 	}
 	
-	sprintf(tmp, "0:%s/%d.txt", name, NumbOfOption);	
-	Pic_Viewer((const unsigned char *)tmp);  
+	if(strncmp(p, "1", 1) == 0){
+		sprintf(tmp, "0:%s/%d.bmp", name, NumbOfOption);
+	} else if((strncmp(p, "2", 1) == 0)){
+		sprintf(tmp, "0:%s/%d_2.bmp", name, NumbOfOption);
+	}
+	Pic_Viewer((const unsigned char *)tmp); 
+
+	sprintf(buf, "0:%s/%d.txt", msg, NumbOfOption);
+	
+	result = OpenFile(buf);	
+	if (result != FR_OK) {
+		return;
+	}
+	
+	if(strncmp(p, "1", 1) == 0){
+		for(i = 0; i < 1000; i++){
+			f_lseek(&fsrc, 0);
+			f_gets(buf, 64, &fsrc);
+			if(strncmp(buf, "地图一", 6) != 0)
+				continue;
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			TopX = atoi(tmp);
+			TopX = ChangeValue(TopX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			TopY = atoi(tmp);
+			TopY = ChangeValue(TopY);
+			
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			BomX = atoi(tmp);
+			BomX = ChangeValue(BomX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			BomY = atoi(tmp);
+			BomY = ChangeValue(BomY);
+			break;
+		}
+	} else if((strncmp(p, "2", 1) == 0)){
+		f_lseek(&fsrc, 0);
+		for(i = 0; i < 1000; i++){
+			f_gets(buf, 64, &fsrc);
+			if(strncmp(buf, "地图二", 6) != 0)
+				continue;
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			TopX = atoi(tmp);
+			TopX = ChangeValue(TopX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			TopY = atoi(tmp);
+			TopY = ChangeValue(TopY);
+			
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			BomX = atoi(tmp);
+			BomX = ChangeValue(BomX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			BomY = atoi(tmp);
+			BomY = ChangeValue(BomY);
+			break;
+		}
+	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+	
+	HubNode = 1;
+	StartRead  = 2;
+}
+
+static void __SDTaskHandleLightPole(SDTaskMsg *message){
+	char tmp[36], para[20], pole[4], buf[64], circuit[2], addr[5];
+	int i, c, t, s;
+	
+	char *p = __SDGetMsgData(message);
+	
+	if(Project == 1){
+		sprintf(para, "%s", "滨湖/灯参");
+	} else if(Project == 2){
+		sprintf(para, "%s", "产业园/灯参");
+	} else if(Project == 3){
+		sprintf(para, "%s", "大明/灯参");
+	}
+	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
+	result = OpenFile(tmp);
+	if (result != FR_OK) {
+		return;
+	}
+	
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		
+		if(strlen(buf) < 10)
+			break;
+		
+		sscanf(buf, "%*[^\t]%*c%[^\t]", circuit);               //回路信息
+		
+		if(BufOfLoop[0] < circuit[0])                           //查询回路数大于ZigBee地址所在回路数，退出
+			break;
+		
+		if(strncmp(circuit, BufOfLoop, strlen(BufOfLoop)) != 0) 
+			continue;
+		
+		sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%[^\t]", pole);        //灯杆信息
+		
+		c = atoi((const char *)pole);                           
+		t = atoi((const char *)BufOfPole);
+		
+		if(strncmp(p, "1", 1) == 0){
+			char msg[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03, 0};    //单灯关灯指令
+			
+			if(c > t)                                             //查询灯杆数大于ZigBee地址所在灯杆数，退出	
+				break;
+			
+			if(strncmp(pole, BufOfPole, strlen(BufOfPole)) != 0)
+				continue;			
+			
+			sscanf(buf, "%[^\t]", addr); 
+			if(HexSwitchDec){
+				s = strtol(addr, NULL, 16);
+				
+				if(s > 0x2000)
+					s = s - 0x2000;
+				msg[0] = (s >> 8) & 0xFF;
+				msg[1] = s & 0xFF;	
+			} else{
+				s = atoi((const char *)addr);
+				
+				if(s > 2000)
+					s = s - 2000;
+				msg[0] = s / 100;
+				msg[1] = s % 100;
+			}
+			
+			CommxTaskSendData(msg, strlen(msg));
+			
+		} else if(strncmp(p, "3", 1) == 0){
+			char msg[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03, 0};    //单灯关灯指令
+				
+			if((c - 1) > t)                            //查询杆数值大于ZigBee地址所在杆数值2，退出
+				break;	
+
+			if(((c + 1) != t) && ((c - 1) != t))       //邻近的杆数为杆数值大1和小1
+				continue;
+			
+			sscanf(buf, "%[^\t]", addr); 
+			if(HexSwitchDec) {
+				s = strtol(addr, NULL, 16);			
+				if(s > 0x2000)
+					s = s - 0x2000;
+				
+				msg[0] = (s >> 8) & 0xFF;
+				msg[1] = s & 0xFF;	
+			} else {
+				s = atoi((const char *)addr);
+				
+				if(s > 2000)
+					s = s - 2000;
+				
+				msg[0] = s / 100;
+				msg[1] = s % 100;
+			}
+			
+			CommxTaskSendData(msg, strlen(msg));
+		}
+	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+}
+
+static void __SDTaskHandleLampParam(SDTaskMsg *message){
+	char tmp[36], para[20], buf[64];
+	int i;
+	
+	if(Project == 1){
+		sprintf(para, "%s", "滨湖/灯参");
+	} else if(Project == 2){
+		sprintf(para, "%s", "产业园/灯参");
+	} else if(Project == 3){
+		sprintf(para, "%s", "大明/灯参");
+	}
+	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
+	result = OpenFile(tmp);
+	if (result != FR_OK) {
+		return;
+	}
+	
+	if(HexSwitchDec){
+		sprintf(tmp, "%04X", ZigBAddr);
+	} else {
+		sprintf(tmp, "%04d", ZigBAddr);
+	}
+	
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, tmp, 4) == 0){
+			sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%*[^\t]%*c%[^\r]", tmp);    //取灯参的主辅道属性
+			for(i = 0; i < 10; i++){
+				if(tmp[i] == '\t'){
+					tmp[i] = tmp[i + 1];
+					tmp[i + 1] = 0;
+					break;
+				}
+			}
+			sprintf(LightParam, tmp);
+			
+			sscanf(buf, "%*[^\t]%*c%[^\t]", tmp);                         //取当前地址的回路信息
+			sprintf(BufOfLoop, tmp);
+			
+			sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%[^\t]", tmp);               //取当前地址的灯杆信息
+			sprintf(BufOfPole, tmp);
+			
+			break;
+		}
+	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
+}
+static void __SdHandleAddr(SDTaskMsg *message){
+	char para[24], tmp[32], buf[64];
+	int i, j;
+	
+	if(Project == 1){
+		sprintf(para, "%s", "滨湖/灯参");
+	} else if(Project == 2){
+		sprintf(para, "%s", "产业园/灯参");
+	} else if(Project == 3){
+		sprintf(para, "%s", "大明/灯参");
+	}	
+	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
+	result = OpenFile(tmp);
+	if (result != FR_OK) {
+		return;
+	}
+	
+	Line = 6;
+	
+	for(i = 0; i < 1000; i++){		
+		f_gets(buf, 64, &fsrc);
+		
+		sscanf(buf, "%*[^\t]%*c%[^\t]", tmp);                         //取当前地址的回路信息
+		
+		if(tmp[0] > BufOfLoop[0])
+			break;
+		
+		if(strncmp(BufOfLoop, tmp, strlen(BufOfLoop)) != 0)
+			continue;
+			
+		sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%[^\t]", tmp);               //取当前地址的灯杆信息
+		
+		if(tmp[0] > BufOfPole[0])
+			break;
+		
+		if(strncmp(BufOfPole, tmp, strlen(BufOfPole)) != 0)
+			continue;
+		
+		sscanf(buf, "%[^\t]", para);                                  //取地址	
+		
+		sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%*[^\t]%*c%[^\r]", tmp);     //取主辅投属性
+		
+		for(j = 0; j < 8; j++){
+			if(tmp[j] == '\t'){
+				tmp[j] = ' ';
+				break;
+			}
+		}
+		
+		sprintf(buf, "  %s  %s", para, tmp);
+		Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+	}
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
 }
 
 static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
@@ -3891,8 +4271,13 @@ static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
 		sprintf(para, "%s", "产业园/经纬度");
 	} else if(Project == 3){
 		sprintf(para, "%s", "大明/经纬度");
-	}
+	}	
 	
+	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
+	result = OpenFile(tmp);
+	if (result != FR_OK) {
+		return;
+	}
 	
 	for(i = 0; i < 100; i++){
 		f_lseek(&fsrc, 0);
@@ -3920,6 +4305,10 @@ static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
 	}
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);		
+	
+	
+	f_close(&fsrc);
+	f_mount(&fs, "0:", NULL);	
 }
 
 typedef struct {
@@ -3928,11 +4317,14 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_HANDLE_POLE, __SDTaskHandleLightPole },
+	{ SD_HANDLE_LAMP_PARAM, __SDTaskHandleLampParam },
 	{ SD_HANDLE_MAP, __SDTaskHandleOpenMap },
 	{ SD_HANDLE_LIGHT_POINT, __SDTaskHandleLightOnePoint },
 	{ SD_HANDLE_POSITON, __SDTaskHandlePosition },
 	{ SD_HANDLE_WG, __SDTaskHandleWGOption },
 	{ SD_HANDLE_KEY, __SDHandleKey },
+	{ SD_HANDLE_ADDR, __SdHandleAddr },
 	{ SD_NULL, NULL },
 };
 
@@ -3969,6 +4361,6 @@ void SDInit(void) {
 	}
 	
 	Pic_Viewer("0:界面/logo.bmp");
-	__SDHCQueue = xQueueCreate(5, sizeof(SDTaskMsg *));
-	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	__SDHCQueue = xQueueCreate(10, sizeof(SDTaskMsg *));
+	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

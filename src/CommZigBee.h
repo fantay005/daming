@@ -30,8 +30,6 @@ typedef struct{
 	unsigned char  TIME[8];
 }BSN_Data;
 
-
-
 extern char HubNode;              //选择中心节点还是配置选项
 
 bool ComxTaskRecieveModifyData(const char *dat, int len);

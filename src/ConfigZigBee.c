@@ -33,6 +33,7 @@ static ZigBee_Param ConfigMsg = {"0001", "SHUNCOM ", "3", "2", "FF", "F", "2", "
 
 static void __ConfigInitUsart(int baud) {
 	USART_InitTypeDef USART_InitStructure;
+	
 	USART_InitStructure.USART_BaudRate = baud;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
 	USART_InitStructure.USART_StopBits = USART_StopBits_1;
@@ -46,7 +47,6 @@ static void __ConfigInitUsart(int baud) {
 
 static void __ConfigInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
-	NVIC_InitTypeDef NVIC_InitStructure;
 
 	GPIO_InitStructure.GPIO_Pin =  Pin_SERx_TX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
@@ -61,14 +61,30 @@ static void __ConfigInitHardware(void) {
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIOB, &GPIO_InitStructure);				    //ZigBeeÄ£¿éµÄÅäÖÃ½Å
+}
+
+void OpenSERxInterrupt(void){
+	NVIC_InitTypeDef NVIC_InitStructure;
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = SERx_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
-	NVIC_Init(&NVIC_InitStructure);
+	NVIC_Init(&NVIC_InitStructure);	
+}
+
+void CloseSERxInterrupt(void){
+	NVIC_InitTypeDef NVIC_InitStructure;
+
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_1);
+	
+	NVIC_InitStructure.NVIC_IRQChannel = SERx_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
+	NVIC_InitStructure.NVIC_IRQChannelCmd = DISABLE;
+	NVIC_Init(&NVIC_InitStructure);	
 }
 
 typedef enum{
@@ -326,7 +342,6 @@ typedef struct {
 static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ CONFIG_RECIEVE_DATA, __TaskHandleRecieve },
 	{ CONFIG_SEND_DATA, __TaskHandleSend },
-//	{ CONFIG_MODIFY_DATA, __TaskHandleModify},
 	{ CONFIG_USELESS_DATA, NULL },
 };
 
@@ -353,8 +368,9 @@ static void __ConfigTask(void *parameter) {
 
 void ConfigInit(void) {
 	__ConfigInitHardware();
+	OpenSERxInterrupt();
 	__ConfigInitUsart(38400);
-	__ConfigQueue = xQueueCreate(10, sizeof(ConfigTaskMsg *));
+	__ConfigQueue = xQueueCreate(15, sizeof(ConfigTaskMsg *));
 	xTaskCreate(__ConfigTask, (signed portCHAR *) "CONFIG", CONFIG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
 

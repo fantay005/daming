@@ -106,10 +106,9 @@ typedef enum{
 	Frequ_Choose,    		//维修模式下，频点选择
 	Frequ_Option,    		//测试模式下，频点选择
 	
-	Node_Set = 23,      //自定义设置中心节点，维修模式下
+	Lamp_Pole = 23,     //维修模式下，灯杆操作
 	Map_Dis,            //显示地址所在点，维修模式下
 }Dis_Type;
-
 
 typedef enum{
 	Pro_Null,
@@ -128,7 +127,7 @@ extern char MaxBit;                 //最大位数
 extern char BaseBit;                //初始数字的 起始位
 extern bool HexSwitchDec;           //十六进制与十进制切换
 extern char StartRead;              //开始读取镇流器数据
-extern Dis_Type  InterFace;
+extern Dis_Type  InterFace;         //当前显示界面
 
 void key_init(void);
 void KEY(void);

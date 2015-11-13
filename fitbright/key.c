@@ -228,6 +228,8 @@ void TIM3_Init(void){
  
 	TIM_ITConfig(TIM3,TIM_IT_Update,ENABLE ); 
  
+	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_4);
+	
 	NVIC_InitStructure.NVIC_IRQChannel = TIM3_IRQn;  
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;  
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;  
@@ -284,7 +286,7 @@ KeyPress keycode(void){                 //¼ì²âÓÐ±ä»¯°´¼ü£¬Ðè±»È·ÈÏ
 }
 
 static KeyPress KeyConfirm = NOKEY;         //ÉÏµçºó°´¼üµÄ³õÊ¼×´Ì¬
-Dis_Type  InterFace = Open_GUI;      //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
+Dis_Type  InterFace = Open_GUI;             //ÉÏµçºóÏÔÊ¾½çÃæµÄ³õÊ¼×´Ì¬
 static Dis_Type  LastFace = Open_GUI;       //ÉÏÒ»¸öÏÔÊ¾½çÃæ
 
 char StatusOfInterface(void){
@@ -299,26 +301,26 @@ void key_driver(KeyPress code)              //¼ì²âÓÐÐ§°´¼ü
 
 	switch (key_state)
 	{
-		case KEY_STATE_0: //³õÊ¼×´Ì¬
+		case KEY_STATE_0:                        //³õÊ¼×´Ì¬
 			if (code != NOKEY){
 				code_last = code;
-				key_state = KEY_STATE_1; //Èç¹ûÓÐ¼ü±»°´ÏÂ£¬¼ÇÂ¼¼üÖµ£¬²¢½øÈëÏû¶¶¼°³¤°´È·ÈÏ×´Ì¬
+				key_state = KEY_STATE_1;             //Èç¹ûÓÐ¼ü±»°´ÏÂ£¬¼ÇÂ¼¼üÖµ£¬²¢½øÈëÏû¶¶¼°³¤°´È·ÈÏ×´Ì¬
 			}
 			break;
-		case KEY_STATE_1: //Ïû¶¶È·ÈÏ×´Ì¬
+		case KEY_STATE_1:                        //Ïû¶¶È·ÈÏ×´Ì¬
 			if (code != code_last)
-				key_state = KEY_STATE_2; //µÈ´ý°´¼üÊÍ·Å×´Ì¬
+				key_state = KEY_STATE_2;             //µÈ´ý°´¼üÊÍ·Å×´Ì¬
 			break;
 		case KEY_STATE_2:
-			if (code != code_last) {//µÈµ½°´¼üÊÍ·Å £¬·µ»Ø³õÊ¼×´Ì¬
-				KeyConfirm = code_last; //·µ»Ø¼üÖµ
+			if (code != code_last) {               //µÈµ½°´¼üÊÍ·Å £¬·µ»Ø³õÊ¼×´Ì¬
+				KeyConfirm = code_last;              //·µ»Ø¼üÖµ
 				key_state = KEY_STATE_0;
 			}
 			break;
 	}
 }
 
-static void InputChange(void){                   //ÏÔÊ¾µ±Ç°ÊäÈë·¨
+static void InputChange(void){                //ÏÔÊ¾µ±Ç°ÊäÈë·¨
 	char tmp[5];
 	if(IME == 0)
 		strcpy(tmp, "123");
@@ -356,6 +358,9 @@ static unsigned char Flood = 0;      //Í¶¹â
 
 static char lastData = 0;    //ÉÏÒ»´ÎÐÞ¸ÄµÄZigBeeµØÖ·µÄÖµ
 
+char NodeAble = 0;            //ÖÐÐÄ½ÚµãÊÇ·ñÒÑ¾­ÅäÖÃ
+static char NodeFrequ = 0;   //ÖÐÐÄ½ÚµãµÄÆµµã
+static char NodeID = 0;      //ÖÐÐÄ½ÚµãµÄÍøÂçID
 
 extern unsigned char NumOfPage(void);
 
@@ -439,6 +444,12 @@ bool DisStatus(char type, char param){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍ
 					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
 						return false;
 					return true;
+				case 5:
+					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
+						return false;
+					if(NodeAble == 0)
+						return false;
+					return true;
 				case 7:
 					if(ZigBAddr == 0)         //Ã»ÓÐÑ¡ÔñZigBeeµØÖ·×´¿öÏÂ
 						return false;
@@ -481,6 +492,8 @@ bool DisStatus(char type, char param){              //ÅÐ¶ÏDis_TypeÀàÐÍÏÂÄÄÖÖÀàÐÍ
 						return false;
 					return true;
 				case 4:
+					if(NodeAble == 0)
+						return false;
 					return true;
 				case 5:
 					if(FrequencyDot == 0)     //Ã»ÓÐÑ¡ÔñÆµµã×´¿öÏÂ
@@ -734,6 +747,8 @@ void DisplayProjet(void){
 	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
 }
 
+extern char *LPAttribute(void);
+
 void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬ÆµµãµÈ
 	char buf[80], tmp[40], dat[10] = {0}, para[20] = {0};
 	
@@ -754,9 +769,9 @@ void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬Æµµ
 	
 	if(tmp[0] != 0)
 		if(HexSwitchDec)
-			sprintf(dat, "µØÖ·:%04X", ZigBAddr);
+			sprintf(dat, "µØÖ·:%04X/", ZigBAddr);
 		else
-			sprintf(dat, "µØÖ·:%04d", ZigBAddr);
+			sprintf(dat, "µØÖ·:%04d/", ZigBAddr);
 	
 	if(Project == Pro_BinHu){
 		sprintf(para, "%s", "ºÏ·Ê/±õºþ/");
@@ -766,13 +781,9 @@ void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬Æµµ
 		sprintf(para, "%s", "ºÏ·Ê/´óÃ÷½ÚÄÜ/");
 	}
 	
-	sprintf(buf, "%s%s%s%s", para, GWname(), tmp, dat);
+	sprintf(buf, "%s%s%s%s%s", para, GWname(), tmp, dat, LPAttribute());
 	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
 }
-
-char NodeAble = 0;            //ÖÐÐÄ½ÚµãÊÇ·ñÒÑ¾­ÅäÖÃ
-static char NodeFrequ = 0;   //ÖÐÐÄ½ÚµãµÄÆµµã
-static char NodeID = 0;      //ÖÐÐÄ½ÚµãµÄÍøÂçID
 
 void LightParamDisplay(void){
 	char buf[40];
@@ -958,8 +969,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		
 		} else if(dat == 5){
 			InterFace = Config_DIS;
-			Ili9320TaskClear("C", 2);
-			
+			Ili9320TaskClear("C", 2);			
 		}
 		
 	} else if (InterFace == Service_GUI){        //µ±ÏÔÊ¾Ò³ÃæÎªÎ¬ÐÞ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
@@ -986,6 +996,9 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 				sprintf(buf, "%04d", ZigBAddr);
 			
 			SDTaskHandleSurePosition(buf, strlen(buf));
+		} else if(dat == 5){
+			InterFace = Lamp_Pole;
+			
 		} else if(dat == 7){
 			InterFace = Read_Data;
 			Ili9320TaskClear("C", 2);
@@ -1012,10 +1025,9 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			sprintf(buf, "µØÖ·:%s£¬¹ØµÆÖ¸ÁîÒÑ·¢³ö£¡", buf1);
 			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 			
-			KeyConfirm = NOKEY;
 			return;
 		} else if(dat == 9){
-			char buf[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03, 0};    //µ¥µÆ¹ØµÆÖ¸Áî
+			char buf[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03, 0};    //µ¥µÆ¿ªµÆÖ¸Áî
 			char buf1[5];
 				
 			if(HexSwitchDec){
@@ -1034,7 +1046,6 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			sprintf(buf, "µØÖ·:%s£¬¿ªµÆÖ¸ÁîÒÑ·¢³ö£¡", buf1);
 			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 			
-			KeyConfirm = NOKEY;
 			return;
 		}
 	} else if (InterFace == Test_GUI){           //µ±ÏÔÊ¾Ò³ÃæÎª²âÊÔ½çÃæÊ±£¬¼üÖµ²Ù×÷¸Ä±äÒ³Ãæ
@@ -1060,6 +1071,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		} else if(dat == 4){
 			InterFace = Real_MOnitor;
 			
+			SDTaskHandleOpenMap("1", 1);
 		} else if(dat == 5){
 			char tmp[2] = {1, 0};
 			
@@ -1089,7 +1101,6 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			Line = 10;
 			Ili9320TaskOrderDis(ret, strlen(ret) + 1);
 			
-			KeyConfirm = NOKEY;
 			return;
 		} else if(dat == 8){
 			char ret[32], tmp[5];
@@ -1108,8 +1119,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 				sprintf(ret, "¹ØµÆ(¸ù¾ÝµÆ²Î)Ö¸ÁîÒÑ·¢³ö£¡");
 			Line = 10;
 			Ili9320TaskOrderDis(ret, strlen(ret) + 1);
-			
-			KeyConfirm = NOKEY;
+		
 			return;
 		}
 		
@@ -1198,6 +1208,7 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		
 		ComxTaskRecieveModifyData("1\r\n", 4);
 		Ili9320TaskClear("C", 2);
+		
 	}  else if(InterFace == Read_Data){
 		Ili9320TaskClear("C", 2);
 		StartRead = 1;
@@ -1222,12 +1233,42 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 		sprintf(ret, "%d%%µ÷¹âÖ¸ÁîÒÑ·¢³ö£¡", DimmValue);
 		Line = 10;
 		Ili9320TaskOrderDis(ret, strlen(ret) + 1);
-		KeyConfirm = NOKEY;
+		return;
+	} else if(InterFace == Lamp_Pole){
+		if(wave == 1){
+			char buf[40];
+			
+			SDTaskHandleLightPole("1", 1);
+			
+			Line = 10;
+			sprintf(buf, "¹Ø±Õµ±Ç°¸ËµÆÖ¸ÁîÒÑ·¢³ö£¡");
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		} else if(wave == 2){
+			char buf[40];
+			
+			SDTaskHandleLightPole("3", 1);
+			
+			Line = 10;
+			sprintf(buf, "¹Ø±ÕÁÚ½ü¸ËµÆÖ¸ÁîÒÑ·¢³ö£¡");
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+			
+		} else if(wave == 3){
+			char buf[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03, 0};    //µ¥µÆ¿ªµÆÖ¸Áî
+		
+			CommxTaskSendData(buf, 19);
+			
+			Line = 10;
+			sprintf(buf, "¿ªµÆÖ¸ÁîÒÑ·¢³ö£¡");
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		} else if(wave == 4){
+			
+			SDTaskHandleAddress("1", 1);	
+		}
+		
 		return;
 	}
 		
 	wave = 1;                                            //Ò³ÃæÇÐ»»ºó£¬ÏÔÁÁµÚÒ»ÐÐ
-	KeyConfirm = NOKEY;
 }
 
 void AttributeDisplay(void){
@@ -1379,10 +1420,6 @@ void __DisplayLightPara(void){
 		DisplayAttribute();
 }
 
-void __handleSetNode(void){
-	
-}
-
 void __handleSwitchInput(void){                   //1~7¼üÔÚ¡°1~7¡±Óë¡°A~L¡±¼äÀ´»ØÇÐ»»
 	if(KeyConfirm == KEYINPT){
 		if(IME == 0)
@@ -1483,6 +1520,8 @@ void __handleAddrValue(void){	                            //ÅäÖÃZigBeeµØÖ·º¯Êý
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
 	    SDTaskHandleKey((const char *)dat, 2);
+			
+			SDTaskHandleLampParam("1", 1);
 		} else if(InterFace == Address_Option){
 			InterFace = Test_GUI;
 			
@@ -1548,6 +1587,8 @@ void TIM3_IRQHandler(void){
 	if (TIM_GetITStatus(TIM3, TIM_IT_Update) != RESET){
 		TIM_ClearITPendingBit(TIM3, TIM_IT_Update); 
 		times++;
+//		if(times == 100)
+//			SDTaskHandleLampParam("1", 1);
 		if(times > 120)
 			times = 1;
 	}
@@ -1566,7 +1607,9 @@ void TIM3_IRQHandler(void){
 		__DisplayLightPara();
 	}
 	
-	if((InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || (InterFace == Service_GUI) || (InterFace == Address_Choose) || (InterFace == Test_GUI) || (InterFace == Address_Option) || (InterFace == Light_Dim))
+	if((InterFace == Lamp_Pole) || (InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || 
+		(InterFace == Service_GUI) || (InterFace == Address_Choose) || (InterFace == Test_GUI) || (InterFace == Address_Option) || 
+		(InterFace == Light_Dim))
 		__DisplayWGInformation();
 	
 	if((InterFace == Config_Set) || (InterFace == Address_Set) || (InterFace == Config_Set)|| (InterFace == Address_Choose))
@@ -1603,26 +1646,40 @@ void TIM3_IRQHandler(void){
 		KeyConfirm = NOKEY;
 	  return;
   } else if(KeyConfirm == KEYRETURN){
-		if((InterFace == Project_Dir) || (InterFace == Config_GUI) || (InterFace == Service_GUI) || (InterFace == Test_GUI) || (InterFace == Intro_GUI)){
+		if((InterFace == Project_Dir) || (InterFace == Config_GUI) || (InterFace == Service_GUI) || (InterFace == Test_GUI) || 
+			(InterFace == Intro_GUI)){
 			InterFace = Main_GUI;
 			
 	  	dat[0] = Open_GUI;
 	    dat[1] = KEYMENU;
 	    SDTaskHandleKey((const char *)dat, 2);
 		
-		} else if(InterFace == GateWay_Set || InterFace == Address_Set || InterFace == Config_Set || InterFace == Config_DIS || InterFace == Frequ_Set){
+		} else if(InterFace == GateWay_Set || InterFace == Address_Set || InterFace == Config_Set 
+			|| InterFace == Config_DIS || InterFace == Frequ_Set){
 			InterFace = Config_GUI;
 			
 			dat[0] = Main_GUI;
 	    dat[1] = 2;
 	    SDTaskHandleKey((const char *)dat, 2);
-		} else if(InterFace == GateWay_Choose || InterFace == Address_Choose || InterFace == Read_Data || InterFace == Frequ_Choose || InterFace == Map_Dis){
+		} else if(InterFace == GateWay_Choose || InterFace == Lamp_Pole || 
+			InterFace == Address_Choose || InterFace == Read_Data || InterFace == Frequ_Choose || InterFace == Map_Dis){
+				
+			if(InterFace == Address_Choose)	
+				SDTaskHandleLampParam("1", 1);
+			
 			InterFace = Service_GUI;
 			
 			dat[0] = Main_GUI;
 	    dat[1] = 3;
-	    SDTaskHandleKey((const char *)dat, 2);
-		} else if((InterFace == GateWay_Decide) || (InterFace == Address_Option) || (InterFace == Light_Dim) || (InterFace == Light_Attrib) || (InterFace == Frequ_Option) || (InterFace == Real_MOnitor)){
+	    SDTaskHandleKey((const char *)dat, 2);		
+			
+		} else if((InterFace == GateWay_Decide) || (InterFace == Address_Option) || (InterFace == Light_Dim) || 
+			(InterFace == Light_Attrib) || (InterFace == Frequ_Option) || (InterFace == Real_MOnitor)){
+				
+			if(InterFace == Real_MOnitor){
+				HubNode = 0;
+				StartRead = 0;
+			}
 			InterFace = Test_GUI;
 			
 			dat[0] = Main_GUI;
@@ -1666,7 +1723,6 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Light_Dim){
 
 		__handleOpenOption();
-		
 	} else if(InterFace == Config_Set){
 		
 		__handleAdvanceSet();		
@@ -1700,9 +1756,6 @@ void TIM3_IRQHandler(void){
 	} else if(InterFace == Read_Data){
 	
 		__handleBSNData();
-	} else if(InterFace == Node_Set){
-		
-		__handleSetNode();
 	} else if(InterFace == Light_Attrib){
 		
 		__handleSetAttribute();
@@ -1710,7 +1763,11 @@ void TIM3_IRQHandler(void){
 	
 		__handleAddrValue();
 	} else if(InterFace == Real_MOnitor){
+		
 		__handleRealTime();
+	} else if(InterFace == Lamp_Pole){
+		
+		__handleOpenOption();
 	}
 	
 	KeyConfirm = NOKEY;
@@ -1756,6 +1813,6 @@ void KeyInit(void) {
 	key_gpio_init();
 	TIM3_Init();
 	__KeyQueue = xQueueCreate(5, sizeof(KeyTaskMsg *));
-	xTaskCreate(__KeyTask, (signed portCHAR *) "KEY", KEY_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+	xTaskCreate(__KeyTask, (signed portCHAR *) "KEY", KEY_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
 
