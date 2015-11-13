@@ -311,6 +311,10 @@ void DrawCircle(short x, short y){
 	GUI_Circle(x, y, 2, GREEN, 1);	
 }
 
+void LightAPoint(short x, short y){
+	GUI_Circle(x, y, 1, GREEN, 1);
+}
+
 /****************************************************************************
 * 名    称：void GUI_Rectangle(u16 x0, u16 y0, u16 x1, u16 y1,u16 color,u8 fill)
 * 功    能：在指定区域画矩形，可填充颜色

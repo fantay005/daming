@@ -1476,9 +1476,27 @@ void __handleBSNData(void){                           //处理读镇流器数据
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
 }
 
+extern char NumberOfMap(void);                       //最大地图数目
+static char Curr = 1;                                //当前显示的地图序号
+
 void __handleRealTime(void){                         //处理实时监控界面
+	char Tol, i, buf[2];
 	
+	Tol = NumberOfMap();
 	
+	if(KeyConfirm == KEYUP){
+		Curr--;
+		if(Curr < 1)
+			Curr = 1;	
+	} else if(KeyConfirm == KEYDN){
+		Curr++;
+		if(Curr > Tol)
+			Curr = Tol;
+	}
+	
+	sprintf(buf, "%d", Curr);
+	
+	SDTaskHandleOpenMap(buf, 2);
 }
 
 bool HexSwitchDec = 0;                               //16进制与10进制切换， 0位10进制，1为16进制
@@ -1610,6 +1628,7 @@ void TIM3_IRQHandler(void){
 	if((InterFace == Lamp_Pole) || (InterFace == Config_GUI) || (InterFace == Frequ_Set) || (InterFace == Address_Set) || 
 		(InterFace == Service_GUI) || (InterFace == Address_Choose) || (InterFace == Test_GUI) || (InterFace == Address_Option) || 
 		(InterFace == Light_Dim))
+	
 		__DisplayWGInformation();
 	
 	if((InterFace == Config_Set) || (InterFace == Address_Set) || (InterFace == Config_Set)|| (InterFace == Address_Choose))
@@ -1666,6 +1685,9 @@ void TIM3_IRQHandler(void){
 				
 			if(InterFace == Address_Choose)	
 				SDTaskHandleLampParam("1", 1);
+			
+			if(InterFace == Read_Data)
+				SDTaskHandleCloseFile("1", 1);
 			
 			InterFace = Service_GUI;
 			

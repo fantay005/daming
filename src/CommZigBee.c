@@ -382,7 +382,7 @@ static void __handleRecieve(ComxTaskMsg *msg){
 	sscanf(p, "%*1s%4s", addr);
 	
 	if(StartRead == 2){
-		
+		SDTaskHandleDrawCircle(addr, strlen(addr) + 1);
 		return;
 	}
 		

@@ -3175,6 +3175,7 @@ void Pic_Viewer(const unsigned char *name)
 }
 
 typedef enum{
+	SD_HANDLE_CLOSE,
 	SD_HANDLE_POLE,
 	SD_HANDLE_LAMP_PARAM,
 	SD_HANDLE_MAP,
@@ -3210,6 +3211,16 @@ static inline void *__SDGetMsgData(SDTaskMsg *message) {
 
 bool SDTaskHandleOpen(const char *dat, int len) {
 	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_OPEN, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleCloseFile(const char *dat, int len) {                    //关闭打开的SD卡文件
+	SDTaskMsg *message = __SDCreateMessage(SD_HANDLE_CLOSE, dat, len);
 	
 	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
 		vPortFree(message);
@@ -3960,6 +3971,12 @@ static unsigned int TopY = 0;
 static unsigned int BomX = 0;
 static unsigned int BomY = 0;
 
+static char NumOfMap = 1;
+
+char NumberOfMap(void){
+	return NumOfMap;
+}
+
 static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 	char *p = __SDGetMsgData(message);
 	char name[24], tmp[36], buf[64], msg[20];
@@ -3980,6 +3997,8 @@ static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 		sprintf(tmp, "0:%s/%d.bmp", name, NumbOfOption);
 	} else if((strncmp(p, "2", 1) == 0)){
 		sprintf(tmp, "0:%s/%d_2.bmp", name, NumbOfOption);
+	} else if((strncmp(p, "3", 1) == 0)){
+		sprintf(tmp, "0:%s/%d_3.bmp", name, NumbOfOption);
 	}
 	Pic_Viewer((const unsigned char *)tmp); 
 
@@ -3990,9 +4009,20 @@ static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 		return;
 	}
 	
+	for(i = 0; i < 16; i++){
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "地图数目", 8) != 0)
+			continue;
+		f_gets(buf, 64, &fsrc);
+		
+		NumOfMap = atoi(buf);
+	}
+	
+	
+	f_lseek(&fsrc, 0);
+	
 	if(strncmp(p, "1", 1) == 0){
 		for(i = 0; i < 1000; i++){
-			f_lseek(&fsrc, 0);
 			f_gets(buf, 64, &fsrc);
 			if(strncmp(buf, "地图一", 6) != 0)
 				continue;
@@ -4016,7 +4046,6 @@ static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 			break;
 		}
 	} else if((strncmp(p, "2", 1) == 0)){
-		f_lseek(&fsrc, 0);
 		for(i = 0; i < 1000; i++){
 			f_gets(buf, 64, &fsrc);
 			if(strncmp(buf, "地图二", 6) != 0)
@@ -4040,10 +4069,32 @@ static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 			BomY = ChangeValue(BomY);
 			break;
 		}
+	} else if((strncmp(p, "3", 1) == 0)){
+		f_lseek(&fsrc, 0);
+		for(i = 0; i < 1000; i++){
+			f_gets(buf, 64, &fsrc);
+			if(strncmp(buf, "地图三", 6) != 0)
+				continue;
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			TopX = atoi(tmp);
+			TopX = ChangeValue(TopX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			TopY = atoi(tmp);
+			TopY = ChangeValue(TopY);
+			
+			f_gets(buf, 64, &fsrc);
+			sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+			BomX = atoi(tmp);
+			BomX = ChangeValue(BomX);
+			
+			sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+			BomY = atoi(tmp);
+			BomY = ChangeValue(BomY);
+			break;
+		}
 	}
-	
-	f_close(&fsrc);
-	f_mount(&fs, "0:", NULL);	
 	
 	HubNode = 1;
 	StartRead  = 2;
@@ -4259,56 +4310,56 @@ static void __SdHandleAddr(SDTaskMsg *message){
 	f_mount(&fs, "0:", NULL);	
 }
 
-static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
-	char *p = __SDGetMsgData(message);
-	char para[24], tmp[36], buf[32];
-	unsigned int OrgX, OrgY, EndX, EndY, PosX, PosY;
-	unsigned char i;
-	
-	if(Project == 1){
-		sprintf(para, "%s", "滨湖/经纬度");
-	} else if(Project == 2){
-		sprintf(para, "%s", "产业园/经纬度");
-	} else if(Project == 3){
-		sprintf(para, "%s", "大明/经纬度");
-	}	
-	
-	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
-	result = OpenFile(tmp);
-	if (result != FR_OK) {
-		return;
-	}
-	
-	for(i = 0; i < 100; i++){
-		f_lseek(&fsrc, 0);
-		f_gets(buf, 64, &fsrc);
-		if(strncmp(buf, "地图一", 6) != 0)
-			continue;
-		f_gets(buf, 64, &fsrc);
-		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
-		OrgX = atoi(tmp);
-		OrgX = ChangeValue(OrgX);
-		
-		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
-		OrgY = atoi(tmp);
-		OrgY = ChangeValue(OrgY);
-		
-		f_gets(buf, 64, &fsrc);
-		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
-		EndX = atoi(tmp);
-		EndX = ChangeValue(EndX);
-		
-		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
-		EndY = atoi(tmp);
-		EndY = ChangeValue(EndY);
-		break;
-	}
-	
-	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);		
-	
+static void __SDTaskHandleCloseFile(SDTaskMsg *message){               
 	
 	f_close(&fsrc);
 	f_mount(&fs, "0:", NULL);	
+}
+
+extern void LightAPoint(short x, short y);
+
+static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
+	char *p = __SDGetMsgData(message);
+	char para[24], tmp[36], buf[32];
+	unsigned int PosX, PosY, x, y, i;
+	
+//	if(Project == 1){
+//		sprintf(para, "%s", "滨湖/经纬度");
+//	} else if(Project == 2){
+//		sprintf(para, "%s", "产业园/经纬度");
+//	} else if(Project == 3){
+//		sprintf(para, "%s", "大明/经纬度");
+//	}		
+	f_lseek(&fsrc, 0);
+	
+	for(i = 0; i < 1000; i++){
+		f_gets(buf, 64, &fsrc);
+		sscanf(buf, "%[^\t]", para);                    //取地址
+		
+		if(strncmp(para, p, strlen(p)) != 0)
+			continue;
+		
+		sscanf(buf, "%*[^.]%*c%[^ ]", tmp);
+		PosX = atoi(tmp);
+		PosX = ChangeValue(PosX);
+		
+		sscanf(buf, "%*[^.]%*c%*[^.]%*c%[^ ]", tmp);
+		PosY = atoi(tmp);
+		PosY = ChangeValue(PosY);
+		
+		if((PosX > BomX) || (PosX < TopX) || (PosY > TopY) || (PosY < BomY))     //如果ZigBee地址的经纬度不在地图中，退出
+			break;
+		
+		x = (PosX - TopX) * 320 / (BomX - TopX);
+		y = (TopY - PosY) * 240 / (TopY - BomY);
+		
+		LightAPoint(x, y);
+		
+		break;
+	}
+	
+//	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);		
+	
 }
 
 typedef struct {
@@ -4317,6 +4368,7 @@ typedef struct {
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ SD_HANDLE_CLOSE, __SDTaskHandleCloseFile },
 	{ SD_HANDLE_POLE, __SDTaskHandleLightPole },
 	{ SD_HANDLE_LAMP_PARAM, __SDTaskHandleLampParam },
 	{ SD_HANDLE_MAP, __SDTaskHandleOpenMap },
