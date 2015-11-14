@@ -3963,8 +3963,8 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 	}
 }
 
-static char BufOfLoop[4];
-static char BufOfPole[4];
+static char BufOfLoop[5];
+static char BufOfPole[5];
 
 static unsigned int TopX = 0;
 static unsigned int TopY = 0;
@@ -4285,7 +4285,7 @@ static void __SdHandleAddr(SDTaskMsg *message){
 			
 		sscanf(buf, "%*[^\t]%*c%*[^\t]%*c%[^\t]", tmp);               //取当前地址的灯杆信息
 		
-		if(tmp[0] > BufOfPole[0])
+		if(atoi(tmp) > atoi(BufOfPole))
 			break;
 		
 		if(strncmp(BufOfPole, tmp, strlen(BufOfPole)) != 0)
