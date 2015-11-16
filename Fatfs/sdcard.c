@@ -4165,7 +4165,7 @@ static void __SDTaskHandleLightPole(SDTaskMsg *message){
 				msg[1] = s % 100;
 			}
 			
-			CommxTaskSendData(msg, strlen(msg));
+			CommxTaskSendData(msg, 19);
 			
 		} else if(strncmp(p, "3", 1) == 0){
 			char msg[40] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03, 0};    //µ•µ∆πÿµ∆÷∏¡Ó
@@ -4194,8 +4194,10 @@ static void __SDTaskHandleLightPole(SDTaskMsg *message){
 				msg[1] = s % 100;
 			}
 			
-			CommxTaskSendData(msg, strlen(msg));
+			CommxTaskSendData(msg, 19);
 		}
+		
+		vTaskDelay(configTICK_RATE_HZ / 2);
 	}
 	
 	f_close(&fsrc);

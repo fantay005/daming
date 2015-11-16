@@ -845,7 +845,7 @@ void __AddrConfig(void){                     //设置ZigBee地址界面显示
 
 extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
 
-void ParamDimm(unsigned char ctl[2]){                      //按属性调光
+void ParamDimm(unsigned char ctl[2]){                      //按属性操作
 	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
 	char ret[32], *p, tmp[5], *buf;
 	char i, j, len;
@@ -853,9 +853,9 @@ void ParamDimm(unsigned char ctl[2]){                      //按属性调光
 	buf = ret;
 	if(ParamOrAddr == 2){
 		if(Flood)
-			*buf++ = 0x08;
+			*buf++ = '8';
 		else
-			*buf++ = 0x09;
+			*buf++ = '9';
 		
 		for(i = 0, j = 0; i < 8; i++){
 			if((Loop >> (i * 4)) & 0x0F)
