@@ -192,7 +192,7 @@ void USART2_IRQHandler(void) {
 	}
 	
 	data = USART_ReceiveData(COMx);
-	USART_SendData(USART1, data);
+	//USART_SendData(USART1, data);
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
 	
 	if(HubNode == 0)
@@ -266,7 +266,7 @@ static void __handleSend(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
 	unsigned char len = msg->length;
 	
-	if((p[0] == '1') && (strlen(p) == 1)){
+	if((p[0] == '1') && (len == 1)){
 		__CommInitUsart(38400);
 		StartConfig();	
 	}

@@ -1469,6 +1469,7 @@ void __handleBSNData(void){                           //处理读镇流器数据
 	}
 	
 	p = DataSendToBSN((unsigned char *)ctl, (unsigned char *)tmp, NULL, &len);
+	StartRead = 1;
 	CommxTaskSendData(p, len);
 	vPortFree(p);
 	
@@ -1552,12 +1553,13 @@ void __handleAddrValue(void){	                            //配置ZigBee地址函数
 			ConfigTaskSendData("1", 2);
 			Ili9320TaskClear("C", 2);
 		}
-	} else if(KeyConfirm == KEYCONF){
-		if(HexSwitchDec)
-			HexSwitchDec = 0;
-		else 
-			HexSwitchDec = 1;
 	}
+//	else if(KeyConfirm == KEYCONF){
+//		if(HexSwitchDec)
+//			HexSwitchDec = 0;
+//		else 
+//			HexSwitchDec = 1;
+//	}
 	
 	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYF)){		
 		if(HexSwitchDec){
@@ -1639,7 +1641,7 @@ void TIM3_IRQHandler(void){
 	
 	if(((InterFace == Service_GUI) || (InterFace == Test_GUI))&& (KeyConfirm == KEYCONF) && (FrequencyDot != 0)){
 		HubNode = 2;                                          //进入维修界面就 开始配置中心节点
-		CommxTaskSendData("1", 2);
+		CommxTaskSendData("1", 1);
 		
 		if(FrequencyDot == 1){
 			NodeFrequ = FrequPoint1;

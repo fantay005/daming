@@ -3677,6 +3677,18 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		return;
 	}
 	
+	for(i = 0; i < 100; i++){  	
+		f_gets(buf, 64, &fsrc);
+		if(strncmp(buf, "十六进制", 6) != 0)
+			continue;
+		else
+			break;
+	}
+	
+	f_gets(buf, 64, &fsrc);
+	HexSwitchDec = atoi(buf);
+	
+	f_lseek(&fsrc, 0);
 	f_gets(buf, 64, &fsrc);
 	
 	for(i = 0; i < 64; i++){
@@ -4325,13 +4337,6 @@ static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
 	char para[24], tmp[36], buf[32];
 	unsigned int PosX, PosY, x, y, i;
 	
-//	if(Project == 1){
-//		sprintf(para, "%s", "滨湖/经纬度");
-//	} else if(Project == 2){
-//		sprintf(para, "%s", "产业园/经纬度");
-//	} else if(Project == 3){
-//		sprintf(para, "%s", "大明/经纬度");
-//	}		
 	f_lseek(&fsrc, 0);
 	
 	for(i = 0; i < 1000; i++){
@@ -4355,12 +4360,9 @@ static void __SDTaskHandleLightOnePoint(SDTaskMsg *message){
 		x = (PosX - TopX) * 320 / (BomX - TopX);
 		y = (TopY - PosY) * 240 / (TopY - BomY);
 		
-		LightAPoint(x, y);
-		
+		LightAPoint(x, y);	
 		break;
-	}
-	
-//	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);		
+	}	
 	
 }
 
