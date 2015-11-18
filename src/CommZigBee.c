@@ -448,7 +448,7 @@ static void __handleRecieve(ComxTaskMsg *msg){
 	if(strncmp(dim, "00", 2) == 0)
 		sprintf(buf, "调光值  :  自动调光");
 	else {
-		i = strtol((const char *)addr, NULL, 16);
+		i = strtol((const char *)dim, NULL, 16);
 		sprintf(buf, "调光值  :    %3d%%", i);
 	}
 	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
