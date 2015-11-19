@@ -1,8 +1,6 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
-#include "rtc.h"
-#include "second_datetime.h"
 
 
 typedef struct {

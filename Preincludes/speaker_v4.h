@@ -7,7 +7,7 @@
 #define __SPEAKER__                     1
 #define __SPEAKER_V4__                  1
 
-#define __TARGET_STRING__               "HANDHELD"
+#define __TARGET_STRING__               "MONITOR"
 #define __VERSION__                     "V_1.0"
 
 

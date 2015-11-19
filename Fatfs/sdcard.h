@@ -242,23 +242,6 @@ typedef struct
 /* Exported macro ------------------------------------------------------------*/
 /* Exported functions ------------------------------------------------------- */
 
-extern char NumOfFrequ;              //频点个数
-extern unsigned char FrequPoint1;    //频点1 
-extern unsigned char NetID1;         //网络ID1
-extern unsigned char FrequPoint2 ;   //频点2
-extern unsigned char NetID2;         //网络ID
-
-bool SDTaskHandleDrawCircle(const char *dat, int len);
-bool SDTaskHandleCloseFile(const char *dat, int len);
-bool SDTaskHandleAddress(const char *dat, int len);
-bool SDTaskHandleLightPole(const char *dat, int len);
-bool SDTaskHandleLampParam(const char *dat, int len);
-bool SDTaskHandleSurePosition(const char *dat, int len);
-bool SDTaskHandleOpen(const char *dat, int len);
-bool SDTaskSureOption(const char *dat, int len);
-bool SDTaskHandleWGOption(const char *dat, int len);
-bool SDTaskHandleKey(const char *dat, int len);
-
 
 #endif /* __SDCARD_H */
 

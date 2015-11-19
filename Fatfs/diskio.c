@@ -16,6 +16,11 @@
 
 /* Definitions of physical drive number for each media */
 
+extern SD_Error SD_Init(void);
+extern SD_Error SD_WriteBlock(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize);
+extern SD_Error SD_ReadMultiBlocks(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
+extern SD_Error SD_ReadBlock(uint32_t addr, uint32_t *readbuff, uint16_t BlockSize);
+extern SD_Error SD_WriteMultiBlocks(uint32_t addr, uint32_t *writebuff, uint16_t BlockSize, uint32_t NumberOfBlocks);
 
 
 /*-----------------------------------------------------------------------*/
@@ -25,19 +30,7 @@
 DSTATUS disk_initialize (
 	BYTE pdrv				/* Physical drive nmuber (0..) */
 ) {
-	SD_Error Status;
-	
-	if(pdrv) {
-		return STA_NOINIT;
-	}
-	
-	Status = SD_Init();
-	if(Status != SD_OK) {
-		printf("SD_Init: %d", Status); 
-		return STA_NOINIT;
-	} else {
 		return RES_OK;
-	}
 }
 
 /*-----------------------------------------------------------------------*/
@@ -60,16 +53,11 @@ DRESULT disk_read (
 	DWORD sector,	/* Sector address (LBA) */
 	UINT count		/* Number of sectors to read (1..128) */
 ) {
-	int status;
-//	printf("read %d sector at %08x\n", count, sector);
 	if(count > 1) {
-		status = SD_ReadMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
+		SD_ReadMultiBlocks((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE, count);
 	} else {
-		status = SD_ReadBlock((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE);
+		SD_ReadBlock((uint32_t)sector * BLOCK_SIZE, (uint32_t *)buff, BLOCK_SIZE);
 	}
-	if (SD_OK == status)
-		return RES_OK;
-//	printf("read block error: %d\n", status);
 	return RES_ERROR;
 }
 
@@ -97,32 +85,10 @@ DRESULT disk_write (
 /* Miscellaneous Functions                                               */
 /*-----------------------------------------------------------------------*/
 
-#if _USE_IOCTL
 DRESULT disk_ioctl (
 	BYTE pdrv,		/* Physical drive nmuber (0..) */
 	BYTE cmd,		/* Control code */
 	void *buff		/* Buffer to send/receive control data */
 ) {
-	 DRESULT sta=RES_ERROR;
-	 switch(cmd) {
-      case CTRL_SYNC:
-        sta=RES_OK;
-			  break;                             
-			case GET_SECTOR_COUNT:
-				sta=RES_OK;
-  			break;
-			case GET_SECTOR_SIZE:
-				*(WORD*)buff = 512;
-		  	sta=RES_OK;
-		   	break;
-			case GET_BLOCK_SIZE:
-				sta=RES_OK;
-		  	break;
-			case CTRL_ERASE_SECTOR:
-				sta=RES_OK;
-		  	break;
-		}
 	return RES_OK;
-
 }
-#endif

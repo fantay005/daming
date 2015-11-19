@@ -119,7 +119,6 @@
 #include "diskio.h"		/* Declarations of disk I/O functions */
 #include "second_datetime.h"
 
-
 /*--------------------------------------------------------------------------
 
    Module Private Definitions

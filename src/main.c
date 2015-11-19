@@ -38,25 +38,15 @@ static void PreSetupHardware(void) {
 		while (RCC_GetSYSCLKSource() != 0x08) {}
 	}
 	/* Enable FSMC, GPIOD, GPIOE, GPIOF, GPIOG and AFIO clocks */
-	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_FSMC, ENABLE);
 	RCC_APB2PeriphClockCmd(RCC_APB2Periph_GPIOA | RCC_APB2Periph_GPIOB |
-						   RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD |
-						   RCC_APB2Periph_GPIOE | RCC_APB2Periph_GPIOF |
-						   RCC_APB2Periph_GPIOG | RCC_APB2Periph_AFIO  |
-						   RCC_APB2Periph_USART1 | RCC_APB2Periph_SPI1
+						   RCC_APB2Periph_GPIOC | RCC_APB2Periph_GPIOD | RCC_APB2Periph_AFIO  |
+						   RCC_APB2Periph_USART1
 						   , ENABLE);
 	/* Enable peripheral clocks --------------------------------------------------*/
 
 	/* Enable DMA1 clock */
 	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-
-	/* Enable USART2 clock */
-	/* Enable UART4 clock */
-	/* TIM2 clock enable */
-	/* TIM3 clock enable */
-	RCC_APB1PeriphClockCmd( RCC_APB1Periph_PWR | RCC_APB1Periph_BKP | 
-						   RCC_APB1Periph_USART2 | RCC_APB1Periph_USART3 |
-						   RCC_APB1Periph_UART4 | RCC_APB1Periph_TIM3, ENABLE);
+	RCC_APB1PeriphClockCmd( RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
 
 	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
 
@@ -65,29 +55,21 @@ static void PreSetupHardware(void) {
 
 extern void UartDebugInit(void);
 extern void WatchdogInit(void);
+extern void RecoveryInit(void);
 extern void SDInit(void);
-extern void NorFlashInit(void) ;
-extern void Ili9320Init(void);
-extern void ZigbeeConfigDisplay(void);
-extern void ConfigInit(void);
-extern void KeyInit(void);
-extern void SDTest(void);
 extern void CommInit(void);
 
 int main(void) {
 	PreSetupHardware();
+	RecoveryInit();
 	UartDebugInit();
-	WatchdogInit();
-	NorFlashInit();
-	Ili9320Init();
+	//WatchdogInit();
 	SDInit();
-	ConfigInit();
-	KeyInit();
 
 	CommInit();
-	printf("\n=============================================\n");
+	printf("\r\n=============================================\r\n");
 	printf("%s", Version());
-	printf("\n=============================================\n");
+	printf("\r\n=============================================\r\n");
 	vTaskStartScheduler();
 	return 0;
 }

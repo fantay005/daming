@@ -11,14 +11,13 @@ static xSemaphoreHandle __semaphore = NULL;
 
 #define COMMON_IS_ANODE 1 // 1-π≤—Ù; 0-π≤“ı;
 
-#define CHANNEL0_DATA_GPIO_PORT  GPIOF
-#define CHANNEL0_DATA_GPIO_PIN   GPIO_Pin_7
-#define CHANNEL1_DATA_GPIO_PORT GPIOE
-#define CHANNEL1_DATA_GPIO_PIN  GPIO_Pin_2
-#define CLK245_GPIO_PORT GPIOF
-#define CLK245_GPIO_PIN  GPIO_Pin_8
-#define LAUNCH_GPIO_PORT  GPIOE
-#define LAUNCH_GPIO_PIN   GPIO_Pin_6
+#define CHANNEL0_DATA_GPIO_PORT  GPIOC
+#define CHANNEL0_DATA_GPIO_PIN   GPIO_Pin_13
+
+#define CLK245_GPIO_PORT  GPIOC
+#define CLK245_GPIO_PIN   GPIO_Pin_15
+#define LAUNCH_GPIO_PORT  GPIOC
+#define LAUNCH_GPIO_PIN   GPIO_Pin_14
 
 static inline void  __channel0SetDataHigh(void) {
 	GPIO_SetBits(CHANNEL0_DATA_GPIO_PORT, CHANNEL0_DATA_GPIO_PIN);
@@ -26,14 +25,6 @@ static inline void  __channel0SetDataHigh(void) {
 
 static inline void __channel0SetDataLow(void) {
 	GPIO_ResetBits(CHANNEL0_DATA_GPIO_PORT, CHANNEL0_DATA_GPIO_PIN);
-}
-
-static inline void  __channel1SetDataHigh(void) {
-	GPIO_SetBits(CHANNEL1_DATA_GPIO_PORT, CHANNEL1_DATA_GPIO_PIN);
-}
-
-static inline void __channel1SetDataLow(void) {
-	GPIO_ResetBits(CHANNEL1_DATA_GPIO_PORT, CHANNEL1_DATA_GPIO_PIN);
 }
 
 static inline void __setClkHigh(void) {
@@ -60,12 +51,6 @@ static void __shiftByte(unsigned char c0, unsigned char c1) {
 			__channel0SetDataHigh();
 		} else {
 			__channel0SetDataLow();
-		}
-
-		if (bit & c1) {
-			__channel1SetDataHigh();
-		} else {
-			__channel1SetDataLow();
 		}
 		__setClkHigh();
 	}
@@ -95,7 +80,7 @@ void SevenSegLedInit(void) {
 	vSemaphoreCreateBinary(__semaphore);
 
 	__channel0SetDataHigh();
-	__channel1SetDataHigh();
+	
 	__setClkHigh();
 	__setLaunchHigh();
 
@@ -104,9 +89,6 @@ void SevenSegLedInit(void) {
 
 	GPIO_InitStructure.GPIO_Pin = CHANNEL0_DATA_GPIO_PIN;
 	GPIO_Init(CHANNEL0_DATA_GPIO_PORT, &GPIO_InitStructure);
-
-	GPIO_InitStructure.GPIO_Pin = CHANNEL1_DATA_GPIO_PIN;
-	GPIO_Init(CHANNEL1_DATA_GPIO_PORT, &GPIO_InitStructure);
 
 	GPIO_InitStructure.GPIO_Pin = CLK245_GPIO_PIN;
 	GPIO_Init(CLK245_GPIO_PORT, &GPIO_InitStructure);
