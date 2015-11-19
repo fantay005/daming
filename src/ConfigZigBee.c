@@ -24,8 +24,8 @@
 
 #define CONFIG_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
 
-#define waitTime    50
-#define delayTime   150
+#define waitTime    120
+#define delayTime   100
 
 static xQueueHandle __ConfigQueue;
 
@@ -151,7 +151,7 @@ void USART3_IRQHandler(void) {
 	}
 	
 	data = USART_ReceiveData(SERx);
-	//USART_SendData(USART1, data);
+	USART_SendData(USART1, data);
 	USART_ClearITPendingBit(SERx, USART_IT_RXNE);
 	
 	if(!Com3IsOK())

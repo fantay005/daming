@@ -77,7 +77,7 @@ extern void CommInit(void);
 int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
-	WatchdogInit();
+	//WatchdogInit();
 	NorFlashInit();
 	Ili9320Init();
 	SDInit();
