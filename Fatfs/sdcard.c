@@ -3073,7 +3073,7 @@ extern void LCD_WriteRAM(u16 RGB_Code);
 extern void TFT_SetXY(u16 x,u16 y);
 
 FRESULT OpenFile(char *name){
-	f_mount(&fs, (const TCHAR*)"0:", 1);
+	result = f_mount(&fs, (const TCHAR*)"0:", 1);
 	result = f_open(&fsrc, name, FA_OPEN_EXISTING | FA_READ);  
 	
 	if (result != FR_OK) {

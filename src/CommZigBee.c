@@ -63,12 +63,9 @@ static void __CommInitHardware(void) {
 	GPIO_Init(GPIO_COMx, &GPIO_InitStructure);				       //ZigBee模块的串口
 
 	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				     //ZigBee模块的配置脚
-	
-	GPIO_SetBits(GPIO_Config, Pin_Config);
-	
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);					     //ZigBee模块的配置脚
 }
 
 void OpenComxInterrupt(void){	
@@ -98,18 +95,23 @@ void CloseComxInterrupt(void){
 }
 
 void StartConfig(void){
-//	GPIO_InitTypeDef GPIO_InitStructure;
-//	
-//	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
-//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
-//	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-//	GPIO_Init(GPIO_Config, &GPIO_InitStructure);	
-//	
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_OD;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);	
+	
 	GPIO_ResetBits(GPIO_Config, Pin_Config);
 }
 
 void EndConfig(void){
-	GPIO_SetBits(GPIO_Config, Pin_Config);
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	GPIO_InitStructure.GPIO_Pin =  Pin_Config;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_Config, &GPIO_InitStructure);		
 }
 typedef enum{
 	TYPE_RECIEVE_DATA,
