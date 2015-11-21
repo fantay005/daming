@@ -46,8 +46,8 @@ static void rtcConfiguration(void) {
 	PWR_BackupAccessCmd(ENABLE);        //开启RTC和后备寄存器的访问
 
 	BKP_DeInit();
-	RCC_LSEConfig(RCC_LSE_ON);         //设置外部低速晶振
-	while (RESET == RCC_GetFlagStatus(RCC_FLAG_LSERDY));   //等待时钟稳定
+	RCC_LSEConfig(RCC_LSE_OFF);         //设置内部低速晶振
+	while (RESET == RCC_GetFlagStatus(RCC_FLAG_LSIRDY));   //等待时钟稳定
 	RCC_RTCCLKConfig(RCC_RTCCLKSource_LSE);      //设置LSE为RTC时钟
 	RCC_RTCCLKCmd(ENABLE);          //使能RTC时钟
 

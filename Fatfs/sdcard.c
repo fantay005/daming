@@ -3066,8 +3066,6 @@ static FILINFO finfo;
 
 FRESULT OpenFile(char *name){
 	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-//	result = f_open(&fsrc, name, FA_OPEN_EXISTING | FA_READ);  
-	
 	if (result != FR_OK) {
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);		
@@ -3078,8 +3076,8 @@ FRESULT OpenFile(char *name){
 
 void Pic_Viewer(const unsigned char *name)
 {
-	char data[20] = {"1234567890abcdefg"}; 
-	char path[10]={"first"};
+	char data[20] = {02, 03, 04, 05, 12, 18, 20, 33, 38, 48, 50, 21, 11, 14}; 
+	char path[10]={"two"}, tmp[20];
 	
 	result = OpenFile((char *)name);
 	if(result!=FR_OK){
@@ -3088,21 +3086,21 @@ void Pic_Viewer(const unsigned char *name)
 	
 	result = f_mkdir(path);  
 	
-	if (f_opendir(&dirs, path) == FR_OK) 
-  {
-   while (f_readdir(&dirs, &finfo) == FR_OK)  
-    {
+	if (f_opendir(&dirs, path) == FR_OK) {
+		
+	  while (f_readdir(&dirs, &finfo) == FR_OK){
+				
 //      if (finfo.fattrib & AM_ARC) 
 //      {
 //				if(!finfo.fname[0])	
 //          break;   
-//				
-				result = f_open(&fsrc, "12345.txt", FA_CREATE_NEW | FA_WRITE);
-
-				result = f_write(&fsrc, data, 10, &br);
-				break;
-			}
-//		}
+//					
+			sprintf(tmp, "%s/%s", path, "o.bin");
+			result = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
+			result = f_write(&fsrc, data, 10, &br);
+			break;
+		}
+//	}
 	}
 	result = f_close(&fsrc);
 	result = f_mount(&fs, "0:", NULL);
