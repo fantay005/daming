@@ -13,6 +13,9 @@
 #include "CommZigBee.h"
 #include "sdcard.h"
 
+
+#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+
 #define COMx         USART2
 #define COMx_IRQn    USART2_IRQn
 
@@ -23,9 +26,7 @@
 #define Pin_Config   GPIO_Pin_5
 #define GPIO_Config  GPIOC
 
-#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
-
-#define TimOfWait   20
+#define TimOfWait   120
 #define TimOfDelay  100
 
 static xQueueHandle __comxQueue;
@@ -58,6 +59,7 @@ typedef struct{
 	unsigned char  TEMP[5];
 	unsigned char  TIME[8];
 }BSN_Data;
+
 
 static ZigBee_Param CommMsg = {"0AAA", "SHUNCOM ", "1", "2", "FF", "F", "2", "2", "4", "1", "2", "3"};
 
@@ -216,7 +218,8 @@ bool ComxConfigData(const char *dat, int len) {
 
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
-static unsigned char LenZIGB;
+static unsigned char LenZIGB;         //接收到帧的数据长度
+static unsigned char Legal = 1;       //接收到的数据是否为合法帧
 char HubNode = 1;                     //1为接收模式， 2为配置选项
 
 void USART2_IRQHandler(void) {
@@ -232,7 +235,7 @@ void USART2_IRQHandler(void) {
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
 	
 
-	if(HubNode == 2){
+	if(HubNode == 2){                                   //当收到配置信息时
 		if ((data == 0x0A) || (data == 0x3E)){
 			ComxTaskMsg *msg;
 			portBASE_TYPE xHigherPriorityTaskWoken;
@@ -249,7 +252,7 @@ void USART2_IRQHandler(void) {
 		} else if (data != 0x0D) {
 			buffer[bufferIndex++] = data;		
 		} 
-	} else if(HubNode == 1){
+	} else if(HubNode == 1){                             //当收到手持设备发送的中心节点频点和网络ID时
 
 		if(((data >= '0') && (data <= 'F')) || (data == 0x03)){
 			buffer[bufferIndex++] = data;
@@ -276,6 +279,7 @@ void USART2_IRQHandler(void) {
 		if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
 			ComxTaskMsg *msg;
 			portBASE_TYPE xHigherPriorityTaskWoken;
+			
 			buffer[bufferIndex++] = 0;
 			msg = __ComxCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
 			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
@@ -292,7 +296,47 @@ void USART2_IRQHandler(void) {
 			bufferIndex = 0;
 			buffer[bufferIndex++] = data;
 		}
+	} else if(HubNode == 3){                             //当源地址输出设置为HEX时，接收到的数据
+		
+		if(((bufferIndex == 200) || (data == 0x02) || (data == 0x03)) && (bufferIndex > 2)){
+			ComxTaskMsg *msg;
+			portBASE_TYPE xHigherPriorityTaskWoken;
+			
+			buffer[bufferIndex++] = 0;
+			if(Legal)
+				return;
+			msg = __ComxCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
+				if (xHigherPriorityTaskWoken) {
+					portYIELD();
+				}
+			}
+			
+			Legal = 1;
+			
+			if(data == 0x03)
+				bufferIndex = 0;
+			else if(data == 0x02){
+				buffer[0] = buffer[bufferIndex - 3];
+				buffer[1] = buffer[bufferIndex - 2];
+				
+				bufferIndex = 2;
+			}
+		} else if(bufferIndex == 2){                      //判断是否为合法字节
+			if(data != 0x02){
+				buffer[0] = buffer[1];
+				bufferIndex = 1;
+			} 
+			buffer[bufferIndex++] = data;
+		} else if(bufferIndex > 2){                      //当收到的第一个合法字节后
+			
+				buffer[bufferIndex++] = data;
+		} else {                                         //先全部接收
+			
+			buffer[bufferIndex++] = data;
+		}	
 	}
+	
 }
 
 

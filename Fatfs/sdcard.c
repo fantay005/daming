@@ -32,8 +32,6 @@
 #include "zklib.h"
 #include <string.h>
 #include "stdlib.h"
-#include "ili9320.h"
-#include "key.h"
 #include "CommZigBee.h"
 
 
@@ -3058,33 +3056,34 @@ void  NVIC_Config (void) {
 ****************************************************/
 
 static FIL fsrc;
-static FRESULT result;
+static FRESULT res;
 static FATFS fs;
 static UINT br;
 static DIR dirs;
 static FILINFO finfo;
+static char path[13];
 
 FRESULT OpenFile(char *name){
-	result = f_mount(&fs, (const TCHAR*)"0:", 1);
-	if (result != FR_OK) {
+	res = f_mount(&fs, (const TCHAR*)"0:", 1);
+	if (res != FR_OK) {
 		f_close(&fsrc);
 		f_mount(&fs, "0:", NULL);		
 	}
 	 
-	return result;
+	return res;
 }
 
 void Pic_Viewer(const unsigned char *name)
 {
 	char data[20] = {02, 03, 04, 05, 12, 18, 20, 33, 38, 48, 50, 21, 11, 14}; 
-	char path[10]={"two"}, tmp[20];
+	char tmp[20];
 	
-	result = OpenFile((char *)name);
-	if(result!=FR_OK){
+	res = OpenFile((char *)name);
+	if(res!=FR_OK){
 		return;
 	}
 	
-	result = f_mkdir(path);  
+	res = f_mkdir(path);  
 	
 	if (f_opendir(&dirs, path) == FR_OK) {
 		
@@ -3096,17 +3095,21 @@ void Pic_Viewer(const unsigned char *name)
 //          break;   
 //					
 			sprintf(tmp, "%s/%s", path, "o.bin");
-			result = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
-			result = f_write(&fsrc, data, 10, &br);
+			res = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
+			res = f_write(&fsrc, data, 10, &br);
 			break;
 		}
 //	}
 	}
-	result = f_close(&fsrc);
-	result = f_mount(&fs, "0:", NULL);
+	res = f_close(&fsrc);
+	res = f_mount(&fs, "0:", NULL);
 }
 
 typedef enum{
+	SD_CREATE_FOLDER,                //新建文件夹
+	SD_CREATE_FILE,                  //新建文件
+	SD_WRITE_FILE,                   //写文件
+	SD_CLOSE_FILE,                   //关闭文件，卸载SD卡
 	SD_NULL,
 }SDTaskMsgType;
 
@@ -3131,13 +3134,97 @@ static inline void *__SDGetMsgData(SDTaskMsg *message) {
 	return &message[1];
 }
 
+bool SDTaskHandleCreateFolder(const char *dat, int len) {                    //创建一个新的文件夹
+	SDTaskMsg *message = __SDCreateMessage(SD_CREATE_FOLDER, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleCreateFile(const char *dat, int len) {                      //创建一个新的文件
+	SDTaskMsg *message = __SDCreateMessage(SD_CREATE_FILE, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleWriteFile(const char *dat, int len) {                        //写文件
+	SDTaskMsg *message = __SDCreateMessage(SD_WRITE_FILE, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+bool SDTaskHandleCloseFile(const char *dat, int len) {                        //关闭正在操作的文件
+	SDTaskMsg *message = __SDCreateMessage(SD_CLOSE_FILE, dat, len);
+	
+	if (pdTRUE != xQueueSend(__SDHCQueue, &message, configTICK_RATE_HZ * 5)) {
+		vPortFree(message);
+		return true;
+	}
+	return false;
+}
+
+static void __HandleCreatFolder(SDTaskMsg * msg){
+	char *p = __SDGetMsgData(msg);
+	
+	res = f_mount(&fs, (const TCHAR*)"0:", 1);
+	if (res != FR_OK) 
+		return;	
+	
+	res = f_mkdir(path); 
+}
+
+static void __HandleCreatFile(SDTaskMsg * msg){
+	char *p = __SDGetMsgData(msg);
+	char tmp[13];
+	
+	res = f_opendir(&dirs, path);
+	
+	while (f_readdir(&dirs, &finfo) != FR_OK);
+	
+	sprintf(tmp, "%s/%s", path, "o.bin");
+	res = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
+	
+}
+
+static void __HandleWriteFile(SDTaskMsg * msg){
+	char *p = __SDGetMsgData(msg);
+	char *ret = p;
+	
+	for(;;){
+		res = f_write(&fsrc, ret, 80, &br);
+		ret += 80;
+		if(res || br < 1)
+			break;
+	}
+}
+
+static void __HandleCloseFile(SDTaskMsg * msg){
+
+	res = f_close(&fsrc);
+	res = f_mount(&fs, "0:", NULL);
+}
+
 typedef struct {
 	SDTaskMsgType type;
 	void (*handlerFunc)(SDTaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
-
+	{ SD_CREATE_FOLDER, __HandleCreatFolder },
+	{ SD_CREATE_FILE, __HandleCreatFile },
+	{ SD_WRITE_FILE, __HandleWriteFile },
+	{ SD_CLOSE_FILE, __HandleCloseFile },
 	{ SD_NULL, NULL },
 };
 
