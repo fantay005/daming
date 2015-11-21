@@ -100,11 +100,11 @@
         </CommonProperty>
         <DllOption>
           <SimDllName>SARMCM3.DLL</SimDllName>
-          <SimDllArguments>-REMAP</SimDllArguments>
+          <SimDllArguments>-MPU -REMAP</SimDllArguments>
           <SimDlgDll>DCM.DLL</SimDlgDll>
           <SimDlgDllArguments>-pCM3</SimDlgDllArguments>
           <TargetDllName>SARMCM3.DLL</TargetDllName>
-          <TargetDllArguments></TargetDllArguments>
+          <TargetDllArguments>-MPU</TargetDllArguments>
           <TargetDlgDll>TCM.DLL</TargetDlgDll>
           <TargetDlgDllArguments>-pCM3</TargetDlgDllArguments>
         </DllOption>
@@ -165,7 +165,7 @@
             <Capability>1</Capability>
             <DriverSelection>4099</DriverSelection>
           </Flash1>
-          <bUseTDR>1</bUseTDR>
+          <bUseTDR>0</bUseTDR>
           <Flash2>Segger\JL2CM3.dll</Flash2>
           <Flash3>"" ()</Flash3>
           <Flash4></Flash4>
@@ -593,11 +593,6 @@
               <FilePath>./SRC/main.c</FilePath>
             </File>
             <File>
-              <FileName>protocol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>./SRC/protocol.c</FilePath>
-            </File>
-            <File>
               <FileName>startup_stm32f10x_hd_arm.s</FileName>
               <FileType>2</FileType>
               <FilePath>./SRC/startup_stm32f10x_hd_arm.s</FilePath>
@@ -657,11 +652,6 @@
               <FileType>1</FileType>
               <FilePath>.\src\CommZigBee.c</FilePath>
             </File>
-            <File>
-              <FileName>ConfigZigBee.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\src\ConfigZigBee.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -683,26 +673,6 @@
               <FileType>1</FileType>
               <FilePath>.\ZKLibs\stm32\watchdog.c</FilePath>
             </File>
-            <File>
-              <FileName>font_dot_array.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\font_dot_array.c</FilePath>
-            </File>
-            <File>
-              <FileName>fsmc_nor.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\fsmc_nor.c</FilePath>
-            </File>
-            <File>
-              <FileName>norflash.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\norflash.c</FilePath>
-            </File>
-            <File>
-              <FileName>unicode2gbk.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\ZKLibs\stm32\unicode2gbk.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -722,26 +692,6 @@
               <FileName>sdcard.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\Fatfs\sdcard.c</FilePath>
-            </File>
-          </Files>
-        </Group>
-        <Group>
-          <GroupName>fitbright</GroupName>
-          <Files>
-            <File>
-              <FileName>ili9320_api.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fitbright\ili9320_api.c</FilePath>
-            </File>
-            <File>
-              <FileName>ili9320.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fitbright\ili9320.c</FilePath>
-            </File>
-            <File>
-              <FileName>key.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>.\fitbright\key.c</FilePath>
             </File>
           </Files>
         </Group>

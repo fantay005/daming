@@ -12,9 +12,6 @@
 #include "zklib.h"
 #include "CommZigBee.h"
 #include "sdcard.h"
-#include "key.h"
-#include "ili9320.h"
-#include "norflash.h"
 
 #define COMx         USART2
 #define COMx_IRQn    USART2_IRQn
@@ -33,7 +30,7 @@
 
 static xQueueHandle __comxQueue;
 
-extern char NodeAble;
+char NodeAble;
 
 static ZigBee_Param CommMsg = {"0000", "SHUNCOM ", "1", "2", "FF", "F", "2", "2", "4", "1", "2", "1"};
 
@@ -282,9 +279,6 @@ static void __handleModify(ComxTaskMsg *msg){
 		if(strncasecmp(p, "1.中文    2.English", 19) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("1");
-			
-			Line = 10;
-			Ili9320TaskOrderDis("正在配置，请稍候... ...", 26);
 		} else if(strncasecmp(p, "请输入安全码：SHUNCOM", 21) == 0){
 			vTaskDelay(TimOfWait);
 			ComxComSendStr("SHUNCOM");
@@ -306,21 +300,11 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("5");
 		} else if(strncasecmp(p, "网络ID:", 7) == 0){
-			if(FrequencyDot == 1){
-				sprintf(CommMsg.NET_ID, "%02X", NetID1);
-			} else if(FrequencyDot == 2){
-				sprintf(CommMsg.NET_ID, "%02X", NetID2);
-			}
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.NET_ID);
 			vTaskDelay(TimOfDelay);
 			ComxComSendStr("6");
-		} else if(strncasecmp(p, "频点设置:", 9) == 0){	
-			if(FrequencyDot == 1){
-				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint1);
-			} else if(FrequencyDot == 2){
-				sprintf(CommMsg.FREQUENCY, "%X", FrequPoint2);
-			}				
+		} else if(strncasecmp(p, "频点设置:", 9) == 0){				
 			vTaskDelay(TimOfWait);
 			ComxComSendStr(CommMsg.FREQUENCY);
 			vTaskDelay(TimOfDelay);
@@ -363,143 +347,13 @@ static void __handleModify(ComxTaskMsg *msg){
 			vTaskDelay(TimOfDelay * 3);
 			__CommInitUsart(9600);
 			HubNode = 1;                //开始操作镇流器
-			
-			Line = 10;
-			Ili9320TaskOrderDis("配置成功！", 11);
+		
 			NodeAble = 1;
 		}	
 }
 
 static void __handleRecieve(ComxTaskMsg *msg){
-	char *p = __ComxGetMsgData(msg);
-	char addr[5], status[3], dim[3], inVol[5], inCur[5], inPow[5], lightVol[5], PFCVol[5], temp[4], time[7], Vis[3], tmp[20], buf[40];
-	int i;
 	
-	if(!StartRead)                                           //判断是否发出读取镇流器数据指令
-		return;
-	
-	if(strlen(p) != 76)                                      //判断是否为读取的镇流器数据帧
-		return;
-	
-	sscanf(p, "%*1s%4s", addr);
-	
-	if(StartRead == 2){
-		SDTaskHandleDrawCircle(addr, strlen(addr) + 1);
-		return;
-	}
-		
-	
-	if(HexSwitchDec){                                        //判断地址是否一致,
-	 if(strtol((const char *)addr, NULL, 16) != ZigBAddr)
-			return;
-  } else {
-		if(atoi((const char *)addr) != ZigBAddr)
-			return;
-	}
-	
-	Ili9320TaskClear("C", 2);
-	
-	sprintf(buf, "ZigB地址:  %s", addr);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*11s%2s", status);
-	
-	switch(strtol((const char *)status, NULL, 16)){
-		case 0:
-			sprintf(tmp, "从运行");
-			break;
-		case 1:
-			sprintf(tmp, "关闭(软)");
-			break;
-		case 2:
-			sprintf(tmp, "主运行(满功率)");
-			break;
-		case 5:
-			sprintf(tmp, "主运行(非满功率)");
-			break;
-		case 0x11:
-			sprintf(tmp, "启动失败");
-			break;
-		case 0x12:
-			sprintf(tmp, "输入过压");
-			break;
-		case 0x13:
-			sprintf(tmp, "输入欠压");
-			break;
-		case 0x14:
-			sprintf(tmp, "温度异常");
-			break;
-		case 0x15:
-			sprintf(tmp, "功率过高");
-			break;
-		case 0x16:
-			sprintf(tmp, "输出短路");
-			break;
-		case 0x17:
-			sprintf(tmp, "灯管寿终");
-			break;
-		default:
-			tmp[0] = 0;
-			break;			
-	}
-	
-	sprintf(buf, "运行状态:  %s", tmp);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*9s%2s", dim);
-	if(strncmp(dim, "00", 2) == 0)
-		sprintf(buf, "调光值  :  自动调光");
-	else {
-		i = strtol((const char *)dim, NULL, 16);
-		sprintf(buf, "调光值  :    %3d%%", i);
-	}
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*13s%4s", inVol);
-	i = atoi((const char *)inVol);
-	sprintf(buf, "输入电压:  %3d.%dV", i/10, i%10);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*17s%4s", inCur);
-	i = atoi((const char *)inCur);
-	sprintf(buf, "输入电流:  %2d.%2dA", i/100, i%100);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*21s%4s", inPow);
-	i = atoi((const char *)inPow);
-	sprintf(buf, "输入功率:  %5dW", i);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*25s%4s", lightVol);
-	i = atoi((const char *)lightVol);
-	sprintf(buf, "灯管电压:  %3d.%dV", i/10, i%10);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*29s%4s", PFCVol);
-	i = atoi((const char *)PFCVol);
-	sprintf(buf, "PFC电压 :  %3d.%dV", i/10, i%10);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*33s%2s", temp);
-	i = strtol((const char *)temp, NULL, 16);
-	sprintf(buf, "BSN 温度:  %5d℃", i & 0x7F);
-
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*35s%2s", Vis);
-	i = atoi((const char *)Vis);
-	sprintf(buf, "软件版本:    %d.%d", i/10, i%10);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	sscanf(p, "%*37s%6s", time);
-	i = strtol((const char *)time, NULL, 16);
-	sprintf(buf, "运行时间:  %d小时%02d分钟", i/60, i%60);
-	Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-	
-	Line = 12;
-	Ili9320TaskOrderDis(p, strlen(p) + 1);
-	
-	StartRead = 0;
 }
 
 typedef struct {
