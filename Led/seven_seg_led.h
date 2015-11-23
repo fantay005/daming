@@ -5,7 +5,7 @@
 #include <stdint.h>
 
 /// \brief  数码管的数量.
-#define SEVEN_SEG_LED_NUM 20
+#define SEVEN_SEG_LED_NUM 4
 
 /// \brief  初始化7段数码显示.
 void SevenSegLedInit(void);
@@ -18,7 +18,7 @@ void SevenSegLedInit(void);
 /// \param  what    需要显示的内如, 取值范围是{ 0-9, SEVEN_SEG_LED_OFF }.
 /// \return true    成功,
 /// \return false   失败.
-bool SevenSegLedSetContent(unsigned int index, uint8_t what);
+bool SevenSegLedSetContent(uint16_t what);
 
 /// \brief  显示已设置的内容.
 void SevenSegLedDisplay(void);

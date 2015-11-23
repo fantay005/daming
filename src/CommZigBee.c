@@ -14,7 +14,7 @@
 #include "sdcard.h"
 
 
-#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 256)
+#define COMX_TASK_STACK_SIZE			 (configMINIMAL_STACK_SIZE + 512)
 
 #define COMx         USART2
 #define COMx_IRQn    USART2_IRQn
@@ -101,7 +101,6 @@ static void __CommInitHardware(void) {
 	GPIO_Init(GPIO_Config, &GPIO_InitStructure);				     //ZigBee模块的配置脚
 	
 	GPIO_SetBits(GPIO_Config, Pin_Config);
-	
 }
 
 void OpenComxInterrupt(void){	
@@ -140,6 +139,7 @@ void EndConfig(void){
 }
 
 typedef enum{
+	TYPE_PRINTF_DATA,
 	TYPE_RECIEVE_DATA,
 	TYPE_SEND_DATA,
 	TYPE_MODIFY_DATA,
@@ -219,8 +219,17 @@ bool ComxConfigData(const char *dat, int len) {
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;         //接收到帧的数据长度
-static unsigned char Legal = 1;       //接收到的数据是否为合法帧
-char HubNode = 1;                     //1为接收模式， 2为配置选项
+static unsigned char Legal = 3;       //接收到的数据是否为合法帧
+char HubNode = 3;                     //1为接收模式， 2为配置选项，3为HEX源地址输出
+
+static void  Illegal(void){
+	char ret[255];
+	
+	memcpy(ret, (char *)buffer, bufferIndex);	
+	Legal = 0;
+	bufferIndex--;
+	memcpy((char *)buffer, &ret[1], bufferIndex);	
+}
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -298,14 +307,14 @@ void USART2_IRQHandler(void) {
 		}
 	} else if(HubNode == 3){                             //当源地址输出设置为HEX时，接收到的数据
 		
-		if(((bufferIndex == 200) || (data == 0x02) || (data == 0x03)) && (bufferIndex > 2)){
+		if(((bufferIndex == 200) || (data == 0x02) || (data == 0x03)) && (bufferIndex > 3)){
 			ComxTaskMsg *msg;
 			portBASE_TYPE xHigherPriorityTaskWoken;
 			
 			buffer[bufferIndex++] = 0;
-			if(Legal)
-				return;
-			msg = __ComxCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+//			if(Legal)
+//				return;
+			msg = __ComxCreateMessage(TYPE_PRINTF_DATA, (const char *)buffer, bufferIndex);		
 			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
 				if (xHigherPriorityTaskWoken) {
 					portYIELD();
@@ -322,6 +331,10 @@ void USART2_IRQHandler(void) {
 				
 				bufferIndex = 2;
 			}
+		} else if(bufferIndex == 0){                      //ZigBee地址不大于0x1000
+			if(data > 0x10)
+				return;
+			buffer[bufferIndex++] = data;
 		} else if(bufferIndex == 2){                      //判断是否为合法字节
 			if(data != 0x02){
 				buffer[0] = buffer[1];
@@ -329,8 +342,29 @@ void USART2_IRQHandler(void) {
 			} 
 			buffer[bufferIndex++] = data;
 		} else if(bufferIndex > 2){                      //当收到的第一个合法字节后
+			char HexToChar[] = {"0123456789ABCDEF"};
 			
-				buffer[bufferIndex++] = data;
+			buffer[bufferIndex++] = data;
+			if(buffer[3] != HexToChar[buffer[0] >> 4 & 0xF]){
+				Illegal();
+				return;
+			}
+				
+			if((bufferIndex > 3) && (buffer[4] != HexToChar[buffer[0] & 0xF])){
+				Illegal();
+				return;
+			}
+				
+			if((bufferIndex > 4) && (buffer[5] != HexToChar[buffer[1] >> 4 & 0xF])){
+				Illegal();
+				return;
+			}
+				
+			if((bufferIndex > 5) && (buffer[6] != HexToChar[buffer[1] & 0xF])){
+				Illegal();
+				return;
+			}
+			
 		} else {                                         //先全部接收
 			
 			buffer[bufferIndex++] = data;
@@ -432,7 +466,10 @@ static void __handleModify(ComxTaskMsg *msg){
 		ComxComSendStr("D");
 		vTaskDelay(TimOfDelay * 3);
 		__CommInitUsart(9600);
-		HubNode = 1;                //开始操作镇流器
+		if(strncmp(CommMsg.SRC_ADR, "1", 1) == 0)               
+			HubNode = 1;                //开始操作镇流器
+		else                          //开启源地址输出
+			HubNode = 3;                //HEX源地址输出
 		
 		ConfigEnd();
 		ZigBeeParamInit();
@@ -443,7 +480,9 @@ extern void ConfigStart(void);
 
 static void __handleRecieve(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
+	const char file[13] = {"test.txt"};
 	
+	SDTaskHandleCreateFile(file, strlen(file) + 1);	
 	if((p[5] != 'A') || (p[6] != 'A'))
 		return;
 	
@@ -467,6 +506,9 @@ static void __handleRecieve(ComxTaskMsg *msg){
 
 static void __handleConfig(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
+	const char folder[8] = {"test"};
+	
+	SDTaskHandleCreateFolder(folder, strlen(folder) + 1);
 	
 	CommMsg.NODE_TYPE[0] = '3';
 	
@@ -483,12 +525,19 @@ static void __handleConfig(ComxTaskMsg *msg){
 	ComxComSendStr("1");
 }
 
+static void __handlePrintf(ComxTaskMsg *msg){
+	char *p = __ComxGetMsgData(msg);
+	
+	SDTaskHandleWriteFile(p, strlen(p) + 1);	
+}
+
 typedef struct {
 	ComxTaskMessageType type;
 	void (*handlerFunc)(ComxTaskMsg *);
 } MessageHandlerMap;
 
 static const MessageHandlerMap __messageHandlerMaps[] = {
+	{ TYPE_PRINTF_DATA, __handlePrintf },
 	{ TYPE_RECIEVE_DATA, __handleRecieve },
 	{ TYPE_SEND_DATA, __handleSend },
 	{ TYPE_MODIFY_DATA, __handleModify },
@@ -520,7 +569,7 @@ void CommInit(void) {
 	__CommInitHardware();
 	OpenComxInterrupt();
 	__CommInitUsart(9600);
-	__comxQueue = xQueueCreate(10, sizeof(ComxTaskMsg *));
+	__comxQueue = xQueueCreate(20, sizeof(ComxTaskMsg *));
 	xTaskCreate(__comxTask, (signed portCHAR *) "COM", COMX_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

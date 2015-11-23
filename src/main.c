@@ -46,7 +46,8 @@ static void PreSetupHardware(void) {
 
 	/* Enable DMA1 clock */
 	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
-	RCC_APB1PeriphClockCmd( RCC_APB1Periph_PWR | RCC_APB1Periph_BKP, ENABLE);
+	RCC_APB1PeriphClockCmd( RCC_APB1Periph_PWR | RCC_APB1Periph_BKP |
+													RCC_APB1Periph_USART2, ENABLE);
 
 	NVIC_SetVectorTable((unsigned int)&__Vectors, 0x0);
 
@@ -55,18 +56,22 @@ static void PreSetupHardware(void) {
 
 extern void UartDebugInit(void);
 extern void WatchdogInit(void);
+extern void RecoveryInit(void);
 //extern void RtcInit(void);
 extern void SDInit(void);
 extern void CommInit(void);
+extern void SevenSegLedInit(void);
 extern void DisplayInit(void);
 
 int main(void) {
 	PreSetupHardware();
 	UartDebugInit();
-	//WatchdogInit();
+	RecoveryInit();
+//  WatchdogInit();
 //	RtcInit();
 	SDInit();
 	CommInit();
+	SevenSegLedInit();
 	DisplayInit();
 	
 	

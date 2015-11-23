@@ -3181,6 +3181,8 @@ static void __HandleCreatFolder(SDTaskMsg * msg){
 	if (res != FR_OK) 
 		return;	
 	
+	sprintf(path, "%s", p);
+	
 	res = f_mkdir(path); 
 }
 
@@ -3192,7 +3194,7 @@ static void __HandleCreatFile(SDTaskMsg * msg){
 	
 	while (f_readdir(&dirs, &finfo) != FR_OK);
 	
-	sprintf(tmp, "%s/%s", path, "o.bin");
+	sprintf(tmp, "%s/%s", path, p);
 	res = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
 	
 }
@@ -3259,7 +3261,7 @@ void SDInit(void) {
 		printf("\r\n SD_Init 初始化失败 \r\n" );
 	}
 	
-	Pic_Viewer("0:界面/logo.bmp");
-	__SDHCQueue = xQueueCreate(10, sizeof(SDTaskMsg *));
+//	Pic_Viewer("0:界面/logo.bmp");
+	__SDHCQueue = xQueueCreate(20, sizeof(SDTaskMsg *));
 	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
