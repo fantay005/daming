@@ -220,7 +220,7 @@ static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;         //接收到帧的数据长度
 static unsigned char Illegal = 0;     //接收到的数据是否为合法帧
-unsigned short Addr = 0;              //乱叫的ZigBee地址
+unsigned short Addr = 0xFFFF;         //乱叫的ZigBee地址
 static unsigned short Sequ = 0;       //接收到非法字符的个数
 char HubNode = 3;                     //1为接收模式， 2为配置选项，3为HEX源地址输出
 
@@ -494,10 +494,13 @@ static void __handleModify(ComxTaskMsg *msg){
 		ComxComSendStr("D");
 		vTaskDelay(TimOfDelay * 3);
 		__CommInitUsart(9600);
-		if(strncmp(CommMsg.SRC_ADR, "1", 1) == 0)               
+		if(strncmp(CommMsg.SRC_ADR, "1", 1) == 0) {              
 			HubNode = 1;                //开始操作镇流器
-		else                          //开启源地址输出
+			Addr = 0x8888;
+		} else {                      //开启源地址输出
 			HubNode = 3;                //HEX源地址输出
+			Addr = 0;
+		}
 		
 		ConfigEnd();
 		ZigBeeParamInit();
