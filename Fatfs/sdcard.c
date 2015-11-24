@@ -3062,8 +3062,9 @@ static UINT br;
 static DIR dirs;
 static FILINFO finfo;
 static char path[13];
+static char name[13];
 
-FRESULT OpenFile(char *name){
+FRESULT OpenFile(void){
 	res = f_mount(&fs, (const TCHAR*)"0:", 1);
 	if (res != FR_OK) {
 		f_close(&fsrc);
@@ -3073,36 +3074,32 @@ FRESULT OpenFile(char *name){
 	return res;
 }
 
-void Pic_Viewer(const unsigned char *name)
+static void BuildFile(void)
 {
-	char data[20] = {02, 03, 04, 05, 12, 18, 20, 33, 38, 48, 50, 21, 11, 14}; 
 	char tmp[20];
 	
-	res = OpenFile((char *)name);
+	res = OpenFile();
 	if(res!=FR_OK){
 		return;
 	}
+	
+	sprintf(path, "test");
+	sprintf(name, "1.txt");
 	
 	res = f_mkdir(path);  
 	
 	if (f_opendir(&dirs, path) == FR_OK) {
 		
-	  while (f_readdir(&dirs, &finfo) == FR_OK){
-				
-//      if (finfo.fattrib & AM_ARC) 
-//      {
-//				if(!finfo.fname[0])	
-//          break;   
-//					
-			sprintf(tmp, "%s/%s", path, "o.bin");
+	  while (f_readdir(&dirs, &finfo) == FR_OK){								
+			sprintf(tmp, "%s/%s", path, name);
 			res = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
-			res = f_write(&fsrc, data, 10, &br);
+			res = f_write(&fsrc, "Start", 5, &br);	
 			break;
 		}
-//	}
 	}
+	
 	res = f_close(&fsrc);
-	res = f_mount(&fs, "0:", NULL);
+//	res = f_mount(&fs, "0:", NULL);
 }
 
 typedef enum{
@@ -3188,27 +3185,42 @@ static void __HandleCreatFolder(SDTaskMsg * msg){
 
 static void __HandleCreatFile(SDTaskMsg * msg){
 	char *p = __SDGetMsgData(msg);
-	char tmp[13];
+	unsigned char tmp[13];
+	
 	
 	res = f_opendir(&dirs, path);
 	
 	while (f_readdir(&dirs, &finfo) != FR_OK);
 	
-	sprintf(tmp, "%s/%s", path, p);
-	res = f_open(&fsrc, tmp, FA_CREATE_NEW | FA_WRITE);
+	sprintf((char *)tmp, "%s/%s", path, p);
+	res = f_open(&fsrc, (const TCHAR*)tmp, FA_CREATE_NEW | FA_WRITE);
 	
+	res = f_close(&fsrc);
 }
 
 static void __HandleWriteFile(SDTaskMsg * msg){
-	char *p = __SDGetMsgData(msg);
+	char *p = __SDGetMsgData(msg), buf[24];
+	unsigned char len, i;
 	char *ret = p;
 	
-	for(;;){
-		res = f_write(&fsrc, ret, 80, &br);
-		ret += 80;
-		if(res || br < 1)
+	len = msg->length;
+	sprintf(buf, "%s/%s", path, name);
+	res = f_open(&fsrc, buf, FA_OPEN_ALWAYS | FA_WRITE);
+	
+	if (f_opendir(&dirs, path) == FR_OK) {
+		while (f_readdir(&dirs, &finfo) == FR_OK){
+			res = f_lseek(&fsrc, finfo.fsize);
+			for(i = 0; i < len; i++){
+				sprintf(buf, "%02X ", *ret);
+				res = f_write(&fsrc, buf, 3, &br);		
+				if(res || br < 1)
+					break;
+				ret++;
+			}
 			break;
+		}
 	}
+	res = f_close(&fsrc);
 }
 
 static void __HandleCloseFile(SDTaskMsg * msg){
@@ -3261,7 +3273,7 @@ void SDInit(void) {
 		printf("\r\n SD_Init 初始化失败 \r\n" );
 	}
 	
-//	Pic_Viewer("0:界面/logo.bmp");
+	BuildFile();
 	__SDHCQueue = xQueueCreate(20, sizeof(SDTaskMsg *));
 	xTaskCreate(__SDTask, (signed portCHAR *) "SDHC", SDHC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

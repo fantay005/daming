@@ -219,16 +219,29 @@ bool ComxConfigData(const char *dat, int len) {
 static unsigned char bufferIndex;
 static unsigned char buffer[255];
 static unsigned char LenZIGB;         //接收到帧的数据长度
-static unsigned char Legal = 3;       //接收到的数据是否为合法帧
+static unsigned char Illegal = 0;     //接收到的数据是否为合法帧
+unsigned short Addr = 0;              //乱叫的ZigBee地址
+static unsigned short Sequ = 0;       //接收到非法字符的个数
 char HubNode = 3;                     //1为接收模式， 2为配置选项，3为HEX源地址输出
 
-static void  Illegal(void){
-	char ret[255];
+static void  IsIllegal(unsigned char p){
+
+	Illegal = 1;
+	Sequ++;
+	if(Sequ == 1){
+		Addr = p << 8;
+	} else if(Sequ == 2){
+		Addr |= p;
+	}
+}
+
+static bool IsVisibleChar(unsigned char p){
+	if((p > 0x29) && (p < 0x3A))
+		return false;
+	if((p > 0x40) && (p < 0x47))
+		return false;
 	
-	memcpy(ret, (char *)buffer, bufferIndex);	
-	Legal = 0;
-	bufferIndex--;
-	memcpy((char *)buffer, &ret[1], bufferIndex);	
+	return true;
 }
 
 void USART2_IRQHandler(void) {
@@ -306,14 +319,22 @@ void USART2_IRQHandler(void) {
 			buffer[bufferIndex++] = data;
 		}
 	} else if(HubNode == 3){                             //当源地址输出设置为HEX时，接收到的数据
+		char HexToChar[] = {"0123456789ABCDEF"};
 		
-		if(((bufferIndex == 200) || (data == 0x02) || (data == 0x03)) && (bufferIndex > 3)){
+		if(data == 0x03){
+			data = 0x03;
+		}
+		
+		if(((bufferIndex == 200) || (data == 0x03)) && (bufferIndex > 3)){
 			ComxTaskMsg *msg;
 			portBASE_TYPE xHigherPriorityTaskWoken;
 			
-			buffer[bufferIndex++] = 0;
-//			if(Legal)
-//				return;
+			buffer[bufferIndex++] = data;
+			if(Illegal == 0){
+				Sequ = 0;
+				bufferIndex = 0;
+				return;
+			}
 			msg = __ComxCreateMessage(TYPE_PRINTF_DATA, (const char *)buffer, bufferIndex);		
 			if (pdTRUE == xQueueSendFromISR(__comxQueue, &msg, &xHigherPriorityTaskWoken)) {
 				if (xHigherPriorityTaskWoken) {
@@ -321,56 +342,63 @@ void USART2_IRQHandler(void) {
 				}
 			}
 			
-			Legal = 1;
-			
-			if(data == 0x03)
-				bufferIndex = 0;
-			else if(data == 0x02){
-				buffer[0] = buffer[bufferIndex - 3];
-				buffer[1] = buffer[bufferIndex - 2];
-				
-				bufferIndex = 2;
-			}
+			Illegal = 0;
+			Sequ = 0;
+			bufferIndex = 0;
 		} else if(bufferIndex == 0){                      //ZigBee地址不大于0x1000
-			if(data > 0x10)
+			if(data > 0x05)
 				return;
 			buffer[bufferIndex++] = data;
 		} else if(bufferIndex == 2){                      //判断是否为合法字节
 			if(data != 0x02){
 				buffer[0] = buffer[1];
 				bufferIndex = 1;
-			} 
-			buffer[bufferIndex++] = data;
-		} else if(bufferIndex > 2){                      //当收到的第一个合法字节后
-			char HexToChar[] = {"0123456789ABCDEF"};
-			
-			buffer[bufferIndex++] = data;
-			if(buffer[3] != HexToChar[buffer[0] >> 4 & 0xF]){
-				Illegal();
-				return;
 			}
 				
-			if((bufferIndex > 3) && (buffer[4] != HexToChar[buffer[0] & 0xF])){
-				Illegal();
-				return;
+			if(buffer[0] > 0x05){
+				buffer[0] = data;
+				bufferIndex = 0;
 			}
 				
-			if((bufferIndex > 4) && (buffer[5] != HexToChar[buffer[1] >> 4 & 0xF])){
-				Illegal();
-				return;
-			}
-				
-			if((bufferIndex > 5) && (buffer[6] != HexToChar[buffer[1] & 0xF])){
-				Illegal();
+			if(buffer[0] > 0x05){
+				bufferIndex = 0;
 				return;
 			}
 			
-		} else {                                         //先全部接收
-			
 			buffer[bufferIndex++] = data;
-		}	
-	}
-	
+		} else if(bufferIndex ==  3){                //当收到的第一个合法字节后	
+			
+			buffer[bufferIndex] = data;
+			if(buffer[3] != HexToChar[buffer[0] >> 4 & 0xF])
+				IsIllegal(data);
+			bufferIndex++;
+		} else if(bufferIndex == 4){
+			
+			buffer[bufferIndex] = data;
+			if((buffer[4] != HexToChar[buffer[0] & 0xF]) || Illegal)
+				IsIllegal(data);
+			bufferIndex++;
+		} else if(bufferIndex == 5){
+			
+			buffer[bufferIndex] = data;
+			if((buffer[5] != HexToChar[buffer[1] >> 4 & 0xF]) || Illegal)
+				IsIllegal(data);
+			bufferIndex++;
+		} else if(bufferIndex == 6){
+			
+			buffer[bufferIndex] = data;
+			if((buffer[6] != HexToChar[buffer[1] & 0xF]) || Illegal)
+				IsIllegal(data);
+			bufferIndex++;
+		} else if(bufferIndex > 6){                                         //先全部接收
+			
+			buffer[bufferIndex] = data;
+			if((IsVisibleChar(data)) || Illegal)
+				IsIllegal(data);
+		}	 else {
+			buffer[bufferIndex++] = data;
+		}
+	}	
 }
 
 
@@ -528,7 +556,7 @@ static void __handleConfig(ComxTaskMsg *msg){
 static void __handlePrintf(ComxTaskMsg *msg){
 	char *p = __ComxGetMsgData(msg);
 	
-	SDTaskHandleWriteFile(p, strlen(p) + 1);	
+	SDTaskHandleWriteFile(p, msg->length);	
 }
 
 typedef struct {
