@@ -3328,6 +3328,22 @@ void EndOfFile(void){            //关闭文件，打开一个新的界面
 	FirstIntoInterface();
 }
 
+static void ScanInterFace(unsigned char p){
+	char buf[64];
+	unsigned short i;
+	
+	for(i = 0; i < (15 * p); i++){
+		f_gets(buf, 64, &fsrc);
+		if(p == 1)
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		else if(i > (15 * (p - 1) - 1)){
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		}
+	}
+	
+}
+
+
 char *GWname(void){
 	return &GateWayName[0];
 }
@@ -3430,39 +3446,9 @@ static void __OpenMainGUI(char *dat, char *msg){
 		EndOfFile();
 		return;
 	}
-	
+		
 	if(((msg[0] == GateWay_Set) || (msg[0] == GateWay_Choose) || (msg[0] == GateWay_Decide)) && ((msg[1] == 20) || (msg[1] == 21))){  //网关选项下，左右键进入
-		switch (ProMaxPage()){
-			case 1:
-				for(i = 0; i < 15; i++){
-					f_gets(buf, 64, &fsrc);
-					Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-				}
-				break;
-			case 2:
-				for(i = 0; i < 30; i++){
-					f_gets(buf, 64, &fsrc);
-					if(i > 14)
-						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-				}
-				break;
-			case 3:
-				for(i = 0; i < 45; i++){
-					f_gets(buf, 64, &fsrc);
-					if(i > 29)
-						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-				}
-				break;
-			case 4:
-				for(i = 0; i < 60; i++){
-					f_gets(buf, 64, &fsrc);
-					if(i > 44)
-						Ili9320TaskOrderDis(buf, strlen(buf) + 1);
-				}
-				break;
-			default:
-					break;
-		}
+		ScanInterFace(ProMaxPage());
 		EndOfFile();
 		return;
 	}

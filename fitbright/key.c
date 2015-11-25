@@ -423,8 +423,7 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 				
 			}
 		case 5:                          //维修模式下                        
-
-		
+	
 			switch(param){
 				case 1:
 					if(Project == Pro_Null)
@@ -433,7 +432,7 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 				case 2:
 					if(tmp[0] == 0)           //没有选择网关状况下
 						return false;
-					if(NumOfFrequ < 2)   //只有一个频点状况下
+					if(NumOfFrequ < 2)        //只有一个频点状况下
 						return false;
 					return true;
 				case 3:
@@ -511,6 +510,10 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 					if(FrequencyDot == 0)     //没有选择频点状况下
 						return false;
 					return true;
+				case 9:
+					if(FrequencyDot == 0)     //没有选择频点状况下
+						return false;
+					return true;
 				default:
 					return false;
 				
@@ -574,8 +577,17 @@ bool DisStatus(char type, char param){              //判断Dis_Type类型下哪种类型
 			return true;
 		case 23:
 			return true;
-		default:
-			return false;
+		case 25:
+			switch(param){
+				case 1:
+					return true;
+				case 2:
+					return true;
+				default:
+					break;			
+			}
+		  default:
+			  return false;
 	}	
 }
 
@@ -651,7 +663,7 @@ void ChooseLine(void){                         //确定行数，和页数
 		}
 						
 		return;
-	}
+	} 
 	
 	tmp[0] = wave;
 	tmp[1] = 0;
@@ -843,7 +855,7 @@ void __AddrConfig(void){                     //设置ZigBee地址界面显示
 	Ili9320TaskLightByte(buf, strlen(buf) + 1);
 }
 
-extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
+extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);            
 
 void ParamDimm(unsigned char ctl[2]){                      //按属性操作
 	char HexToChar[] = {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'};
@@ -916,7 +928,7 @@ void ParamDimm(unsigned char ctl[2]){                      //按属性操作
 	
 }
 
-
+static char CentralNode = 0;                  //监听板的中心节点配置情况，0为未配，1为已配  
 char StartRead = 0;                           //1为开始读取镇流器数据
 
 void __handleOpenOption(void){                 //键值操作TFT显示
@@ -1121,6 +1133,8 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 			Ili9320TaskOrderDis(ret, strlen(ret) + 1);
 		
 			return;
+		} else if(dat == 9){
+			InterFace = Listen_Into;		
 		}
 		
 	} else if (InterFace == Project_Dir){            //当显示页面为项目选择界面时，键值操作改变页面
@@ -1266,6 +1280,32 @@ void __handleOpenOption(void){                 //键值操作TFT显示
 		}
 		
 		return;
+	} else if(InterFace == Listen_Into){
+		
+		if(wave == 2){
+			char *p, buf[32];
+			unsigned char len;
+			
+			if(CentralNode == 0)
+				return;
+			
+			if(FrequencyDot == 1)
+				sprintf(buf, "%X%02X", FrequPoint1, NetID1);
+			if(FrequencyDot == 2)
+				sprintf(buf, "%X%02X", FrequPoint2, NetID2);
+			
+			p = DataSendToBSN((unsigned char *)"AA", (unsigned char *)"0AAA", buf, &len);
+			CommxTaskSendData(p, len);
+			vPortFree(p);
+			
+			Line = 10;
+			sprintf(buf, "配置监听板指令已发出！");
+			Ili9320TaskOrderDis(buf, strlen(buf) + 1);
+		} else if(wave == 1){
+			
+			
+			 CentralNode = 1;
+		}
 	}
 		
 	wave = 1;                                            //页面切换后，显亮第一行
@@ -1481,7 +1521,7 @@ extern char NumberOfMap(void);                       //最大地图数目
 static char Curr = 1;                                //当前显示的地图序号
 
 void __handleRealTime(void){                         //处理实时监控界面
-	char Tol, i, buf[2];
+	char Tol, buf[2];
 	
 	Tol = NumberOfMap();
 	
@@ -1554,12 +1594,6 @@ void __handleAddrValue(void){	                            //配置ZigBee地址函数
 			Ili9320TaskClear("C", 2);
 		}
 	}
-//	else if(KeyConfirm == KEYCONF){
-//		if(HexSwitchDec)
-//			HexSwitchDec = 0;
-//		else 
-//			HexSwitchDec = 1;
-//	}
 	
 	if((KeyConfirm >= KEY0) && (KeyConfirm <= KEYF)){		
 		if(HexSwitchDec){

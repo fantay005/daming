@@ -98,8 +98,8 @@ typedef enum{
 	
 	GateWay_Decide = 15,//测试模式下，网关选择
 	Address_Option,  		//测试模式下，ZigBee地址选择
-	Real_MOnitor,    		//实时监控
-	Light_Dim,       		//调光
+	Real_MOnitor,    		//测试模式下，实时监控
+	Light_Dim,       		//测试模式下，调光
 	Light_Attrib,      	//测试模式下，灯属性选择
 	
 	Frequ_Set = 20,     //配置模式下，频点选择
@@ -107,7 +107,8 @@ typedef enum{
 	Frequ_Option,    		//测试模式下，频点选择
 	
 	Lamp_Pole = 23,     //维修模式下，灯杆操作
-	Map_Dis,            //显示地址所在点，维修模式下
+	Map_Dis,            //维修模式下，显示地址所在点
+	Listen_Into,        //测试模式下，监听板控制界面
 }Dis_Type;
 
 typedef enum{
