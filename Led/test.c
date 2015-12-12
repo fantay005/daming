@@ -175,7 +175,7 @@ static void __TimeTask(void *nouse) {
 	static unsigned char FLAG = 0, Anti = 0, Stagtege = 0, coch;
 	GatewayParam2 k;
 	char AfterOn = 0, AfterOff = 0; 
-	portTickType lastT = 0, curT;
+	portTickType curT;
 	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
 	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
 	uint32_t BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;

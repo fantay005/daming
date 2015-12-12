@@ -6,7 +6,6 @@
 #include "queue.h"
 #include "task.h"
 #include "protocol.h"
-//#include "sms.h"
 #include "norflash.h"
 #include "zklib.h"
 #include "libupdater.h"
@@ -23,7 +22,6 @@
 #include "inside_flash.h"
 
 static xSemaphoreHandle __ProSemaphore;
-
 
 typedef enum{
 	ACKERROR = 0,           /*´ÓÕ¾Ó¦´ðÒì³£*/
@@ -168,6 +166,7 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	*p = 0;
 	return ret;
 }
+
 extern char HexToAscii(char hex);
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
@@ -689,9 +688,6 @@ static void HandleStrategy(ProtocolHead *head, const char *p) {
 		}
 		
 	}
-
-	
-	
 	
 	NorFlashWrite(NORFLASH_STRATEGY_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
 	
@@ -1299,67 +1295,25 @@ static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*Íø¹ØµØÖ·²
 	ConectServer = 1;
 }
 
-extern bool __GPRSmodleReset(void);
-
-static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/
-	unsigned char *buf, size;
-	GMSParameter g;
-	
-	sscanf(p, "%[^,]", g.serverIP);
-	sscanf(p, "%*[^,]%*c%d", &(g.serverPORT));
-
-//	g.serverPORT = atoi((const char *)msg);
-	
-	NorFlashWrite(NORFLASH_MANAGEM_WARNING, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
-	while(!__GPRSmodleReset());	
-}
-
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTPÔ¶³ÌÉý¼¶
-	const char *remoteFile = "STM32.PAK";
-	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
-	char *host, tmp[3];
+	char size[8];
 	int len;
 	
-	sscanf((const char *)head->lenth, "%2s", tmp);
-	strtol((const char *)tmp, NULL, 16);
-	host = (char *)pvPortMalloc(len - 5);
-	memcpy(host, (p+ 6), (len - 6));
+
+	
 	mark = pvPortMalloc(sizeof(*mark));
 	if (mark == NULL) {
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile)) {
+	if (FirmwareUpdateSetMark(mark, )) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
 }
 
-extern bool GsmTaskSendAtCommand(const char *atcmd);
-extern unsigned char RSSIValue(unsigned char p);
-
-static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSMÐÅºÅ²éÑ¯
-	unsigned char *buf, size;
-	unsigned char tmp[5];
-	int i;
-	
-	GsmTaskSendAtCommand("AT+CSQ");
-	vTaskDelay(configTICK_RATE_HZ / 4);
-	sprintf((char *)tmp, "%2d%2d", RSSIValue(1), RSSIValue(0));	
-	for(i = 0; i < 4; i++){
-		if(tmp[i] == 0x20){
-			tmp[i] = '0';
-		}
-	}
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
-}
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
@@ -1417,9 +1371,7 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 	
 	if((p[0] == '1')){
 		NVIC_SystemReset();
-	} else if(p[0] == '2') {
-		while(!__GPRSmodleReset());
-	}else if(p[0] == '3'){
+	} else if(p[0] == '3'){
 		sscanf(p, "%10s", msg);
 		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
 		ElecTaskSendData((const char *)buf, size);
@@ -1459,11 +1411,9 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{VERSIONQUERY,   HandleGWVersQuery},      /*0x0C; ²éÍø¹ØÈí¼þ°æ±¾ºÅ*/       ///
 		{ELECTRICGATHER, HandleEGVersQuery},      /*0x0E; ²éµçÁ¿²É¼¯Èí¼þ°æ±¾ºÅ*/
 		{ADDRESSQUERY,   HandleGWAddrQuery},      /*0x11; Íø¹ØµØÖ·²éÑ¯*/           ///
-		{SETSERVERIP,    HandleSetGWServ},        /*0x14; ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/   ///
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x15; Íø¹ØÔ¶³ÌÉý¼¶*/
 		{GATHERUPGRADE,  HandleEGUpgrade},        /*0x1E; µçÁ¿²É¼¯Ä£¿éÔ¶³ÌÉý¼¶*/
 		{BALLASTUPGRADE, HandleBSNUpgrade},       /*0x2A; ÕòÁ÷Æ÷Ô¶³ÌÉý¼¶*/
-		{RSSIVALUE,      HandleRSSIQuery},        /*0x17; GSMÄ£¿éÐÅºÅÇ¿¶È²éÑ¯*/
 		{RESTART,        HandleRestart},          /*0x3F; Éè±¸¸´Î»*/               ///  
 	};
 

@@ -17,7 +17,7 @@
 #include "norflash.h"
 #include "gsm.h"
 
-#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
+#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
 
 static xSemaphoreHandle __Zigbeesemaphore;
 
@@ -66,6 +66,7 @@ static void Zibee_Baud_CFG(int baud){
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
 	USART_Init(COMx, &USART_InitStructure);
+	
 	USART_ITConfig(COMx, USART_IT_RXNE, ENABLE);
 	USART_Cmd(COMx, ENABLE);
 }
@@ -279,31 +280,6 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	  DataFalgQueryAndChange(4, 0, 0);
 		return POWER_SHUT;
 	}
-//	else if (((*ret == 1) || (*ret == 0)) && (GPIO_ReadOutputDataBit(Gpio_array[k.Loop - '1'], Pin_array[k.Loop - '1']))){
-
-//		if(k.CommState == 0x04){
-//			k.CommState = 0x03;
-//			k.InputPower = 0;
-//			NorFlashWrite(NORFLASH_BALLAST_BASE + addr * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);
-//			tmp[0] = hextable[k.CommState >> 4];
-//			tmp[1] = hextable[k.CommState & 0x0F];
-//			ret = ZigbtaskApplyMemory(38 + 5);
-//			memset(ret, '0', 43);
-//			memcpy(ret, build, 4);
-//			memcpy((ret + 4), (dat + 3), 4);
-//			memcpy((ret + 4 + 4 + 2), tmp, 2);
-//			ret[38 + 4] = 0;
-//			
-//			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
-//			GsmTaskSendTcpData((const char *)buf, size);
-//			ZigbTaskFreeMemory(buf);
-//			ZigbTaskFreeMemory(ret);
-//			
-//			WAITFLAG = 0;
-//	    DataFalgQueryAndChange(4, 0, 0);
-//		  return POWER_ENABLE;
-//		}	
-//	}
 	
 	message = __ZigbCreateMessage(TYPE_IOT_SEND_DATA, dat, len);
 	for(i = 0; i < 3; i++){	
@@ -712,12 +688,11 @@ extern void ProtocolInit(void);
 
 void SHUNCOMInit(void) {
 	SZ05_ADV_Init();
-//	Time_Config();
 	Zibee_Baud_CFG(9600);
 	ProtocolInit();
 	if (__Zigbeesemaphore == NULL) {
 		vSemaphoreCreateBinary(__Zigbeesemaphore);
 	}
-	__ZigbeeQueue = xQueueCreate(100, sizeof(ZigbTaskMsg *));
+	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg *));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

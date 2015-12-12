@@ -23,18 +23,16 @@
 
 static xSemaphoreHandle __rtcSystemRunningSemaphore;
 
-extern char TCPStatus(char type, char value);
-
 bool RtcWaitForSecondInterruptOccured(uint32_t time) {
 //	static int count = 0;
 	if (xSemaphoreTake(__rtcSystemRunningSemaphore, time) == pdTRUE) {
 		
 		GPIO_WriteBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN,
 		GPIO_ReadOutputDataBit(INDICTOR_LED_GPIO_PORT, INDICTOR_LED_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
-		if(TCPStatus(0, 0) == 2){
-			GPIO_WriteBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN,
-			GPIO_ReadOutputDataBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
-		}
+
+		GPIO_WriteBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN,
+		GPIO_ReadOutputDataBit(GPRS_ENABLE_GPIO_PORT, GPRS_ENABLE_GPIO_PIN) == Bit_RESET ? Bit_SET : Bit_RESET);
+	
 //		printf("RtcSystemRunningIndictor: %d\n", ++count);
 		return true;
 	}

@@ -5,11 +5,16 @@
 
 #define UPDATE_VERSION  0x0100
 
+typedef enum{
+	ElectBoard,
+	BallastBoard,
+	CollectBoard,	
+}UpgradeType;
+
 typedef struct {
-	unsigned int activeFlag;
-	char ftpHost[20];
-	char remotePath[40];
-	unsigned int ftpPort;
+	unsigned int RequiredFlag;
+	unsigned int SizeOfPAK;
+	UpgradeType type;
 	unsigned int timesFlag[5];
 } FirmwareUpdaterMark;
 

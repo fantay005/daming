@@ -41,8 +41,6 @@ static bool JudgeParam(unsigned char param){
 	return false;
 }
 
-extern char TCPStatus(char type, char value);
-
 extern char SendStatus(void);
 
 extern unsigned char *__datamessage(void);
@@ -101,21 +99,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){
-		vTaskDelay(configTICK_RATE_HZ / 5);
-
-		if(__sendstatus(1) == 1){
-			while(1) {
-				vTaskDelay(configTICK_RATE_HZ);
-				while(TCPStatus(0, 0) == 0){
-					vTaskDelay(configTICK_RATE_HZ / 2);
-				}
-				if(GSMTaskSendErrorTcpData() == 0){
-					continue;
-				}
-				__sendstatus(0);
-				break;
-			}
-		}			
+		vTaskDelay(configTICK_RATE_HZ / 5);	
 		
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
@@ -362,15 +346,6 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(2, 0, 0);
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
-			if(TCPStatus(0, 0) == 0) {
-				continue;
-			}
-			
-			if(TCPStatus(0, 0) == 1){
-				vTaskDelay(configTICK_RATE_HZ * 3);
-				TCPStatus(1, 2);
-				continue;
-			}
 			
 			if(NumOfAddr >= (MAX + 50)){
 				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 1);
