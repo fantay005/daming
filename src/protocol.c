@@ -1298,17 +1298,17 @@ static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /*Íø¹ØµØÖ·²
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTPÔ¶³ÌÉý¼¶
 	FirmwareUpdaterMark *mark;
-	char size[8];
+	char size[6];
 	int len;
 	
-
-	
+	sscanf(&p[1], "%6s", size);
+	len = atoi(size);
 	mark = pvPortMalloc(sizeof(*mark));
 	if (mark == NULL) {
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, )) {
+	if (FirmwareUpdateSetMark(mark, len, p[0] - '0')) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);

@@ -9,20 +9,12 @@ const unsigned int __firmwareUpdaterActiveFlag = 0xF8F88F8F;
 FirmwareUpdaterMark *const __firmwareUpdaterInternalFlashMark = (FirmwareUpdaterMark *)__firmwareUpdaterInternalFlashMarkSavedAddr;
 
 bool FirmwareUpdaterIsValidMark(const FirmwareUpdaterMark *mark) {
-	int i;
-	if ((strlen(mark->ftpHost) < 9) || (strlen(mark->ftpHost) > 17)) {
+	if (mark->SizeOfPAK < 1024){
 		return false;
 	}
 
-	if ((strlen(mark->remotePath) < 5) || (strlen(mark->remotePath) >= (sizeof(mark->remotePath) - 1))) {
+	if (mark->type > 3) {
 		return false;
-	}
-
-
-	for (i = 0; i < strlen(mark->ftpHost); ++i) {
-		if ((!isdigit(mark->ftpHost[i])) && (mark->ftpHost[i] != '.')) {
-			return false ;
-		}
 	}
 
 	return true;
@@ -38,14 +30,13 @@ void FirmwareUpdaterEraseMark(void) {
 
 
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsigned short port, const char *remoteFile) {
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, int size, UpgradeType type) {
 	int i;
 	unsigned int *pint;
 
-	tmpMark->activeFlag = __firmwareUpdaterActiveFlag;
-	strncpy(tmpMark->ftpHost, host, sizeof(tmpMark->ftpHost));
-	strncpy(tmpMark->remotePath, remoteFile, sizeof(tmpMark->remotePath));
-	tmpMark->ftpPort = port;
+	tmpMark->RequiredFlag = __firmwareUpdaterActiveFlag;
+	tmpMark->SizeOfPAK = size;
+	tmpMark->type = type;
 	for (i = 0; i < sizeof(tmpMark->timesFlag) / sizeof(tmpMark->timesFlag[0]); ++i) {
 		tmpMark->timesFlag[i] = 0xFFFFFFFF;
 	}
@@ -66,22 +57,17 @@ bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, const char *host, unsig
 
 	FLASH_Lock();
 
-	if (__firmwareUpdaterInternalFlashMark->activeFlag != tmpMark->activeFlag) {
+	if (__firmwareUpdaterInternalFlashMark->RequiredFlag != tmpMark->RequiredFlag) {
 		FirmwareUpdaterEraseMark();
 		return false;
 	}
 
-	if (strcmp(__firmwareUpdaterInternalFlashMark->ftpHost, tmpMark->ftpHost)) {
+	if (__firmwareUpdaterInternalFlashMark->SizeOfPAK != tmpMark->SizeOfPAK) {
 		FirmwareUpdaterEraseMark();
 		return false;
 	}
 
-	if (strcmp(__firmwareUpdaterInternalFlashMark->remotePath, tmpMark->remotePath)) {
-		FirmwareUpdaterEraseMark();
-		return false;
-	}
-
-	if (__firmwareUpdaterInternalFlashMark->ftpPort != tmpMark->ftpPort) {
+	if (__firmwareUpdaterInternalFlashMark->type != tmpMark->type) {
 		FirmwareUpdaterEraseMark();
 		return false;
 	}
