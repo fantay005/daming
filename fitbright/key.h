@@ -116,6 +116,8 @@ typedef enum{
 	Pro_BinHu,
 	Pro_ChanYeYuan,
 	Pro_DaMing,
+	Pro_YaoHai,
+	Pro_JingKai,
 }pro;
 
 extern pro Project;                 //初始化项目为无

@@ -3481,11 +3481,11 @@ static unsigned char NumOfOpt = 0;       //选项数目
 static unsigned char LastPro = 0;        //前一个项目
 
 unsigned char NumOfPage(void){
-	return NumOfOpt;
+	return (NumOfOpt);
 }
 
 static char *FileName(char *msg){         //根据参数，选择文件名称
-	char tmp[32], buf[40];
+	char tmp[32], buf[50];
 	unsigned char i;
 	
 	if(LastPro != Project){
@@ -3502,6 +3502,10 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 		sprintf(buf, "%s", "产业园");
 	} else if(Project == 3){
 		sprintf(buf, "%s", "大明");
+	} else if(Project == 4) {
+		sprintf(buf, "%s", "瑶海");
+	} else if(Project == 5){
+		sprintf(buf, "%s", "经开");
 	}
 	
 	if(msg[1] == KEYMENU){
@@ -3615,7 +3619,7 @@ static char *FileName(char *msg){         //根据参数，选择文件名称
 	}
 	
 	for(i = 0; i < 255; i++){																	//判断选项个数
-		f_gets(buf, 40, &fsrc);
+		f_gets(buf, 50, &fsrc);
 		if(strlen(buf) < 4){
 			NumOfOpt = i;
 			break;
@@ -3648,7 +3652,11 @@ static void __SDTaskHandleWGOption(SDTaskMsg *message){
 		sprintf(buf, "%s", "产业园/网关");
 	} else if(Project == 3){
 		sprintf(buf, "%s", "大明/网关");
-	}
+	} else if(Project == 4){
+		sprintf(buf, "%s", "瑶海/网关");
+	} else if(Project == 5){
+		sprintf(buf, "%s", "经开/网关");
+	} 
 	
 	i = ProMaxPage() - 1;                //当前页数            
 	i = i * 15;
@@ -3774,6 +3782,12 @@ static void __SDTaskHandlePosition(SDTaskMsg *message){
 	} else if(Project == 3){
 		sprintf(name, "%s", "大明/地图");
 		sprintf(para, "%s", "大明/经纬度");
+	} else if(Project == 4){
+		sprintf(name, "%s", "瑶海/地图");
+		sprintf(para, "%s", "瑶海/经纬度");
+	} else if(Project == 5){
+		sprintf(name, "%s", "经开/地图");
+		sprintf(para, "%s", "经开/经纬度");
 	}
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
@@ -3989,6 +4003,12 @@ static void __SDTaskHandleOpenMap(SDTaskMsg *message){
 	} else if(Project == 3){
 		sprintf(name, "%s", "大明/地图");
 		sprintf(msg, "%s", "大明/经纬度");
+	} else if(Project == 4){
+		sprintf(name, "%s", "瑶海/地图");
+		sprintf(msg, "%s", "瑶海/经纬度");
+	} else if(Project == 5){
+		sprintf(name, "%s", "经开/地图");
+		sprintf(msg, "%s", "经开/经纬度");
 	}
 	
 	if(strncmp(p, "1", 1) == 0){
@@ -4110,6 +4130,10 @@ static void __SDTaskHandleLightPole(SDTaskMsg *message){
 		sprintf(para, "%s", "产业园/灯参");
 	} else if(Project == 3){
 		sprintf(para, "%s", "大明/灯参");
+	} else if(Project == 4){
+		sprintf(para, "%s", "瑶海/灯参");
+	} else if(Project == 5){
+		sprintf(para, "%s", "经开/灯参");
 	}
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
@@ -4212,6 +4236,10 @@ static void __SDTaskHandleLampParam(SDTaskMsg *message){
 		sprintf(para, "%s", "产业园/灯参");
 	} else if(Project == 3){
 		sprintf(para, "%s", "大明/灯参");
+	} else if(Project == 4){
+		sprintf(para, "%s", "瑶海/灯参");
+	} else if(Project == 5){
+		sprintf(para, "%s", "经开/灯参");
 	}
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	
@@ -4262,6 +4290,10 @@ static void __SdHandleAddr(SDTaskMsg *message){
 		sprintf(para, "%s", "产业园/灯参");
 	} else if(Project == 3){
 		sprintf(para, "%s", "大明/灯参");
+	}	else if(Project == 4){
+		sprintf(para, "%s", "瑶海/灯参");
+	}	else if(Project == 5){
+		sprintf(para, "%s", "经开/灯参");
 	}	
 	
 	sprintf(tmp, "0:%s/%d.txt", para, NumbOfOption);	

@@ -754,6 +754,10 @@ void DisplayProjet(void){
 		sprintf(buf, "%s", "ºÏ·Ê/ÊñÉ½²úÒµÔ°/");
 	} else if(Project == Pro_DaMing){
 		sprintf(buf, "%s", "ºÏ·Ê/´óÃ÷½ÚÄÜ/");
+	} else if(Project == Pro_YaoHai){
+		sprintf(buf, "%s", "ºÏ·Ê/Ñþº£/");
+	} else if(Project == Pro_JingKai){
+		sprintf(buf, "%s", "ºÏ·Ê/¾­¿ª/");
 	}
 	
 	Ili9320TaskDisGateWay(buf, strlen(buf) + 1);
@@ -791,6 +795,10 @@ void DisplayInformation(void){                       //ÏÔÊ¾Ñ¡ÔñµÄÏîÄ¿£¬Íø¹Ø£¬Æµµ
 		sprintf(para, "%s", "ºÏ·Ê/ÊñÉ½²úÒµÔ°/");
 	} else if(Project == Pro_DaMing){
 		sprintf(para, "%s", "ºÏ·Ê/´óÃ÷½ÚÄÜ/");
+	} else if(Project == Pro_YaoHai){
+		sprintf(para, "%s", "ºÏ·Ê/Ñþº£/");
+	} else if(Project == Pro_JingKai){
+		sprintf(para, "%s", "ºÏ·Ê/¾­¿ª/");
 	}
 	
 	sprintf(buf, "%s%s%s%s%s", para, GWname(), tmp, dat, LPAttribute());
@@ -1147,6 +1155,12 @@ void __handleOpenOption(void){                 //¼üÖµ²Ù×÷TFTÏÔÊ¾
 			
 		} else if(dat == 3){
 			Project = Pro_DaMing;
+			
+		} else if(dat == 4){
+			Project = Pro_YaoHai;
+			
+		} else if(dat == 5){
+			Project = Pro_JingKai;
 			
 		}
 	
