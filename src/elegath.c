@@ -18,7 +18,7 @@
 #include "second_datetime.h"
 
 
-#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 512)
+#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024)
 
 static xQueueHandle __ElectQueue;
 
