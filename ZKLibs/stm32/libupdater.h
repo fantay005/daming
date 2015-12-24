@@ -5,19 +5,13 @@
 
 #define UPDATE_VERSION  0x0100
 
-typedef enum{
-	ElectBoard = 1,
-	BallastBoard,
-	CollectBoard,	
-}UpgradeType;
-
 typedef struct {
 	unsigned int RequiredFlag;
 	unsigned int SizeOfPAK;
-	UpgradeType type;
+	unsigned int type;
 	unsigned int timesFlag[5];
 } FirmwareUpdaterMark;
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, int size, UpgradeType type) ;
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, int size, unsigned int type) ;
 
 #endif

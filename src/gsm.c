@@ -213,13 +213,12 @@ void USART3_IRQHandler(void) {
 					memcmp(message.infor, buffer, bufferIndex);	
 					
 					xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
-					break;
+					if (xHigherPriorityTaskWoken)
+						taskYIELD();
 				}
 			}
 
-			if (xHigherPriorityTaskWoken) {
-				taskYIELD();
-			}
+
 		}
 		bufferIndex = 0;
 	} else if (data != 0x0D) {

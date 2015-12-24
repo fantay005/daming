@@ -53,7 +53,7 @@ typedef struct{
 	unsigned char Latitude[10];          /*纬度*/
 	unsigned char FrequPoint;            /*ZIGBEE频点*/
 	unsigned char IntervalTime[2];       /*自动上传数据时间间隔*/
-	unsigned char NumbOfLoop[2];         /*回路数*/
+	unsigned char Ratio[2];              /*互感器倍数*/
 	unsigned char EmbedInformation;      /*信息置入标识*/
 }GatewayParam1;                        /*网关参数下载帧1*/
 

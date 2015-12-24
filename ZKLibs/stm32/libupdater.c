@@ -30,7 +30,7 @@ void FirmwareUpdaterEraseMark(void) {
 
 
 
-bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, int size, UpgradeType type) {
+bool FirmwareUpdateSetMark(FirmwareUpdaterMark *tmpMark, int size, unsigned int type) {
 	int i;
 	unsigned int *pint;
 
