@@ -166,7 +166,8 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		
 		message.type = TYPE_GPRS_DATA;
 		message.length = bufferIndex;
-		memcmp(message.infor, buffer, bufferIndex);	
+		memcpy(message.infor, buffer, bufferIndex);	
+		
 		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
@@ -299,7 +300,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ );
+		rc = xQueueReceive(__queue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {

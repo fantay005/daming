@@ -1083,12 +1083,12 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	}
 	
 	sscanf(p, "%*13s%2s", tmp);
-	len = strtol((const char *)tmp, NULL, 16);  /*???????*/
+	len = strtol((const char *)tmp, NULL, 16);  
 	
 	sprintf(buf, "%%*%ds%%2s", 15 + len);
 	
 	sscanf(p, buf, tmp);
-	len = strtol((const char *)tmp, NULL, 16);  /*???????*/
+	len = strtol((const char *)tmp, NULL, 16);  
 	
 	if(verify != len)
 		return;
