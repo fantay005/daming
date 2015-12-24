@@ -3,7 +3,7 @@
 #include "stm32f10x_flash.h"
 #include "libupdater.h"
 
-#define __firmwareUpdaterInternalFlashMarkSavedAddr 0x0800F80
+#define __firmwareUpdaterInternalFlashMarkSavedAddr 0x0800F800
 
 const unsigned int __firmwareUpdaterActiveFlag = 0xF8F88F8F;
 FirmwareUpdaterMark *const __firmwareUpdaterInternalFlashMark = (FirmwareUpdaterMark *)__firmwareUpdaterInternalFlashMarkSavedAddr;
