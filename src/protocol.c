@@ -42,10 +42,11 @@ typedef enum{
 
 typedef enum{
 	REQUESTPACK = 0x40,     /*隧道内网关请求升级包*/
-	UPGRATEISOK,            /*隧道内网关升级结束*/
-	LIGHTLUX,               /*环境光照度回复*/
-	GATEWAYID,              /*网关地址下发*/
-	TIMECHECK,              /*核对时间*/
+	UPGRATEISOK = 0x41,     /*隧道内网关升级结束*/
+	TIMECHECK = 0x42,       /*核对时间*/
+	LIGHTLUX = 0x43,        /*环境光照度回复*/
+	GATEWAYID = 0x44,       /*网关地址下发*/
+	
 	
 	NONE,
 }InternalType;
