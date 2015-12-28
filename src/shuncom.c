@@ -78,10 +78,9 @@ typedef enum{
 }ZigbTaskMsgType;
 
 typedef struct {
-	/// Message type.
 	ZigbTaskMsgType type;
-	/// Message lenght.
 	unsigned char length;
+	char infor[200];
 } ZigbTaskMsg;
 
 static void *ZigbtaskApplyMemory(int size){
@@ -92,18 +91,8 @@ static void ZigbTaskFreeMemory(void *p){
 	vPortFree(p);
 }
 
-static ZigbTaskMsg *__ZigbCreateMessage(ZigbTaskMsgType type, const char *dat, unsigned char len) {
-  ZigbTaskMsg *message = ZigbtaskApplyMemory(ALIGNED_SIZEOF(ZigbTaskMsg) + len);
-	if (message != NULL) {
-		message->type = type;
-		message->length = len;
-		memcpy(&message[1], dat, len);
-	}
-	return message;
-}
-
 static inline void *__ZigbGetMsgData(ZigbTaskMsg *message) {
-	return &message[1];
+	return message->infor;
 }
 
 static char buffer[255];
@@ -150,10 +139,14 @@ void USART1_IRQHandler(void) {
 	}
 	
 	if ((bufferIndex == (LenZIGB + 12)) && (data == 0x03)){
-		ZigbTaskMsg *msg;
+		ZigbTaskMsg msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		buffer[bufferIndex++] = 0;
-		msg = __ZigbCreateMessage(TYPE_IOT_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+		
+		msg.type = TYPE_IOT_RECIEVE_DATA;
+		msg.length = bufferIndex;
+		memcpy(msg.infor, buffer, bufferIndex);
+		
 		if (pdTRUE == xQueueSendFromISR(__ZigbeeQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				portYIELD();
@@ -181,7 +174,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	unsigned short addr;
 	unsigned short *mem;
 	char hextable[] = "0123456789ABCDEF";
-	ZigbTaskMsg *message;
+	ZigbTaskMsg message;
 	unsigned char *buf, tmp[5], *ret, size;
 	Lightparam k;
 	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
@@ -192,9 +185,12 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
   ret = DataFalgQueryAndChange(3, 0, 1);
 
 	if(*ret == 1){
-	  message = __ZigbCreateMessage(TYPE_IOT_SEND_DATA, dat, len);
+		
+	  message.type = TYPE_IOT_SEND_DATA;
+		message.length = len;
+		memcpy(message.infor, dat, len);
+		
 		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ * 5)) {
-			ZigbTaskFreeMemory(message);
 			return RTOS_ERROR;
 		}
 		DataFalgQueryAndChange(4, 0, 0);
@@ -281,10 +277,12 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		return POWER_SHUT;
 	}
 	
-	message = __ZigbCreateMessage(TYPE_IOT_SEND_DATA, dat, len);
+	message.type = TYPE_IOT_SEND_DATA;
+	message.length = len;
+	memcpy(message.infor, dat, len);
+	
 	for(i = 0; i < 3; i++){	
 		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ *5)) {
-			ZigbTaskFreeMemory(message);
 			return RTOS_ERROR;
 		}
 //		TIM_Cmd(TIMx, ENABLE); 
@@ -672,14 +670,12 @@ void ZigbeeHandler(ZigbTaskMsg *p) {
 
 static void ZIGBEETask(void *parameter) {
 	portBASE_TYPE rc;
-	ZigbTaskMsg *message;
+	ZigbTaskMsg message;
 	for (;;) {
 	//	printf("ZIGBEE: loop again\n");
 		rc = xQueueReceive(__ZigbeeQueue, &message, portMAX_DELAY);
 		if (rc == pdTRUE) {
-			ZigbeeHandler(message);
-			ZigbTaskFreeMemory(message);
-			message = NULL;
+			ZigbeeHandler(&message);
 		}
 	}
 }

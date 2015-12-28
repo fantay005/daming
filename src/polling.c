@@ -58,19 +58,8 @@ extern unsigned char *upTime_back(void);
 extern bool GSMTaskSendErrorTcpData(void);
 
 static void ShortToStr(unsigned short *s, char *r){
-	int i;
-	
-	#if defined(__HEXADDRESS__)
-			sprintf(r, "%4X", *s);
-	#else		
-			sprintf(r, "%4d", *s);						
-	#endif		
 
-	for(i = 0; i < 4; i++){
-		if(r[i] == 0x20){
-			r[i] = '0';
-		}
-	}
+	sprintf(r, "%04d", *s);							
 }
 
 static short MAX = 0;

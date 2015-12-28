@@ -32,11 +32,11 @@ typedef enum{
 	READDATA = 0x06,        /*¶ÁÕòÁ÷Æ÷Êý¾Ý*/
 	LOOPCONTROL = 0x07,     /*Íø¹Ø»ØÂ·¿ØÖÆ*/
 	DATAQUERY = 0x08,       /*Íø¹ØÊý¾Ý²éÑ¯*/
-	TIMEADJUST = 0x0B,      /*Ð£Ê±*/
 	VERSIONQUERY = 0x0C,    /*Íø¹ØÈí¼þ°æ±¾ºÅ²éÑ¯*/ 
   ELECTRICGATHER = 0x0E,  /*µçÁ¿²É¼¯Èí¼þ°æ±¾ºÅ²éÑ¯*/	
 	GATEUPGRADE = 0x37,     /*Íø¹ØÔ¶³ÌÉý¼¶*/
-	LUXVALUE = 0x38,        /*½ÓÊÕµ½¹âÇ¿¶ÈÖµ*/
+	LUXVALUE = 0x42,        /*½ÓÊÕµ½¹âÇ¿¶ÈÖµ*/
+	TIMEADJUST = 0x43,      /*Ð£Ê±*/
 	RESTART = 0x3F,         /*Éè±¸¸´Î»*/
 	RETAIN,                 /*±£Áô*/
 } GatewayType;
@@ -860,48 +860,6 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	DataFalgQueryAndChange(5, 1, 0);
 }
 
-static void HandleGWTurnTimeQuery(ProtocolHead *head, const char *p) {
-	int len;
-	unsigned char *buf, msg[18], size;
-	unsigned short tmp[1465];
-	DateTime dateTime;
-	
-	if(p[0] != '1'){
-		buf = ProtocolRespond(head->addr, head->contr, "0", &size);
-		GsmTaskSendTcpData((const char *)buf, size);
-		ProtocolDestroyMessage((const char *)buf);	
-		return;
-	}
-	
-	sscanf(p, "%*1s%4s", msg);
-	dateTime.year = atoi((const char *)msg) - 2000;
-	sscanf(p, "%*5s%2s", msg);
-	dateTime.month =  atoi((const char *)msg);
-	sscanf(p, "%*7s%2s", msg);
-	dateTime.date = atoi((const char *)msg);
-	
-	len = __OffsetNumbOfDay(&dateTime);
-	
-	if(dateTime.year % 2){
-		NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
-	} else {
-		NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
-	}
-	
-	memset(msg, 0, 18);
-	sprintf((char *)msg, "1%4x%4x%4x%4x", (unsigned short)tmp[len * 4 - 2], (unsigned short)tmp[len * 4 - 1], (unsigned short)tmp[len * 4 - 4], (unsigned short)tmp[len * 4 - 3]);
-	
-	for(len = 0; len < sizeof(msg); len++){
-		if(msg[len] == 0x20){
-			msg[len] = 0x30;
-		}
-	}
-	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
-}
-
 static void HandleLightAuto(ProtocolHead *head, const char *p) {
 	unsigned char *buf, size;
 	
@@ -912,10 +870,7 @@ static void HandleLightAuto(ProtocolHead *head, const char *p) {
 
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 	DateTime ServTime;
-	uint32_t second;
-	
-	second = RtcGetTime();
-	
+
 	ServTime.year = (p[0] - '0') * 10 + p[1] - '0';
 	ServTime.month = (p[2] - '0') * 10 + p[3] - '0';
 	ServTime.date = (p[4] - '0') * 10 + p[5] - '0';
@@ -923,15 +878,7 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 	ServTime.minute = (p[8] - '0') * 10 + p[9] - '0';
 	ServTime.second = (p[10] - '0') * 10 + p[11] - '0';
 	
-	if(DateTimeToSecond(&ServTime) > second){
-		if((DateTimeToSecond(&ServTime) - second) > 300) {
-			RtcSetTime(DateTimeToSecond(&ServTime));
-		}	
-	} else if (DateTimeToSecond(&ServTime) < second){
-		if((second - DateTimeToSecond(&ServTime)) > 300){
-			RtcSetTime(DateTimeToSecond(&ServTime));
-		}
-	}
+	RtcSetTime(DateTimeToSecond(&ServTime));
 	
 }
 
@@ -1022,10 +969,22 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 	if(Ballast_Count == Total){
 		DataFalgQueryAndChange(2, 9, 0);
 	}
-	
 }
 
+
+#define HundredDimVal  300
+#define NinetDimVal    200
+#define EightyDimVal   150
+#define SeventyDimVal  100
+#define SixtyDimVal    50
+#define FivetyDimVal   5
+
+
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
+	char len, msg[8]; 
+	
+  sscanf(p, "%6s", msg);
+	atoi((const char *)msg);
 	
 	
 }
@@ -1068,11 +1027,11 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{LAMPSWITCH,     HandleLightOnOff},       /*0x05; µÆ¿ª¹Ø¿ØÖÆ*/
 		{READDATA,       HandleReadBSNData},      /*0x06; ¶ÁÕòÁ÷Æ÷Êý¾Ý*/
 		{LOOPCONTROL,    HandleGWloopControl},    /*0x07; Íø¹Ø»ØÂ·¿ØÖÆ*/           ///
-		{DATAQUERY,      HandleGWDataQuery},      /*0x08; Íø¹ØÊý¾Ý²éÑ¯*/           
-		{TIMEADJUST,     HandleAdjustTime},       /*0x0B; Ð£Ê±*/                   ///          
+		{DATAQUERY,      HandleGWDataQuery},      /*0x08; Íø¹ØÊý¾Ý²éÑ¯*/           		    
 		{VERSIONQUERY,   HandleGWVersQuery},      /*0x0C; ²éÍø¹ØÈí¼þ°æ±¾ºÅ*/       ///
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x37; Íø¹ØÔ¶³ÌÉý¼¶*/
-		{LUXVALUE,       HandleLuxGather},        /*0x38; ½ÓÊÕµ½¹âÕÕ¶ÈÇ¿¶ÈÖµ*/
+		{LUXVALUE,       HandleLuxGather},        /*0x42; ½ÓÊÕµ½¹âÕÕ¶ÈÇ¿¶ÈÖµ*/
+		{TIMEADJUST,     HandleAdjustTime},       /*0x42; Ð£Ê±*/                   ///      
 		{RESTART,        HandleRestart},          /*0x3F; Éè±¸¸´Î»*/               ///  
 	};
 

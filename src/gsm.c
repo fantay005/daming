@@ -259,9 +259,16 @@ void __handleProtocol(GsmTaskMessage *msg) {
 }
 
 void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
+	int i, len;
+	char *ret;
+	
+	ret = msg->infor;
+	len = msg->length; 
 #if defined (__MODEL_DEBUG__)	
 	 printf("%s.\r\n", __gsmGetMessageData(msg));
 #endif	
+	for(i = 0; i < len; i++)
+		ATCmdSendChar(*ret++);
 }
 
 void trans(char *tmpa, char tmpb, char *tmpd){

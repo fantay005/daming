@@ -79,7 +79,7 @@ typedef struct {
 } ElecTaskMsg;
 
 static inline void *__ElecGetMsgData(ElecTaskMsg *message) {
-	return &message[1];
+	return message->infor;
 }
 
 static void EleComSendChar(char c) {
@@ -479,26 +479,24 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 
 static void EleGathTask(void *parameter) {
 	portBASE_TYPE rc;
-	ElecTaskMsg *msg;
+	ElecTaskMsg msg;
 	
 	for (;;) {
 		rc = xQueueReceive(__ElectQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
-				if (msg->type == map->type) {
-					map->handlerFunc(msg);
+				if (msg.type == map->type) {
+					map->handlerFunc(&msg);
 					break;
 				}
 			}		
-			vPortFree(msg);
-			msg = NULL;
 		}
 	}
 }
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(5, sizeof(ElecTaskMsg *));
+	__ElectQueue = xQueueCreate(10, sizeof(ElecTaskMsg *));
 	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
