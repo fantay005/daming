@@ -255,8 +255,16 @@ static void HandleFlowBalance(ProtocolHead *head, const char *p) {
 	__cmd_QUERYFLOW_Handler();
 }
 
-static void HandleLuxQuery(ProtocolHead *head, const char *p) {
+extern unsigned short GetLux(void);
 
+static void HandleLuxQuery(ProtocolHead *head, const char *p) {
+	unsigned char *buf, size, tmp[8];
+	
+	sprintf((char *)tmp, "%06d", GetLux());
+	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
+	
 }
 typedef void (*ProtocolHandleFunction)(ProtocolHead *head, const char *p);
 
