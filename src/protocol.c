@@ -27,7 +27,6 @@ extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRe
 
 typedef enum{
 	ACKERROR = 0,           /*从站应答异常*/
-	TIMEADJUST = 0x0B,      /*校时*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
 	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
@@ -46,7 +45,6 @@ typedef enum{
 	TIMECHECK = 0x42,       /*核对时间*/
 	LIGHTLUX = 0x43,        /*环境光照度回复*/
 	GATEWAYID = 0x44,       /*网关地址下发*/
-	
 	
 	NONE,
 }InternalType;
@@ -140,31 +138,6 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 	*p = 0;
 	return ret;
 }
-
-static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
-	DateTime ServTime;
-	uint32_t second;
-	
-	second = RtcGetTime();
-	
-	ServTime.year = (p[0] - '0') * 10 + p[1] - '0';
-	ServTime.month = (p[2] - '0') * 10 + p[3] - '0';
-	ServTime.date = (p[4] - '0') * 10 + p[5] - '0';
-	ServTime.hour = (p[6] - '0') * 10 + p[7] - '0';
-	ServTime.minute = (p[8] - '0') * 10 + p[9] - '0';
-	ServTime.second = (p[10] - '0') * 10 + p[11] - '0';
-	
-	if(DateTimeToSecond(&ServTime) > second){
-		if((DateTimeToSecond(&ServTime) - second) > 300) {
-			RtcSetTime(DateTimeToSecond(&ServTime));
-		}	
-	} else if (DateTimeToSecond(&ServTime) < second){
-		if((second - DateTimeToSecond(&ServTime)) > 300){
-			RtcSetTime(DateTimeToSecond(&ServTime));
-		}
-	}
-}
-
 
 extern bool __GPRSmodleReset(void);
 
@@ -284,8 +257,7 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 	char *ret;
 	char verify = 0;
 	
-	const static ProtocolHandleMap map[] = {  
-		{TIMEADJUST,    HandleAdjustTime},       /*0x0B; 校时*/                   ///          
+	const static ProtocolHandleMap map[] = {        
 		{SETSERVERIP,   HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
 		{GATEUPGRADE,   HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,     HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
@@ -373,6 +345,7 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 	char tmp[3], mold, buf[16];
 	char *ret;
 	char verify = 0;
+	GMSParameter g;		
 	
 	const static InternalProtocolHandleMap map[] = {  
 		{REQUESTPACK,  HandleUpdataPacket},      /*处理隧道内网关要求升级包*/    
@@ -397,7 +370,18 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 	len = strtol((const char *)tmp, NULL, 16);  /*协议异或校验码*/
 	
 	if(verify != len)
+		return;	
+	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);		
+	
+	if(strncmp((const char *)head->addr, (const char *)g.GWAddr, 10)){   /*若两个板的地址不同，发送核对地址指令*/
+		unsigned char *buf, size;
+		
+		buf = ProtocolMessage(g.GWAddr, "44", NULL, &size);
+		TransTaskSendData((const char *)buf, size);
+		vPortFree(buf);
 		return;
+	}
 	
 	sscanf(p, "%*11s%2s", tmp);
 	if(tmp[1] > '9'){
@@ -412,6 +396,8 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 			return;
 		}
 	}	
+	
+	GsmTaskSendTcpData(p, strlen(p));
 }
 
 
