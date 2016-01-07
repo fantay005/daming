@@ -285,7 +285,9 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 			map[i].func(head, p + 15);
 			return;
 		}
-	}	
+	}
+
+	TransTaskSendData(p, strlen(p));
 }
 
 /*下面的程序是用来处理光照度采集板和隧道内网关板之间传输数据的协议*/
