@@ -230,7 +230,7 @@ static void __TimeTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 		 
-		 if((dateTime.year < 0x0F) || (dateTime.month > 0x0C) || (dateTime.date > 0x1F) || (dateTime.hour > 0x3D)) {
+		 if((dateTime.year < 0x10) || (dateTime.month > 0x0C) || (dateTime.date > 0x1F) || (dateTime.hour > 0x3D)) {
 			 continue;
 		 }
 		 
@@ -361,93 +361,17 @@ static void __TimeTask(void *nouse) {
 					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
 					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
 					
-					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, i * 4 + 4);	
-					
-				}
-						
+					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, i * 4 + 4);					
+				}					
 				
-		} else if ((FLAG >= 2) && (dateTime.hour == (OffTime / 60)) && (dateTime.minute == (OffTime % 60)) && (dateTime.second == sunup[2])) {
-		
-			if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 1){
-				if(dateTime.year % 2){
-					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
-					tmp[len * 4 - 2] = (second + BaseSecond) >> 16;
-					tmp[len * 4 - 1] = (second + BaseSecond) & 0xFFFF;
-					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
-				} else {
-					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
-					tmp[len * 4 - 2] = (second + BaseSecond) >> 16;
-					tmp[len * 4 - 1] = (second + BaseSecond) & 0xFFFF;
-					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
-				}
-			}
-  		GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-			for(i = 0; i < 8; i++){
-				GPIO_ResetBits(Gpio_array[i], Pin_array[i]);			
-			}		
-			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-			
-		} else if ((FLAG >= 2) && (dateTime.hour == (OnTime / 60)) && (dateTime.minute == (OnTime % 60)) && (dateTime.second == sunset[2])) {
-		
-		  if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 0){
-				if(dateTime.year % 2){
-					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
-					tmp[len * 4 - 4] = (second + BaseSecond) >> 16;
-					tmp[len * 4 - 3] = (second + BaseSecond) & 0xFFFF;
-					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, len * 4);
-				} else {
-					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
-					tmp[len * 4 - 4] = (second + BaseSecond) >> 16;
-					tmp[len * 4 - 3] = (second + BaseSecond) & 0xFFFF;
-					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, len * 4);
-				}				
-			}
-			GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-			for(i = 0; i < 8; i++){
-				GPIO_SetBits(Gpio_array[i], Pin_array[i]);				
-			}
-			GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-			
-		} else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
+		}  else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
 			
 			FLAG = 0;
 			
-		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x1E) && (dateTime.second == 0x00)){
+		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			
 			NVIC_SystemReset();
 			
-		} else if((NowTime > OffTime) && (NowTime < OnTime)){
-#if defined (__MODEL_DEBUG__)		
-		
-#else			
-			if(lastT > curT){
-				lastT = 0;
-			}
-			if((curT - lastT) > configTICK_RATE_HZ * DetectionTime){
-				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-				for(i = 0; i < 8; i++){
-					GPIO_ResetBits(Gpio_array[i], Pin_array[i]);
-				}		
-				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-				lastT = curT;
-			}
-#endif			
-		} else if((NowTime > OnTime) || (NowTime < OffTime)){
-#if defined (__MODEL_DEBUG__)			
-			
-#else			
-			if(lastT > curT){
-				lastT = 0;
-			}
-			if((curT - lastT) > configTICK_RATE_HZ * DetectionTime){
-				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-				for(i = 0; i < 8; i++){
-					GPIO_SetBits(Gpio_array[i], Pin_array[i]);			
-				}		
-				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-				lastT = curT;
-			}
-#endif			
 		} 
 	}
 }

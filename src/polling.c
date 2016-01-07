@@ -88,7 +88,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){
-		vTaskDelay(configTICK_RATE_HZ / 5);	
+		vTaskDelay(configTICK_RATE_HZ / 10);	
 		
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
@@ -108,7 +108,6 @@ static void POLLTask(void *parameter) {
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
 						vPortFree(alter);
-						alter = NULL;
 						
 						ret++;
 						vTaskDelay(configTICK_RATE_HZ / 3);	
@@ -120,7 +119,6 @@ static void POLLTask(void *parameter) {
 					buf = DataSendToBSN((unsigned char *)"04", (unsigned char *)"FFFF", (const char *) __datamessage(), &size);
 					ZigbTaskSendData((const char *)buf, size);
 					vPortFree(buf);
-					buf = NULL;
 				
 					ret = DataFalgQueryAndChange(1, 0, 1);
 					while(*ret){		
@@ -129,7 +127,6 @@ static void POLLTask(void *parameter) {
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
 						vPortFree(alter);
-						alter = NULL;
 						ret++;
 						vTaskDelay(configTICK_RATE_HZ / 3);	
 					}
@@ -148,7 +145,6 @@ static void POLLTask(void *parameter) {
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
 						vPortFree(alter);		
-						alter = NULL;
 						ret++;
 						vTaskDelay(configTICK_RATE_HZ / 3);	
 					}						
@@ -177,7 +173,6 @@ static void POLLTask(void *parameter) {
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 
 						vPortFree(buf);
-						buf = NULL;
 						
 					}
 					//vTaskDelay(configTICK_RATE_HZ * 5);
@@ -199,22 +194,16 @@ static void POLLTask(void *parameter) {
 					msg[25] = 0;
 				
 					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%4X", Numb);
+							sprintf((char *)h.AD, "%04X", Numb);
 					#else				
-							sprintf((char *)h.AD, "%4d", Numb);
+							sprintf((char *)h.AD, "%04d", Numb);
 					#endif	
 				
-					for(i = 0; i < 4; i++){
-						if(h.AD[i] == 0x20){
-							h.AD[i] = '0';
-						}
-					}
 					buf = DataSendToBSN((unsigned char *)"02", h.AD, (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);	
 					vPortFree(buf);
 					vPortFree(msg);
-					msg = NULL;
-					buf = NULL;
+					
 					break;
 				
 				case 6:
@@ -255,23 +244,15 @@ static void POLLTask(void *parameter) {
 					}
 					
 					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%4X", Numb);
+							sprintf((char *)h.AD, "%04X", Numb);
 					#else				
-							sprintf((char *)h.AD, "%4d", Numb);
+							sprintf((char *)h.AD, "%04d", Numb);
 					#endif	
 
-					for(i = 0; i < 4; i++){
-						if(h.AD[i] == 0x20){
-							h.AD[i] = '0';
-						}
-					}
-					
 					buf = DataSendToBSN((unsigned char *)"03", h.AD, (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);					
 					vPortFree(buf);
 					vPortFree(msg);					
-					buf = NULL;
-					msg = NULL;
 					break;
 					
 				case 7:	
@@ -280,21 +261,15 @@ static void POLLTask(void *parameter) {
 					second = RtcGetTime();
 					SecondToDateTime(&dateTime, second);
 				
-					sprintf((char *)msg, "%2d%2d%2d%2d%2d%2d%2d%2d%2d", dateTime.month, dateTime.date, dateTime.week, 
+					sprintf((char *)msg, "%20d%02d%02d%02d%02d%02d%02d%02d%02d", dateTime.month, dateTime.date, dateTime.week, 
 																								dateTime.hour, dateTime.minute, *upTime_back(), *(upTime_back() + 1),
 																								*setTime_back(), *(setTime_back() + 1));
-					for(i = 0; i < 20; i++){
-						if(msg[i] == 0x20){
-							msg[i] = '0';
-						}
-					}
 					
 					buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);
 					vPortFree(msg);
 					vPortFree(buf);	
-					buf = NULL;
-					msg = NULL;
+
 					break;
 				
 				case 8:			
@@ -302,16 +277,11 @@ static void POLLTask(void *parameter) {
 					Numb = CallTransfer();
 				
 					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%4X", Numb);
+							sprintf((char *)h.AD, "%04X", Numb);
 					#else				
-							sprintf((char *)h.AD, "%4d", Numb);
+							sprintf((char *)h.AD, "%04d", Numb);
 					#endif	
-				
-					for(i = 0; i < 4; i++){
-						if(h.AD[i] == 0x20){
-							h.AD[i] = '0';
-						}
-					}
+		
 					msg = pvPortMalloc(34 + 9);
 					memcpy(msg, "B000", 4);
 					memcpy((msg + 4), h.AD, 4);
@@ -323,8 +293,6 @@ static void POLLTask(void *parameter) {
 					GsmTaskSendTcpData((const char *)buf, size);
 					vPortFree(buf);
 					vPortFree(msg);
-					buf = NULL;
-					msg = NULL;
 					break;
 					
 				default:
