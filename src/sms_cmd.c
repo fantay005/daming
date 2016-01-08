@@ -126,7 +126,7 @@ void ProtocolHandlerSMS(const SMSInfo *sms) {
 		*ret++ = 0;
 		
 		NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
-		buf = ProtocolRespond(g.GWAddr, (unsigned char *)"25", tmp, &size);
+		buf = ProtocolRespond(g.GWAddr, (unsigned char *)"18", tmp, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
 		vPortFree((void *)buf);	
 		

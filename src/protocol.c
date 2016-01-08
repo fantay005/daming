@@ -31,10 +31,8 @@ typedef enum{
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
 	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
 	RSSIVALUE = 0x17,       /*GSM信号强度查询*/
-	TUNNELUPGRADE = 0x20,   /*隧道内网关升级*/
-	CALLBALANCE = 0x21,     /*手机话费查询*/
-	FLOWBALANCE = 0x22,     /*手机流量查询*/
-	LUXQUERY = 0x23,        /*光照度查询*/
+	CALLBALANCE = 0x18,     /*手机话卡信息查询*/
+	LUXQUERY = 0x20,        /*光照度查询*/
 	RETAIN,                 /*保留*/
 } GatewayType;
 
@@ -158,7 +156,7 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关
 	while(!__GPRSmodleReset());	
 }
 
-static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {           //隧道内网关，FTP远程升级
+static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {          
 	const char *remoteFile = "STM32.PAK";
 	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
@@ -180,7 +178,7 @@ static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {           /
 	vPortFree(mark);
 }
 
-static void HandleGWUpgrade(ProtocolHead *head, const char *p){             //光照传感器DTU，FTP远程升级
+static void HandleGWUpgrade(ProtocolHead *head, const char *p){             
 	const char *remoteFile = "STM32.PAK";
 	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
@@ -189,15 +187,25 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p){             //光
 	
 	sscanf((const char *)head->lenth, "%2s", tmp);
   len = strtol((const char *)tmp, NULL, 16);
-	sprintf(tmp, "%%%ds", (len - 6));
-	sscanf((p + 6), tmp, host);
+	sprintf(tmp, "%%%ds", (len - 8));
+	sscanf((p + 8), tmp, host);
 	mark = pvPortMalloc(sizeof(*mark));
 	if (mark == NULL) {
 		return;
 	}
+	
+	sscanf(p, "%2s", tmp);
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)){
-		NVIC_SystemReset();
+	if(strncmp(tmp, "00", 2) == 0){
+		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)){    //光照传感器DTU，FTP远程升级
+			NVIC_SystemReset();
+		}
+	}
+	
+	if(strncmp(tmp, "01", 2) == 0){
+		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)){     //隧道内网关，FTP远程升级
+			NVIC_SystemReset();
+		}
 	}
 	vPortFree(mark);
 }
@@ -217,16 +225,24 @@ static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 extern void __cmd_QUERYFARE_Handler(void);
 extern void __cmd_QUERYFLOW_Handler(void);
 
-static void HandleCallBalance(ProtocolHead *head, const char *p) {
-	SwitchCommand();
-	__cmd_QUERYFARE_Handler();
+static void HandleCallBalance(ProtocolHead *head, const char *p) {        /*查询手机卡信息*/
+	char tmp[8];
+	
+	sscanf(p, "%2s", tmp);
+	if(strncmp(tmp, "00", 2) == 0){          /*查询手机卡余额*/
+		SwitchCommand();
+		__cmd_QUERYFARE_Handler();
+	} else if(strncmp(tmp, "01", 2) == 0){   /*查询手机卡流量使用*/
+		SwitchCommand();
+		__cmd_QUERYFLOW_Handler();
+	}
 }
 
 
-static void HandleFlowBalance(ProtocolHead *head, const char *p) {
-	SwitchCommand();
-	__cmd_QUERYFLOW_Handler();
-}
+//static void HandleFlowBalance(ProtocolHead *head, const char *p) {
+//	SwitchCommand();
+//	__cmd_QUERYFLOW_Handler();
+//}
 
 extern unsigned short GetLux(void);
 
@@ -261,10 +277,10 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 		{SETSERVERIP,   HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
 		{GATEUPGRADE,   HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,     HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
-		{TUNNELUPGRADE, HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
-		{CALLBALANCE,   HandleCallBalance},      /*0x21; 查询手机剩余话费*/
-		{FLOWBALANCE,   HandleFlowBalance},      /*0x22; 查询手机使用流量*/
-		{LUXQUERY,      HandleLuxQuery},         /*0x23; 查询光照度*/
+//		{TUNNELUPGRADE, HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
+		{CALLBALANCE,   HandleCallBalance},      /*0x18; 查询手机卡使用信息*/
+//		{FLOWBALANCE,   HandleFlowBalance},      /*0x22; 查询手机使用流量*/
+		{LUXQUERY,      HandleLuxQuery},         /*0x20; 查询光照度*/
 	};
 
 	ret = p;
