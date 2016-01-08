@@ -110,7 +110,7 @@ static void POLLTask(void *parameter) {
 						vPortFree(alter);
 						
 						ret++;
-						vTaskDelay(configTICK_RATE_HZ / 3);	
+						vTaskDelay(configTICK_RATE_HZ / 5);	
 					}	
 					break;
 					
@@ -128,7 +128,7 @@ static void POLLTask(void *parameter) {
 						ZigbTaskSendData((const char *)alter, size);
 						vPortFree(alter);
 						ret++;
-						vTaskDelay(configTICK_RATE_HZ / 3);	
+						vTaskDelay(configTICK_RATE_HZ / 5);	
 					}
 					break;
 				
@@ -136,7 +136,6 @@ static void POLLTask(void *parameter) {
 					buf = DataSendToBSN((unsigned char *)"05", (unsigned char *)"FFFF", (const char *) __datamessage(), &size);
 					ZigbTaskSendData((const char *)buf, size);
 					vPortFree(buf);
-					buf = NULL;
 				
 					ret = DataFalgQueryAndChange(1, 0, 1);
 					while(*ret){
@@ -146,7 +145,7 @@ static void POLLTask(void *parameter) {
 						ZigbTaskSendData((const char *)alter, size);
 						vPortFree(alter);		
 						ret++;
-						vTaskDelay(configTICK_RATE_HZ / 3);	
+						vTaskDelay(configTICK_RATE_HZ / 5);	
 					}						
 					break;
 				
@@ -202,58 +201,8 @@ static void POLLTask(void *parameter) {
 					buf = DataSendToBSN((unsigned char *)"02", h.AD, (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);	
 					vPortFree(buf);
-					vPortFree(msg);
-					
-					break;
-				
-				case 6:
-					Numb = CallTransfer();
-					NorFlashRead(NORFLASH_STRATEGY_BASE + Numb * NORFLASH_SECTOR_SIZE, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
-					msg = pvPortMalloc(47 + 1);
-					
-					sscanf((const char *)s.SYNCTINE, "%12s", msg);
-					sscanf((const char *)s.SchemeType, "%2s", msg + 12);
-					msg[14] = s.DimmingNOS;
-				
-					sscanf((const char *)s.FirstDCTime, "%4s", msg + 15);
-					sscanf((const char *)s.FirstDPVal, "%2s", msg + 19);
-					msg[21] = 0;
-				
-					if (strncmp((char *)s.SecondDCTime, (char *)"FFFF", 4) != 0){
-						sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
-						sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
-						msg[27] = 0;
-					}
-					
-					if (strncmp((char *)s.ThirdDCTime, (char *)"FFFF", 4) != 0){
-						sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
-						sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
-						msg[33] = 0;
-					}
-					
-					if (strncmp((char *)s.FourthDCTime, (char *)"FFFF", 4) != 0){
-						sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
-						sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
-						msg[39] = 0;
-					}
-					
-					if (strncmp((char *)s.FifthDCTime, (char *)"FFFF", 4) != 0){
-						sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
-						sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
-						msg[45] = 0;
-					}
-					
-					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%04X", Numb);
-					#else				
-							sprintf((char *)h.AD, "%04d", Numb);
-					#endif	
-
-					buf = DataSendToBSN((unsigned char *)"03", h.AD, (const char *)msg, &size);
-					ZigbTaskSendData((const char *)buf, size);					
-					vPortFree(buf);
-					vPortFree(msg);					
-					break;
+					vPortFree(msg);				
+					break;	
 					
 				case 7:	
 					msg = pvPortMalloc(20);
@@ -420,7 +369,6 @@ static void POLLTask(void *parameter) {
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 
 						vPortFree(buf);
-						buf = NULL;
 					}
 					
 				//	vTaskDelay(configTICK_RATE_HZ * 5);
@@ -462,10 +410,8 @@ static void POLLTask(void *parameter) {
 				buf = DataSendToBSN(h.CT, ID, NULL, &size);			
 				ZigbTaskSendData((const char *)buf, size);
 				count++;
-				printf("Print number is %d.\r\n", count);
-				vPortFree(buf);
-				buf = NULL;
-							
+	//			printf("Print number is %d.\r\n", count);
+				vPortFree(buf);	
 			}
 		}
 	}

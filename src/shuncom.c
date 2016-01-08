@@ -451,8 +451,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			
 			sscanf(p, "%*21s%4s", SyncFlag);
 			compare = atoi((const char *)SyncFlag);
-				
-			
+							
 	} else {                       /*网关轮询镇流器数据*/
 		StrategyParam s;
 		DateTime dateTime;
@@ -494,8 +493,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			DataFalgQueryAndChange(3, 1, 0);
 			DataFalgQueryAndChange(5, 1, 0);
 			
-			NumbOfRank = instd;
-			
+			NumbOfRank = instd;			
 		}
 		
 		sscanf(p, "%*67s%2s", SyncFlag);
@@ -517,8 +515,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			DataFalgQueryAndChange(2, 7, 0);
 			DataFalgQueryAndChange(3, 1, 0);
 			DataFalgQueryAndChange(5, 1, 0);	
-			NumbOfRank = instd;			
-		
+			NumbOfRank = instd;					
 		}
 		
 		sscanf(p, "%*11s%2s", space);
@@ -549,8 +546,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			k.CommState = i;
 			k.InputPower = compare;
 			
-			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);
-			
+			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);		
 		}
 		
 		if(((k.InputPower > (compare + 3)) && (k.InputPower < (compare + 15))) ||
@@ -689,6 +685,6 @@ void SHUNCOMInit(void) {
 	if (__Zigbeesemaphore == NULL) {
 		vSemaphoreCreateBinary(__Zigbeesemaphore);
 	}
-	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg *));
+	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
