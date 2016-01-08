@@ -35,8 +35,8 @@ typedef enum{
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
   ELECTRICGATHER = 0x0E,  /*电量采集软件版本号查询*/	
 	GATEUPGRADE = 0x37,     /*网关远程升级*/
-	LUXVALUE = 0x42,        /*接收到光强度值*/
-	TIMEADJUST = 0x43,      /*校时*/
+	TIMEADJUST = 0x42,      /*校时*/
+	LUXVALUE = 0x43,        /*接收到光强度值*/
 	RESTART = 0x3F,         /*设备复位*/
 	RETAIN,                 /*保留*/
 } GatewayType;
@@ -109,7 +109,7 @@ void CurcuitContrInit(void){
 unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
-	unsigned char *p, *ret, tmp[5];
+	unsigned char *p, *ret;
 	unsigned char hexTable[] = "0123456789ABCDEF";
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 9 + len + 3 + 2;
@@ -121,16 +121,9 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 		*ret = 0xFF;
 		*(ret + 1) = 0xFF;
 	} else {
-		
-#if defined (__HEXADDRESS__)	
-		sscanf((const char *)address, "%4s", tmp);
-		verify = strtol((const char *)tmp, NULL, 16);
-		*ret = verify >> 8;
-		*(ret + 1) = verify & 0xFF;
-#else		
 		*ret = (address[0] << 4) | (address[1] & 0x0f);
 		*(ret + 1) = (address[2] << 4) | (address[3] & 0x0f);
-#endif		
+
 	}
 	{
 		FrameHeader *h = (FrameHeader *)(ret + 2);
@@ -303,7 +296,6 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 }
 
 static void __ParamWriteToFlash(const char *p){
-	int i;
 	unsigned char msg[5];
 	unsigned short len;
 	DateTime dateTime;
@@ -350,7 +342,6 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	DateTime dateTime;
 	uint32_t second;	
 	unsigned char *buf, msg[42], tmp[5];
-	Lightparam g;
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
@@ -606,7 +597,6 @@ void __DataFlagJudge(const char *p){
 	__msg.Lenth = i;
 } 
 
-
 static unsigned char DataMessage[32];
 
 unsigned char *__datamessage(void){
@@ -688,87 +678,6 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	ProtocolDestroyMessage((const char *)buf);	
 	
 	__DataFlagJudge(p);
-
-}
-
-static void HandleGWloopControl(ProtocolHead *head, const char *p) {
-	unsigned char tmp[5] = {0}, a, b, TurnFlag = 0;
-	unsigned char *buf, size;
-	int len;
-	
-//	memset(tmp, 0, 3);
-	if(p[0] == '0'){              /*强制开*/  
-		TurnFlag = 1;
-	}
-	
-	sscanf(p, "%*1s%2s", tmp);
-	if((tmp[0] >= '0') && (tmp[0] <= '9')){
-		b = (tmp[0] - '0') << 4;
-	} else if ((tmp[0] >= 'A') && (tmp[0] <= 'F')){
-		b = (tmp[0] - '7') << 4;
-	} else {
-		return;
-	}
-	
-	if((tmp[1] >= '0') && (tmp[1] <= '9')){
-		b |= (tmp[1] - '0');
-	} else if ((tmp[1] >= 'A') && (tmp[1] <= 'F')){
-		b |= (tmp[1] - '7');
-	} else {
-		return;
-	}
-
-	GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-	
-	if(TurnFlag == 1){
-		if(b & 0x01){		
-				GPIO_SetBits(GPIO_CTRL_1, PIN_CTRL_1);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
-		}
-		if(b & 0x02) {
-				GPIO_SetBits(GPIO_CTRL_2, PIN_CTRL_2);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
-		}
-		if(b & 0x04) {
-				GPIO_SetBits(GPIO_CTRL_3, PIN_CTRL_3);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
-		}
-		if(b & 0x08) {
-				GPIO_SetBits(GPIO_CTRL_4, PIN_CTRL_4);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
-		}
-		if(b & 0x10) {
-				GPIO_SetBits(GPIO_CTRL_5, PIN_CTRL_5);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
-		}
-		if(b & 0x20) {
-				GPIO_SetBits(GPIO_CTRL_6, PIN_CTRL_6);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
-		}
-		if(b & 0x40) {
-				GPIO_SetBits(GPIO_CTRL_7, PIN_CTRL_7);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
-		}
-		if(b & 0x80) {
-				GPIO_SetBits(GPIO_CTRL_8, PIN_CTRL_8);
-		} else {
-			  GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);
-		}
-	}
-	
-	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-	TurnFlag = 0;
-	
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
- 	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
@@ -796,6 +705,7 @@ static void HandleLightAuto(ProtocolHead *head, const char *p) {
 
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
 	DateTime ServTime;
+	unsigned char *buf, size;
 
 	ServTime.year = (p[0] - '0') * 10 + p[1] - '0';
 	ServTime.month = (p[2] - '0') * 10 + p[3] - '0';
@@ -806,6 +716,9 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
 	
 	RtcSetTime(DateTimeToSecond(&ServTime));
 	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关软件版本号*/
@@ -907,12 +820,15 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
-	char len, msg[8]; 
+	char msg[10]; 
+	unsigned char *buf, size;
 	
-  sscanf(p, "%6s", msg);
+  sscanf(p, "%8s", msg);
 	atoi((const char *)msg);
 	
-	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);			
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*设备复位*/
@@ -952,12 +868,11 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{DIMMING,        HandleLightDimmer},      /*0x04; 灯调光控制*/
 		{LAMPSWITCH,     HandleLightOnOff},       /*0x05; 灯开关控制*/
 		{READDATA,       HandleReadBSNData},      /*0x06; 读镇流器数据*/
-		{LOOPCONTROL,    HandleGWloopControl},    /*0x07; 网关回路控制*/           ///
 		{DATAQUERY,      HandleGWDataQuery},      /*0x08; 网关数据查询*/           		    
 		{VERSIONQUERY,   HandleGWVersQuery},      /*0x0C; 查网关软件版本号*/       ///
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x37; 网关远程升级*/
-		{LUXVALUE,       HandleLuxGather},        /*0x42; 接收到光照度强度值*/
-		{TIMEADJUST,     HandleAdjustTime},       /*0x42; 校时*/                   ///      
+		{TIMEADJUST,     HandleAdjustTime},       /*0x42; 校时*/                   ///  
+		{LUXVALUE,       HandleLuxGather},        /*0x43; 接收到光照度强度值*/		
 		{RESTART,        HandleRestart},          /*0x3F; 设备复位*/               ///  
 	};
 
