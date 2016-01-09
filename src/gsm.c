@@ -18,6 +18,7 @@
 #include "atcmd.h"
 #include "norflash.h"
 #include "second_datetime.h"
+#include "transfer.h"
 
 #define BROACAST   "9999999999"
 
@@ -75,7 +76,7 @@ typedef enum {
 typedef struct {
 	GsmTaskMessageType type;
 	unsigned char  length;
-	char infor[240];
+	char infor[242];        /*一条短信最长为240个字节*/
 } GsmTaskMessage;
 
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
@@ -185,8 +186,8 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 };
 
 
-static char buffer[240];
-static char bufferIndex = 0;
+static char buffer[246];
+static unsigned char bufferIndex = 0;
 static char isIPD = 0;
 static char isRTC = 0;
 static unsigned char lenIPD = 0;
@@ -543,10 +544,13 @@ void trans(char *tmpa, char tmpb, char *tmpd){
 	}
 }
 
+extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+
 void __handleSIM900RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
 	unsigned short i, j=0;
-	char *p = __gsmGetMessageData(msg), tmp[8];	 
+	char *p = __gsmGetMessageData(msg), tmp[16];	 
+	unsigned char size, *buf;
 	static const uint16_t Common_Year[] = {
 	0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334, 365};
 	
@@ -616,6 +620,11 @@ void __handleSIM900RTC(GsmTaskMessage *msg) {
 	}
   
 	RtcSetTime(DateTimeToSecond(&dateTime));
+
+	sprintf((char *)tmp, "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
+	buf = ProtocolMessage("9999999999", "42", (const char *)tmp, &size);
+	TransTaskSendData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 void __handleSendAtCommand(GsmTaskMessage *msg) {

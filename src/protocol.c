@@ -43,7 +43,7 @@ typedef enum{
 	TIMECHECK = 0x42,       /*核对时间*/
 	LIGHTLUX = 0x43,        /*环境光照度回复*/
 	GATEWAYID = 0x44,       /*网关地址下发*/
-	
+	ASKTIME = 0x45,         /*隧道内网关请求时间*/
 	NONE,
 }InternalType;
 
@@ -154,28 +154,6 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关
 	ProtocolDestroyMessage((const char *)buf);	
 	
 	while(!__GPRSmodleReset());	
-}
-
-static void HandleTunnelUpgrate(ProtocolHead *head, const char *p) {          
-	const char *remoteFile = "STM32.PAK";
-	unsigned short port = 21;
-	FirmwareUpdaterMark *mark;
-	char host[16], tmp[5];
-	int len;
-	
-	sscanf((const char *)head->lenth, "%2s", tmp);
-  len = strtol((const char *)tmp, NULL, 16);
-	sprintf(tmp, "%%%ds", (len - 6));
-	sscanf((p + 6), tmp, host);
-	mark = pvPortMalloc(sizeof(*mark));
-	if (mark == NULL) {
-		return;
-	}
-
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)){
-		NVIC_SystemReset();
-	}
-	vPortFree(mark);
 }
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p){             
@@ -351,6 +329,20 @@ static void HandleTimeFit(ProtocolHead *head, const char *p) {
 	
 }
 
+static void HandleAskTime(ProtocolHead *head, const char *p) {
+	DateTime dateTime;
+	uint32_t second;
+	unsigned char *buf, tmp[16], size;
+	
+	second = RtcGetTime();
+	SecondToDateTime(&dateTime, second);
+	
+	sprintf((char *)tmp, "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
+	buf = ProtocolMessage("9999999999", "42", (const char *)tmp, &size);
+	TransTaskSendData((const char *)buf, size);
+	vPortFree(buf);	
+}
+
 typedef void (*InternalProtocolHandle)(ProtocolHead *head, const char *p);
 
 typedef struct {
@@ -371,6 +363,7 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 		{LIGHTLUX,     HandleLUX},               /*处理光照度发送后回复*/
 		{GATEWAYID,    HandleGWAddr},            /*处理光照度板与隧道内网关版地址一致核对*/
 		{TIMECHECK,    HandleTimeFit},           /*处理隧道内网关时间核准*/
+		{ASKTIME,      HandleAskTime},           /*处理隧道内网关请求时间*/
 	};
 	
 	ret = p;
@@ -392,7 +385,8 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 	
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);		
 	
-	if(strncmp((const char *)head->addr, (const char *)g.GWAddr, 10)){   /*若两个板的地址不同，发送核对地址指令*/
+	if((strncmp((const char *)head->addr, (const char *)g.GWAddr, 10)) && 
+		(strncmp((const char *)head->addr, "9999999999", 10) != 0)){   /*若两个板的地址不同，发送核对地址指令*/
 		unsigned char *buf, size;
 		
 		buf = ProtocolMessage(g.GWAddr, "44", NULL, &size);
@@ -405,11 +399,14 @@ void __handleInternalProtocol(ProtocolHead *head, char *p){
 	if(tmp[1] > '9'){
 		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] - 'A' + 10);
 	} else {
-		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] & 0x0f);
+		if(tmp[0] > '8')
+			mold = (((tmp[0]  - '8' - 7)& 0x0f) << 4) | (tmp[1] & 0x0f);
+		else
+			mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] & 0x0f);
 	}
 	
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
-		if (map[i].type == mold) {
+		if ((map[i].type == mold)  || ((map[i].type | 0x80) == mold)){
 			map[i].func(head, p + 15);
 			return;
 		}

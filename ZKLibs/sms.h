@@ -16,7 +16,7 @@ typedef struct {
 	uint16_t contentLen;
 	uint8_t number[15];
 	int8_t time[15];
-	int8_t content[320];
+	int8_t content[200];
 } SMSInfo;
 
 /// \brief  ½âÂëPDU¶ÌĞÅ.

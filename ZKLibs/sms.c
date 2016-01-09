@@ -134,7 +134,7 @@ static inline int sms_decodeucs2(char *pd, const char *pdu_ud, int len) {
 //07 91 7238010010F5 04 0B C8 7238880900F1 0000 99309251619580 03C16010
 static unsigned char n;
 static unsigned char lenth;
-static char buffer[240];
+static char buffer[180];
 
 void SMSDecodePdu(const char *pdu, SMSInfo *psms) {
 	unsigned char temp, dcs, F0, Total, Sequence, i, LONGSMS = 0;
