@@ -161,32 +161,30 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 		return date - degree(H - H0) / M_PI / 2 + tz; /*日出时间，函数返回值*/
 }
 
+extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+
 static void __TimeTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
-	unsigned int i, len;
-	short OnTime, OffTime, NowTime;
-	unsigned char msg[8], buf[3];
+	unsigned int i;
 	GatewayParam1 g;
 	double jd_degrees = 117;
   double jd_seconds = 17;
   double wd_degrees = 31;
   double wd_seconds = 52;
-	static unsigned char FLAG = 0, Anti = 0, Stagtege = 0, coch;
-	GatewayParam2 k;
-	char AfterOn = 0, AfterOff = 0; 
-	portTickType curT;
-	uint32_t BaseSecond = (7 * (365 + 365 + 365 + 366) + 2 * 365) * 24 * 60 * 60;
-	unsigned short tmp[1465];
+	static unsigned char FLAG = 0, Anti = 0;
+	portTickType curT, lastT = 0;
 		 
 	while (1) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }	 
 		 
-		 if(Anti == 0){
+		 if(Anti == 0){                         /*网关是否已有经纬度数据*/
 			 NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
-			 if(g.EmbedInformation == 1){
+			 if(g.EmbedInformation == 1){         /*从Flash中读出网关参数*/ 
+				 unsigned char msg[8];
+				 
 				 sscanf((const char *)&(g.Longitude), "%*1s%3s", msg);
 				 jd_degrees = atoi((const char *)msg);
 				 sscanf((const char *)&(g.Longitude), "%*4s%2s", msg);
@@ -200,74 +198,25 @@ static void __TimeTask(void *nouse) {
 			 }
 		 }
 		 
-		 if(Stagtege == 0){
-			NorFlashRead(NORFLASH_MANAGEM_TIMEOFFSET, (short *)&k, (sizeof(GatewayParam2) + 1) / 2);
-
-			 if(k.SetFlag == 1){	
-				 sscanf((const char *)k.OpenOffsetTime2, "%2s", buf);
-				 coch = strtol((const char *)buf, NULL, 16);
-				 
-				 if(coch & 0x80){
-					 AfterOn = -(coch & 0x7F);
-				 } else {
-					 AfterOn = coch & 0x7F;
-				 }
-				 
-				 sscanf((const char *)k.CloseOffsetTime2, "%2s", buf);
-				 coch = strtol((const char *)buf, NULL, 16);
-				 
-				 if(coch & 0x80){					 
-					 AfterOff = -(coch & 0x7F);
-				 } else {
-					 AfterOff = coch & 0x7F;		
-				 }		
-				Stagtege = 1;	
-			 }
-		 }
-		 
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 		 
-		 if((dateTime.year < 0x10) || (dateTime.month > 0x0C) || (dateTime.date > 0x1F) || (dateTime.hour > 0x3D)) {
+		 if((dateTime.year < 0x10) || (dateTime.month > 0x0C) || (dateTime.date > 0x1F) || (dateTime.hour > 0x3D)) {  /*时间数据异常*/
+			 unsigned char *buf, size;
+			 
+			 curT = xTaskGetTickCount();
+			 
+			 if((curT - lastT) > configTICK_RATE_HZ * 30){
+				 buf = ProtocolMessage("9999999999", "19", NULL, &size);
+				 GsmTaskSendTcpData((const char *)buf, size);
+				 vPortFree(buf);
+				 lastT = curT;
+			 }
 			 continue;
 		 }
 		 
-		 curT = xTaskGetTickCount();
-		 
-		 NowTime = dateTime.hour * 60 + dateTime.minute;
-		 if(FLAG == 1){
-			 if(AfterOff & 0x80){
-				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff - 256;
-			 } else {
-				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
-			 }
-			 
-			 if(AfterOn & 0x80){
-				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn - 256;
-			 } else {
-				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
-			 }
-			 FLAG = 2;
-		 } else if((FLAG == 2) && (Stagtege == 1)) {
-			 if(AfterOff & 0x80){
-				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff - 256;
-			 } else {
-				 OffTime = sunup[0] * 60 + sunup[1] + AfterOff;
-			 }
-			 
-			 if(AfterOn & 0x80){
-				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn - 256;
-			 } else {
-				 OnTime = sunset[0] * 60 + sunset[1] + AfterOn;
-			 }
-			 FLAG = 3;
-			 Stagtege = 2;
-		 }
-		 
-		 len = __OffsetNumbOfDay(&dateTime) - 1;
 //		 printf("%d.\r\n", dateTime.year);
 		 if ((FLAG == 0) && (dateTime.second != 0x00)){
-			  DateTime OnOffLight;
 			
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
 				wd = (wd_degrees + wd_seconds / 60) / 180 * M_PI;
@@ -305,71 +254,15 @@ static void __TimeTask(void *nouse) {
 				doubleToTime(midDayTime + midDayTime - dawnTime, daybreak);	
 				
 				FLAG = 1;
-				
-				i = __OffsetNumbOfDay(&dateTime) - 1;
-				
-				if((dateTime.year % 2) == 0){
-					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, 4 * i);
-					if(tmp[4 * i - 4] != 0xFFFF){
-						continue;
-					}
-				} else {
-					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, 4 * i);
-					if(tmp[4 * i - 4] != 0xFFFF){
-						continue;
-					}					
-				}
-				
-				OnOffLight.year = dateTime.year;
-				OnOffLight.month = dateTime.month;
-				OnOffLight.date = dateTime.date;			
 			
-				if((dateTime.year % 2) == 0){
-					NorFlashRead(NORFLASH_ONOFFTIME2, (short *)tmp, 4 * i);
-					OnOffLight.hour = sunup[0];
-					OnOffLight.minute = sunup[1];
-					OnOffLight.second = sunup[2];
-					
-					tmp[i * 4 + 2] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
-					tmp[i * 4 + 3] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
-					
-					OnOffLight.hour = sunset[0];
-					OnOffLight.minute = sunset[1];
-					OnOffLight.second = sunset[2];
 				
-					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
-					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
-					
-					NorFlashWrite(NORFLASH_ONOFFTIME2, (short *)tmp, i * 4 + 4);
-					
-				} else {
-					NorFlashRead(NORFLASH_ONOFFTIME1, (short *)tmp, 4 * i);
-					
-					OnOffLight.hour = sunup[0];
-					OnOffLight.minute = sunup[1];
-					OnOffLight.second = sunup[2];
-					
-					tmp[i * 4 + 2] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
-					tmp[i * 4 + 3] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
-					
-					OnOffLight.hour = sunset[0];
-					OnOffLight.minute = sunset[1];
-					OnOffLight.second = sunset[2];
-					
-					tmp[i * 4] = (DateTimeToSecond(&OnOffLight) + BaseSecond) >> 16 ;
-					tmp[i * 4 + 1] = (DateTimeToSecond(&OnOffLight) + BaseSecond) & 0xFFFF;
-					
-					NorFlashWrite(NORFLASH_ONOFFTIME1, (short *)tmp, i * 4 + 4);					
-				}					
-				
-		}  else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
+		}	else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
 			
 			FLAG = 0;
-			
+			vTaskDelay(configTICK_RATE_HZ);		
 		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			
-			NVIC_SystemReset();
-			
+			NVIC_SystemReset();			
 		} 
 	}
 }

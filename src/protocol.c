@@ -46,64 +46,46 @@ typedef struct {
 	unsigned char x03;
 } ProtocolTail;
 
-void CurcuitContrInit(void){
-	GPIO_InitTypeDef GPIO_InitStructure;
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CRTL_EN;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_EN, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_1;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_1, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_2;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_2, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_3;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_3, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_4;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_4, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_5;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_5, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
 
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_6;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_6, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_7;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_7, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
-	
-	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_8;
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
-	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);
-	GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);	
+unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	unsigned char i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	char HexToAscii[] = {"0123456789ABCDEF"};
 
-	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+	*size = 15 + len + 3;
+	if(type[1] > '9'){
+		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
+	} else{
+		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
+	}
+	
+	ret = pvPortMalloc(*size + 1);
+	{
+		ProtocolHead *h = (ProtocolHead *)ret;
+		h->header = 0x02;	
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = HexToAscii[i >> 4];
+		h->contr[1] = HexToAscii[i & 0x0F];
+		h->lenth[0] = HexToAscii[(len >> 4) & 0x0F];
+		h->lenth[1] = HexToAscii[len & 0x0F];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 15), msg);
+	}
+	
+	p = ret;
+	for (i = 0; i < (len + 15); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = HexToAscii[(verify >> 4) & 0x0F];
+	*p++ = HexToAscii[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
 }
 
 unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
@@ -235,20 +217,9 @@ void ProtocolDestroyMessage(const char *p) {
 	vPortFree((void *)p);
 }
 
-//static void Analysis(ProtocolHead *data, const char *p){
-//	sscanf(&p[1], "%10s", data->addr);
-//	sscanf(p, "%*11s%2s", data->contr);
-//	sscanf(p, "%*13s%2s", data->lenth);
-//}
-
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	unsigned char size;
 	unsigned char *buf, msg[2];
-	
-//	if((strlen(p) != 27) || ((strlen(p) != 50)) || (strlen(p) != 78)){
-//		return;
-//	}
-//	len = strlen(p);
 
 	if(strlen(p) == (50 - 15)){
 		GatewayParam1 g;

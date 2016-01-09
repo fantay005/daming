@@ -63,7 +63,7 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 	
 	message.type = TYPE_SEND_AT;
 	message.length = len;
-	memcmp(message.infor, atcmd, len);
+	memcpy(message.infor, atcmd, len);
 	
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
 		return false;
@@ -77,7 +77,7 @@ bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 	
 	message.type = TYPE_SEND_TCP_DATA;
 	message.length = len;
-	memcmp(message.infor, dat, len);	
+	memcpy(message.infor, dat, len);	
 	
 	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
 		return true;
@@ -211,7 +211,7 @@ void USART3_IRQHandler(void) {
 					
 					message.type = p->type;
 					message.length = bufferIndex;
-					memcmp(message.infor, buffer, bufferIndex);	
+					memcpy(message.infor, buffer, bufferIndex);	
 					
 					xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
 					if (xHigherPriorityTaskWoken)
