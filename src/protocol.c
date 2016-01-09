@@ -832,6 +832,7 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	char *ret;
 	char verify = 0;
 	unsigned char len;
+	GMSParameter g;
 	
 	const static ProtocolHandleMap map[] = {  
 		{GATEPARAM,      HandleGatewayParam},     /*0x01; 网关参数下载*/           ///
@@ -851,6 +852,13 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	
 	for (i = 0; i < (strlen(p) - 3); ++i) {
 		verify ^= *ret++;
+	}
+	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);
+	sscanf(p, "%*1s%10s", tmp);
+	if((strncmp((const char *)g.GWAddr, tmp, 10) != 0) && (strncmp("9999999999", tmp, 10) != 0)) {
+		
+		NorFlashWrite(NORFLASH_MANAGEM_ADDR, (const short *)&g, (sizeof(GMSParameter)  + 1)/ 2);
 	}
 	
 	sscanf(p, "%*13s%2s", tmp);

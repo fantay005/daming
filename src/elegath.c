@@ -190,18 +190,11 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 	DateTime dateTime;
 	uint32_t second;	
 	unsigned short state = 0, Hset, Lset, gath, Cache[3];
-	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
-	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
 
 	NorFlashRead(NORFLASH_MANAGEM_WARNING, (short *)&g, (sizeof(GatewayParam3) + 1) / 2);
 	
 	strcpy(msg, p);
 	
-	for (i = 0; i < 8; i++){
-		if(GPIO_ReadInputDataBit(Gpio_array[i], Pin_array[i]) == 1){
-			loop |= (1 << i);
-		}
-	}
 	msg[5] = HexToAscii(loop >> 4);
 	msg[6] = HexToAscii(loop & 0x0F);                 /*»ØÂ·×´Ì¬*/	
 	

@@ -22,7 +22,6 @@
 extern unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
-extern char __sendstatus(char tmp);
 extern unsigned short PowerStatus(void);
 
 static bool JudgeParam(unsigned char param){
@@ -74,12 +73,12 @@ static void POLLTask(void *parameter) {
 	static char MarkRead, count = 0, OverTurn;
 	int len = 0, i = 1, NumOfAddr= 0;
 //	unsigned int sum;
-	Lightparam k, L;
+	Lightparam k;
 	FrameHeader h;
 	GMSParameter a;
 	unsigned char *buf, ID[16], size, *msg, *alter, *bum;
 	char *p;
-	portTickType lastT = 0, HeartT = 0;
+	portTickType HeartT = 0;
 	unsigned short *ret, tmp[3];
 	DateTime dateTime;
 	uint32_t second, ResetTime;
@@ -94,7 +93,6 @@ static void POLLTask(void *parameter) {
 	//	printf("Hello");
 		if(*bum){
 			unsigned char *command;
-			StrategyParam s;
 			short Numb;
 			
 			command = DataFalgQueryAndChange(2, 0, 1);
@@ -372,18 +370,6 @@ static void POLLTask(void *parameter) {
 					}
 					
 				//	vTaskDelay(configTICK_RATE_HZ * 5);
-				
-					if(GPIO_ReadInputDataBit(GPIO_CTRL_1, PIN_CTRL_1) == 1)	{	
-						DataFalgQueryAndChange(8, 0, 0);
-						for(i = 0; i < 1000; i++) {
-							NorFlashRead((NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE), (short *)&L, (sizeof(Lightparam) + 1) / 2);
-							if((L.CommState >= 0) && (L.CommState < 20)){
-								if((second > L.UpdataTime) &&((second - L.UpdataTime) > 60)){
-									DataFalgQueryAndChange(1, i, 0);
-								}
-							}
-						}
-					}
 					
 					if(MarkRead == 2){
 						tmp[0] = second >> 16;
@@ -404,13 +390,11 @@ static void POLLTask(void *parameter) {
 				MAX++;
 				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
-		//		printf("Query ID is %4s.\r\n", ID);
 				h.CT[0] = '0';
 				h.CT[1] = '6';
 				buf = DataSendToBSN(h.CT, ID, NULL, &size);			
 				ZigbTaskSendData((const char *)buf, size);
 				count++;
-	//			printf("Print number is %d.\r\n", count);
 				vPortFree(buf);	
 			}
 		}

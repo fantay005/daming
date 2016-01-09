@@ -177,8 +177,6 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	ZigbTaskMsg message;
 	unsigned char *buf, tmp[5], *ret, size;
 	Lightparam k;
-	uint16_t Pin_array[] = {PIN_CTRL_1, PIN_CTRL_2, PIN_CTRL_3, PIN_CTRL_4, PIN_CTRL_5, PIN_CTRL_6, PIN_CTRL_7, PIN_CTRL_8};
-	GPIO_TypeDef *Gpio_array[] ={GPIO_CTRL_1, GPIO_CTRL_2, GPIO_CTRL_3, GPIO_CTRL_4, GPIO_CTRL_5, GPIO_CTRL_6, GPIO_CTRL_7, GPIO_CTRL_8};
 	char build[4] = {'B', '0' , '0' , '0'};
 	GMSParameter g;
 
@@ -223,10 +221,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	while(*mem){		
 		
 		if(*mem == addr){
-			if(k.CommState == 0x04){
-				if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 1){
-					break;
-				}					
+			if(k.CommState == 0x04){					
 				tmp[0] = hextable[k.CommState >> 4];
 				tmp[1] = hextable[k.CommState & 0x0F];
 				ret = ZigbtaskApplyMemory(38 + 5);
@@ -251,7 +246,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	
   ret = DataFalgQueryAndChange(2, 0, 1);
  
-	if(((*ret == 1) || (*ret == 0)) && (!GPIO_ReadOutputDataBit(Gpio_array[k.Loop - '1'], Pin_array[k.Loop - '1']))){
+	if(((*ret == 1) || (*ret == 0))){
 		
     ret = DataFalgQueryAndChange(5, 0, 1);
 		if((k.CommState != 0x04) || (*ret == 1)){
@@ -301,13 +296,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 //		TIM_Cmd(TIMx, DISABLE); 
 		if(WAITFLAG == 1){
 			i = 3;
-			WAITFLAG = 0;
-			if(!GPIO_ReadInputDataBit(Gpio_array[k.Loop - '1'], Pin_array[k.Loop - '1'])){
-				if(k.CommState != 0x06){
-					k.CommState = 0x06;
-					NorFlashWrite(NORFLASH_BALLAST_BASE + addr * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);
-				}
-			}		
+			WAITFLAG = 0;	
 			return COM_SUCCESS;
 		}
 		if((WAITFLAG == 2) && (i != 2)) {
@@ -321,11 +310,6 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 				WAITFLAG = 0;				
 				return STATUS_FIT;
 			}		
-			
-			if(GPIO_ReadInputDataBit(Gpio_array[0], Pin_array[0]) == 0){
-				WAITFLAG = 0;				
-				return STATUS_FIT;
-			}
 				
 			k.CommState = 0x18;
 			k.InputPower = 0;

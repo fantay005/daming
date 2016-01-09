@@ -2,34 +2,6 @@
 #define __PROTOCOL_H__
 
 #include "gsm.h"
-#include "stm32f10x_gpio.h"
-
-#define PIN_CRTL_EN   GPIO_Pin_0
-#define GPIO_CTRL_EN  GPIOC
-
-#define PIN_CTRL_1    GPIO_Pin_4
-#define GPIO_CTRL_1   GPIOA
-
-#define PIN_CTRL_2    GPIO_Pin_5
-#define GPIO_CTRL_2   GPIOA
-
-#define PIN_CTRL_3    GPIO_Pin_2
-#define GPIO_CTRL_3   GPIOC
-
-#define PIN_CTRL_4    GPIO_Pin_3
-#define GPIO_CTRL_4   GPIOC
-
-#define PIN_CTRL_5    GPIO_Pin_6
-#define GPIO_CTRL_5   GPIOA
-
-#define PIN_CTRL_6    GPIO_Pin_7
-#define GPIO_CTRL_6   GPIOA
-
-#define PIN_CTRL_7    GPIO_Pin_4
-#define GPIO_CTRL_7   GPIOC
-
-#define PIN_CTRL_8    GPIO_Pin_1
-#define GPIO_CTRL_8   GPIOB
 
 typedef struct {
 	unsigned char header;
@@ -55,13 +27,6 @@ typedef struct{
 	unsigned char EmbedInformation;      /*信息置入标识*/
 }GatewayParam1;                        /*网关参数下载帧1*/
 
-typedef struct{
-	unsigned char OpenOffsetTime1[2];    /*开灯偏移时间1*/
-	unsigned char OpenOffsetTime2[2];    /*开灯偏移时间1*/
-	unsigned char CloseOffsetTime1[2];   /*关灯偏移时间1*/
-	unsigned char CloseOffsetTime2[2];   /*关灯偏移时间2*/
-	unsigned char SetFlag;
-}GatewayParam2;                        /*网关参数下载帧1*/ 
 
 typedef struct{
 	unsigned char HVolLimitValL1[4];      /*总回路L1/L2/L3高电压限定值*/
