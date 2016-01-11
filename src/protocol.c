@@ -429,6 +429,63 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 	return false;
 }
 
+typedef enum{
+	ENTRANCE = 1,       /*入口段*/
+	TRANSITION_I,       /*入口过渡段*/
+	INTERMEDIATE,       /*中间段*/
+	TRANSITON_II,       /*出口过渡段*/
+	EXITSECTION,        /*出口段*/
+	GUIDESECTION,       /*引导段*/
+}PartType;            /*隧道各段定义*/
+
+#define NoChoice     0           /*属性没有选择*/
+
+void SeekAddress(PartType loop, unsigned short pole, char main, char aux){     /*根据灯参查找zigbee地址*/
+	int i = 0, j, len = 0, m, n;
+	unsigned char tmp[5], *ret, *msg;
+	Lightparam k;
+	
+	msg = DataFalgQueryAndChange(2, 0, 1);
+
+	memset(__msg.ArrayAddr, 0, 600);
+	for(len = 0; len < 599; len++) {
+		NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+		
+		if(k.Loop != (loop + '0')){            /*回路要一致*/
+			continue;
+		}
+		
+		sscanf((const char *)k.LightPole, "%4s", tmp);
+		m = atoi((const char *)tmp);           /*灯杆号*/
+		
+		if((pole != NoChoice) && (m != pole)){
+			continue;
+		}
+		
+		sscanf((const char *)k.Attribute, "%2s", tmp);
+		m = atoi((const char *)tmp);           /*主辅道属性*/
+		
+		if(m < 0x10){                          /*主道灯*/
+			
+			if((main != NoChoice) && (main != (m & 0x0F)))
+				continue;
+		} else if((m > 0x10) && (m < 0x20)){   /*辅道灯*/
+			
+			if((aux != NoChoice) && (aux != (m & 0x0F)))
+				continue;
+		} else if(m > 0x30){                   /*投光灯*/
+			continue;
+		}
+		
+		sprintf((char *)k.AddrOfZigbee, "%4s", tmp);
+		__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+	}
+	
+	__msg.ArrayAddr[i] = 0;
+	__msg.Lenth = i;
+} 
+
+
 
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
@@ -789,13 +846,147 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 #define SixtyDimVal    50
 #define FivetyDimVal   5
 
+void GuideHandleDayLux(int lux){                 /*引导段处理白天光照度函数*/
+	if(lux > SeventyDimVal){
+		SeekAddress(GUIDESECTION, NoChoice, NoChoice, NoChoice);
+	}
+}
+
+void GuideHandleNightLux(int lux){               /*引导段处理夜晚光照度函数*/
+	
+}
+
+void GuideHandleLux(char time, int lux){         /*引导段处理时间和光照度函数*/
+	if(time){
+		GuideHandleDayLux(lux);
+	} else {
+		GuideHandleNightLux(lux);
+	}	
+}
+
+void MiddleHandleDayLux(int lux){                /*中间段处理白天光照度函数*/
+	
+}
+
+void MiddleHandleNightLux(int lux){              /*中间段处理夜晚光照度函数*/
+	
+}
+
+void MiddleHandleLux(char time, int lux){        /*中间段处理时间和光照度函数*/
+	if(time){
+		MiddleHandleDayLux(lux);
+	} else {
+		MiddleHandleNightLux(lux);
+	}	
+}
+
+void EntryHandleDayLux(int lux){                 /*入口段处理白天光照度函数*/
+	
+}
+
+void EntryHandleNightLux(int lux){               /*入口段处理夜晚光照度函数*/
+	
+}
+
+void EntryHandleLux(char time, int lux){         /*入口段处理时间和光照度函数*/
+	if(time){
+		EntryHandleDayLux(lux);
+	} else {
+		EntryHandleNightLux(lux);
+	}
+}
+
+void ExitHandleDayLux(int lux){                  /*出口段处理白天光照度函数*/
+	
+}
+
+void ExitHandleNightLux(int lux){                /*出口段处理夜晚光照度函数*/
+	
+}
+
+void ExitHandleLux(char time, int lux){          /*出口段处理时间和光照度函数*/
+	if(time){
+		ExitHandleDayLux(lux);
+	} else {
+		ExitHandleNightLux(lux);
+	}
+}
+
+void TransitIHandleDayLux(int lux){              /*入口过渡段处理白天光照度函数*/
+	
+}
+
+void TransitIHandleNightLux(int lux){            /*入口过渡段处理夜晚光照度函数*/
+	
+}
+
+void TransitIHandleLux(char time, int lux){      /*入口过渡段处理时间和光照度函数*/
+	if(time){
+		TransitIHandleDayLux(lux);
+	} else {
+		TransitIHandleNightLux(lux);
+	}
+}
+
+void TransitIIHandleDayLux(int lux){             /*出口过渡段处理白天光照度函数*/
+	
+}
+
+void TransitIIHandleNightLux(int lux){           /*出口过渡段处理夜晚光照度函数*/
+	
+}
+
+void TransitIIHandleLux(char time, int lux){     /*出口过渡段处理时间和光照度函数*/
+	if(time){
+		TransitIIHandleDayLux(lux);
+	} else {
+		TransitIIHandleNightLux(lux);
+	}
+	
+}
+
+void __handleDayLux(int lux){            /*白天根据光照度设置调光策略*/
+	GuideHandleLux(1, lux);
+	EntryHandleLux(1, lux);
+	TransitIHandleLux(1, lux);
+	MiddleHandleLux(1, lux);
+	TransitIIHandleLux(1, lux);
+	ExitHandleLux(1, lux);
+}
+
+void __handleNightLux(int lux){          /*夜晚根据光照度设置调光策略*/
+	GuideHandleLux(0, lux);
+	EntryHandleLux(0, lux);
+	TransitIHandleLux(0, lux);
+	MiddleHandleLux(0, lux);
+	TransitIIHandleLux(0, lux);
+	ExitHandleLux(0, lux);
+}
+
+extern unsigned char CurrentTime(void);
+
+static int LastLux = 0;                /*上一次传进来的光照强度值*/
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
 	unsigned char *buf, size;
+	int LuxValue;
+	char StateChange = 0;           /*光照度是否改变所在区域，1位改变，0为未改*/
 	
   sscanf(p, "%8s", msg);
-	atoi((const char *)msg);
+	LuxValue = atoi((const char *)msg);
+	
+	if(LastLux)
+	
+	if(LuxValue > 1000000){
+		return;
+	}
+	
+	if(CurrentTime() == 1){                  /*白天光照度处理*/
+		__handleDayLux(LuxValue);
+	} else if(CurrentTime() == 0){           /*夜晚光照度处理*/
+		__handleNightLux(LuxValue);
+	}
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -828,7 +1019,7 @@ typedef struct {
 /*BSN: 钠灯镇流器*/
 void ProtocolHandler(ProtocolHead *head, char *p) {
 	int i;
-	char tmp[3], mold, buf[20];
+	char tmp[12], mold, buf[20];
 	char *ret;
 	char verify = 0;
 	unsigned char len;
@@ -878,7 +1069,7 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 	} else {
 		mold = ((tmp[0] & 0x0f) << 4) | (tmp[1] & 0x0f);
 	}
-	
+
 	for (i = 0; i < sizeof(map) / sizeof(map[0]); i++) {
 			if (map[i].type == mold) {
 				map[i].func(head, p + 15);

@@ -50,10 +50,6 @@ extern char *SpaceShift(void);
 
 extern char Conect_server_start(void);
 
-extern unsigned char *setTime_back(void);
-
-extern unsigned char *upTime_back(void);
-
 extern bool GSMTaskSendErrorTcpData(void);
 
 static void ShortToStr(unsigned short *s, char *r){
@@ -163,10 +159,8 @@ static void POLLTask(void *parameter) {
 							break;
 						}
 
-						for(i = 0; i < (Max_Loop + 1); i++){						
-							sprintf((char *)&(ID[i]), "%d", i);
-						}
-						*(ID + i) = 0;
+						sprintf((char *)ID, "%02d", 0);
+						
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 
 						vPortFree(buf);
@@ -203,19 +197,6 @@ static void POLLTask(void *parameter) {
 					break;	
 					
 				case 7:	
-					msg = pvPortMalloc(20);
-				
-					second = RtcGetTime();
-					SecondToDateTime(&dateTime, second);
-				
-					sprintf((char *)msg, "%20d%02d%02d%02d%02d%02d%02d%02d%02d", dateTime.month, dateTime.date, dateTime.week, 
-																								dateTime.hour, dateTime.minute, *upTime_back(), *(upTime_back() + 1),
-																								*setTime_back(), *(setTime_back() + 1));
-					
-					buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
-					ZigbTaskSendData((const char *)buf, size);
-					vPortFree(msg);
-					vPortFree(buf);	
 
 					break;
 				
@@ -358,11 +339,8 @@ static void POLLTask(void *parameter) {
 					ResetTime = (tmp[0] << 16) | tmp[1];
 					
 				//	vTaskDelay(configTICK_RATE_HZ * 5);
+					sprintf((char *)ID, "%02d", 0);
 					
-					for(i = 0; i < (Max_Loop + 1); i++){						
-						sprintf((char *)&(ID[i]), "%d", i);
-					}
-					*(ID + i) = 0;
 					if((second - ResetTime) > 60){
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 

@@ -109,7 +109,7 @@ void USART1_IRQHandler(void) {
 	}
 
 	data = USART_ReceiveData(COMx);
-//	USART_SendData(UART5, data);
+	USART_SendData(UART5, data);
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
 
 	//TIM_Cmd(TIMx,DISABLE);

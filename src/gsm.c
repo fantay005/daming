@@ -21,7 +21,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
@@ -240,6 +240,7 @@ const char *GetBack(void){
 void __handleProtocol(GsmTaskMessage *msg) {
 	GMSParameter g;
 	ProtocolHead *h = pvPortMalloc(sizeof(ProtocolHead));
+
 	
 	h->header = 0x02;
 	sscanf((const char *)msg->infor, "%*1s%10s", h->addr);
@@ -253,7 +254,7 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	sscanf((const char *)msg->infor, "%*11s%2s", h->contr);
 	sscanf((const char *)msg->infor, "%*13s%2s", h->lenth);
 
-	ProtocolHandler(h, __gsmGetMessageData(msg));
+	ProtocolHandler(h, msg->infor);
 
 	vPortFree(h);
 }
@@ -332,6 +333,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
-	__queue = xQueueCreate(10, sizeof( GsmTaskMessage));
+	__queue = xQueueCreate(20, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
