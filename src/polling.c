@@ -13,9 +13,7 @@
 
 #define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
 
-
-#define AUTO_UPDATA_ELEC_PARAM_TIME     (configTICK_RATE_HZ * 10)
-
+#define AUTO_UPDATA_ELEC_PARAM_TIME     (configTICK_RATE_HZ * 30)
 
 #define GSM_GPRS_HEART_BEAT_TIME        (configTICK_RATE_HZ * 60)
 
@@ -74,7 +72,7 @@ static void POLLTask(void *parameter) {
 	GMSParameter a;
 	unsigned char *buf, ID[16], size, *msg, *alter, *bum;
 	char *p;
-	portTickType HeartT = 0;
+	portTickType HeartT = 0, UpdataTime = 0;
 	unsigned short *ret, tmp[3];
 	DateTime dateTime;
 	uint32_t second, ResetTime;
@@ -231,6 +229,17 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(2, 0, 0);
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
+//			portTickType curT;	
+//			curT = xTaskGetTickCount();
+//			
+//			if ((curT - UpdataTime) >= AUTO_UPDATA_ELEC_PARAM_TIME) {
+//					buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)"0", &size);
+//					ElecTaskSendData((const char *)buf, size); 
+//					vPortFree(buf);
+//					
+//					UpdataTime = curT;
+//					continue;
+//			  } 
 			
 			if(NumOfAddr >= (MAX + 50)){
 				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 1);
@@ -294,7 +303,7 @@ static void POLLTask(void *parameter) {
 					NumOfAddr--;
 					continue;
 			  } 
-				
+					
 				NorFlashRead(NORFLASH_MANAGEM_BASE, (short *)&param, (sizeof(GatewayParam1) + 1) / 2);
 				
 				if(MarkRead == 0){			

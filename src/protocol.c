@@ -965,7 +965,15 @@ void __handleNightLux(int lux){          /*夜晚根据光照度设置调光策略*/
 
 extern unsigned char CurrentTime(void);
 
-static int LastLux = 0;                /*上一次传进来的光照强度值*/
+static int LastLux = 0;                           /*上一次传进来的光照强度值平均数*/
+
+static unsigned int ArrayOfLuxValue[12] = {0};   /*存储光照度值数组*/
+typedef struct{
+	char count;               /*收到的光照度值计数*/
+	int LastLux;              /**/
+	int ArrayOfLuxValue[12];  /**/
+	
+}StoreParam;                /**/                       
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 

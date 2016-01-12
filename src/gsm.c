@@ -246,10 +246,11 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	sscanf((const char *)msg->infor, "%*1s%10s", h->addr);
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 	if((strncmp((char *)&(h->addr), (char *)GetBack(), 10) != 0) && (strncmp((char *)&(h->addr), (char *)&(g.GWAddr), 10) != 0)){
+		
+		memcpy(g.GWAddr, h->addr, 10);
+		NorFlashWrite(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 		return;
 	}
-	
-	memcpy(&(h->addr), (const char *)&(g.GWAddr), 10);
 
 	sscanf((const char *)msg->infor, "%*11s%2s", h->contr);
 	sscanf((const char *)msg->infor, "%*13s%2s", h->lenth);
