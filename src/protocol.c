@@ -28,6 +28,7 @@ extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRe
 typedef enum{
 	ACKERROR = 0,           /*从站应答异常*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
+	ADDRESSQUERY = 0x11,    /*网关地址查询*/
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
 	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
 	RSSIVALUE = 0x17,       /*GSM信号强度查询*/
@@ -138,6 +139,18 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 }
 
 extern bool __GPRSmodleReset(void);
+
+static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /**/
+	unsigned char *buf, msg[5], size;	
+	GMSParameter g;
+	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	
+	sscanf(p, "%4s", msg);
+	buf = ProtocolRespond(g.GWAddr, head->contr, (const char *)msg, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
+}
 
 static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关目标服务器IP*/
 	unsigned char *buf, size, tmp[6];
@@ -252,6 +265,7 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 	char verify = 0;
 	
 	const static ProtocolHandleMap map[] = {        
+		{ADDRESSQUERY,   HandleGWAddrQuery},      /*0x11; 网关地址查询*/
 		{SETSERVERIP,   HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
 		{GATEUPGRADE,   HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,     HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
