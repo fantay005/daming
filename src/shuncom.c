@@ -180,7 +180,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	char build[4] = {'B', '0' , '0' , '0'};
 	GMSParameter g;
 
-  ret = DataFalgQueryAndChange(3, 0, 1);
+  ret = DataFalgQueryAndChange(3, 0, 1);         /*发送指令是否需要回应*/
 
 	if(*ret == 1){
 		
@@ -217,61 +217,6 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		return RTOS_ERROR;
 	}
 	
-	mem = DataFalgQueryAndChange(1, 0, 1);
-	while(*mem){		
-		
-		if(*mem == addr){
-			if(k.CommState == 0x04){					
-				tmp[0] = hextable[k.CommState >> 4];
-				tmp[1] = hextable[k.CommState & 0x0F];
-				ret = ZigbtaskApplyMemory(38 + 5);
-				memset(ret, '0', 43);
-				memcpy(ret, build, 4);
-				memcpy((ret + 4), (dat + 3), 4);
-				memcpy((ret + 4 + 4 + 2), tmp, 2);
-				ret[38 + 4] = 0;
-				
-				buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
-				GsmTaskSendTcpData((const char *)buf, size);
-				ZigbTaskFreeMemory(buf);
-				ZigbTaskFreeMemory(ret);
-				*mem |= 0x4000;
-				return POWER_SHUT;
-			}
-			break;
-		}
-		mem++;	
-	}
-
-	
-  ret = DataFalgQueryAndChange(2, 0, 1);
- 
-	if(((*ret == 1) || (*ret == 0))){
-		
-    ret = DataFalgQueryAndChange(5, 0, 1);
-		if((k.CommState != 0x04) || (*ret == 1)){
-			k.CommState = 0x04;
-			k.InputPower = 0;
-			NorFlashWrite(NORFLASH_BALLAST_BASE + addr * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);
-			tmp[0] = hextable[k.CommState >> 4];
-			tmp[1] = hextable[k.CommState & 0x0F];
-			ret = ZigbtaskApplyMemory(38 + 5);
-			memset(ret, '0', 43);
-			memcpy(ret, build, 4);
-			memcpy((ret + 4), (dat + 3), 4);
-			memcpy((ret + 4 + 4 + 2), tmp, 2);
-			ret[38 + 4] = 0;
-			
-			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
-			GsmTaskSendTcpData((const char *)buf, size);
-			ZigbTaskFreeMemory(buf);
-			ZigbTaskFreeMemory(ret);
-		}
-		WAITFLAG = 0;
-	  DataFalgQueryAndChange(4, 0, 0);
-		return POWER_SHUT;
-	}
-	
 	message.type = TYPE_IOT_SEND_DATA;
 	message.length = len;
 	memcpy(message.infor, dat, len);
@@ -282,10 +227,10 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		}
 //		TIM_Cmd(TIMx, ENABLE); 
 
-		for(j = 0; j < 400; j++){
+		for(j = 0; j < 500; j++){
 			if(WAITFLAG == 0){
 				vTaskDelay(configTICK_RATE_HZ / 500);
-				if(j >= 399){
+				if(j >= 499){
 					WAITFLAG = 2;
 				}
 			} else {

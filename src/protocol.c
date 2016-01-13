@@ -312,38 +312,40 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	unsigned char size;
 	DateTime dateTime;
 	uint32_t second;	
-	unsigned char *buf, msg[42], tmp[5];
+	unsigned char *buf, msg[48], tmp[5];
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
 
 	if(p[0] == '1'){          /*增加一盏灯*/
 		
-		len = (strlen(p) - 18) / 17;
+		len = (strlen(p) - 1) / 17;
 
 		for(i = 0; i < len; i++) {
-			__ParamWriteToFlash(&p[16 + i * 17]);
-			sscanf(&p[16 + i * 17], "%4s", &(msg[i * 4])); 
+			__ParamWriteToFlash(&p[1 + i * 17]);
+			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4])); 
 		}
-		msg[i * 4 + 1] = p[0];
+		msg[i * 4] = p[0];
 		
 	} else if (p[0] == '2'){   /*删除一盏灯*/
 		len = (strlen(p) - 18) / 17;
 
 		for(i = 0; i < len; i++) {
-			sscanf(&p[16 + i * 17], "%4s", &(msg[i * 4]));
-			sscanf(&p[16 + i * 17], "%4s", tmp);
+			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4]));
+			sscanf(&p[1 + i * 17], "%4s", tmp);
 		
 			lenth = atoi((const char *)tmp);
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + lenth * NORFLASH_SECTOR_SIZE);
 		}
-		msg[i * 4 + 1] = p[0];
+		msg[i * 4] = p[0];
 		
 	} else if (p[0] == '4'){
 		for(len = 0; len < 1000; len++){
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 		}
 	}
+	
+	msg[i * 4 + 1] = 0;
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -970,10 +972,11 @@ static int LastLux = 0;                           /*上一次传进来的光照强度值平均
 static unsigned int ArrayOfLuxValue[12] = {0};   /*存储光照度值数组*/
 typedef struct{
 	char count;               /*收到的光照度值计数*/
-	int LastLux;              /**/
-	int ArrayOfLuxValue[12];  /**/
-	
-}StoreParam;                /**/                       
+	int LastLux;              /*上次收到12次光照度值的平均值*/
+	int ArrayOfLuxValue[12];  /*记载最近12次光照度的数组*/	
+}StoreParam;                                     
+
+static StoreParam __Luxparam = {0, 0, 0};
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
@@ -984,6 +987,12 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
   sscanf(p, "%8s", msg);
 	LuxValue = atoi((const char *)msg);
 	
+	__Luxparam.ArrayOfLuxValue[__Luxparam.count] = LuxValue;
+	
+	__Luxparam.count++;
+	if(__Luxparam.count == 12){
+		
+	}
 	if(LastLux)
 	
 	if(LuxValue > 1000000){

@@ -288,21 +288,12 @@ static void POLLTask(void *parameter) {
 			NumOfAddr++;
 			if(JudgeParam(k.Loop)){
 				continue;
-			} else {
-				portTickType curT;	
-				GatewayParam1 param;
-				curT = xTaskGetTickCount();
+			} else {			
+				GatewayParam1 param;				
 				
 				if((k.Loop - '0') > Max_Loop){
 					Max_Loop = k.Loop - '0';
 				}
-				
-				if ((curT - HeartT) >= GSM_GPRS_HEART_BEAT_TIME) {
-					GsmTaskSendTcpData("DM", 2);     //ÐÄÌø
-					HeartT = curT;
-					NumOfAddr--;
-					continue;
-			  } 
 					
 				NorFlashRead(NORFLASH_MANAGEM_BASE, (short *)&param, (sizeof(GatewayParam1) + 1) / 2);
 				
