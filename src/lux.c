@@ -12,7 +12,7 @@
  
 #define MAX_TASK_STACK_SIZE		( configMINIMAL_STACK_SIZE )
 
-#define UART_GET_DATA_TIME      (configTICK_RATE_HZ * 30)
+#define UART_GET_DATA_TIME      (configTICK_RATE_HZ * 5)
 
 #define Max_com    USART2
 #define Max_Irq    USART2_IRQn
@@ -123,50 +123,76 @@ char *Modbusdat (Info_frame *h){
 }
 
 void Max_Send_Byte(unsigned char byte){
-    USART_SendData(Max_com, byte); 
-    while( USART_GetFlagStatus(Max_com,USART_FLAG_TXE)!= SET);          
+   USART_SendData(Max_com, byte); 
+   while( USART_GetFlagStatus(Max_com,USART_FLAG_TXE)!= SET);          
 }
 
-void Max_Send_Str(unsigned char *s, int size){
+void Max_Send_Str(unsigned char *s, int size){	
+   unsigned char i=0; 
 	
-    unsigned char i=0; 
-
-	for(; i < size; i++) 
-    {
-       Max_Send_Byte(s[i]); 
-    }
-//	Max_Send_Byte(0X00);
+	 for(; i < size; i++) 
+     Max_Send_Byte(s[i]); 
 }
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
+static char ResetFlag = 0;             /*发送重启指令标志位*/
+
 static void __MaxTask(void *nouse) {
 	portBASE_TYPE rc;
 	Info_frame frame;
-	portTickType curT, lastT = 0; 
+	portTickType curT, RecT, lastT = 0; 
 	unsigned int msg; 
 	
 	Modbusdat(&frame);
+	RecT = xTaskGetTickCount();
+	
 	while (1) {
 		rc = xQueueReceive(__maxQueue, &msg, configTICK_RATE_HZ / 5);
-		if (rc == pdTRUE) {
-			GMSParameter g;
+		if (rc == pdTRUE) {		
 			unsigned char size, *buf, tmp[10];
 			
-			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);		
-			
+			RecT = xTaskGetTickCount();
+	
 			sprintf((char *)tmp, "%08d", msg);
-			buf = ProtocolMessage(g.GWAddr, "43", (const char *)tmp, &size);
+			buf = ProtocolMessage("9999999999", "43", (const char *)tmp, &size);
 			TransTaskSendData((const char *)buf, size);
 			vPortFree(buf);
 			
 		} else {	    
 			  curT = xTaskGetTickCount();
+			
 				if ((curT - lastT) >= UART_GET_DATA_TIME){
 					Max_Tx_dir();
 					Max_Send_Str((unsigned char *)&frame, 8);
 					Max_Rx_dir();
 					lastT = curT;
+				}
+				
+				if((curT - RecT) > UART_GET_DATA_TIME * 6){
+					GMSParameter g;
+					unsigned char size, *buf, tmp[142] = {0};			
+					
+					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
+					
+					memset(tmp, '0', 141);
+					tmp[1] = 
+					buf = ProtocolMessage(g.GWAddr, "08", (const char *)tmp, &size);
+					GsmTaskSendTcpData((const char *)buf, size);
+					vPortFree(buf);
+					
+					ResetFlag = 0;
+				}
+				
+				
+				if((ResetFlag == 0) && ((curT - RecT) > UART_GET_DATA_TIME * 2)){
+					unsigned char size, *buf;
+					
+					buf = ProtocolMessage("9999999999", "46", NULL, &size);
+					TransTaskSendData((const char *)buf, size);
+					vPortFree(buf);
+					
+					ResetFlag = 1;                      /*已经发送重启指令*/
 				}
 		}
 	}
