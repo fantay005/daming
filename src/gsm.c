@@ -33,11 +33,11 @@
 #define  GSM_Tx             GPIO_Pin_10
 #define  GSM_Rx             GPIO_Pin_11
 
-#define  GPIO_Reset         GPIOC
-#define  Pin_Reset          GPIO_Pin_0
+#define  GPIO_Reset         GPIOA
+#define  Pin_Reset          GPIO_Pin_7
 
-#define  GPIO_GPRS_PW_EN    GPIOB
-#define  PIN_GPRS_PW_EN     GPIO_Pin_7
+#define  GPIO_GPRS_PW_EN    GPIOA
+#define  PIN_GPRS_PW_EN     GPIO_Pin_6
 
 static xQueueHandle __queue;
 
@@ -160,8 +160,10 @@ static void __gsmInitHardware(void) {
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_Reset, &GPIO_InitStructure);
 
+	GPIO_SetBits(GPIO_GPRS_PW_EN, PIN_GPRS_PW_EN);
+	
 	GPIO_InitStructure.GPIO_Pin =  PIN_GPRS_PW_EN;     //使能GSM模块电源脚
-	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
 	GPIO_Init(GPIO_GPRS_PW_EN, &GPIO_InitStructure);
 
@@ -324,7 +326,7 @@ void USART3_IRQHandler(void) {
 			buffer[bufferIndex++] = data;
 			isIPD = 1;
 		}
-		if (strncmp(buffer, "*PSUTTZ:", 8) == 0) {
+		if (strncmp(buffer, "*PSUTTZ: ", 9) == 0) {
 			bufferIndex = 0;
 			isRTC = 1;
 		}
@@ -349,9 +351,9 @@ void __gsmModemStart(){
 //	vTaskDelay(configTICK_RATE_HZ / 2);
 
 	GPIO_ResetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ / 2);
+	vTaskDelay(configTICK_RATE_HZ * 2);
 	GPIO_SetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 3);		
+	vTaskDelay(configTICK_RATE_HZ * 4);		
 }
 
 static void RemainTCPConnect(void){
@@ -393,7 +395,9 @@ bool __initGsmRuntime() {
 		__gsmInitUsart(bauds[i]);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
+		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ / 2)) {	  //回显模式关闭
 			break;
 		}
@@ -410,13 +414,22 @@ bool __initGsmRuntime() {
 		return false;
 	}	
 	
-	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 20)) {
-			printf("Wait Call Realy timeout\n");
+	if (!ATCommandAndCheckReply(NULL, "Call Ready", configTICK_RATE_HZ * 5)) {
+			printf("Wait Call Ready timeout\n");
+	}
+	
+	if (!ATCommandAndCheckReply(NULL, "SMS Ready", configTICK_RATE_HZ * 5)) {
+			printf("Wait SMS Realy timeout\n");
 	}
 	
 	
 	if (!ATCommandAndCheckReply("AT+CMGF=0\r", "OK", configTICK_RATE_HZ * 2)) {
 		printf("AT+CMGF=0 error\r");
+		return false;
+	}
+	
+	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
+		printf("AT+CLTS error\r");
 		return false;
 	}
 
@@ -427,11 +440,6 @@ bool __initGsmRuntime() {
 
 	if (!ATCommandAndCheckReplyUntilOK("AT+CPMS=\"SM\"\r", "+CPMS", configTICK_RATE_HZ * 3, 10)) {
 		printf("AT+CPMS error\r");
-		return false;
-	}
-
-	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
-		printf("AT+CLTS error\r");
 		return false;
 	}
 	
@@ -450,6 +458,8 @@ bool __initGsmRuntime() {
 		return false;
 	}	
 
+	vTaskDelay(configTICK_RATE_HZ * 5);
+	
 	if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 2)) {
 			printf("AT+CGATT=0 error\r");
 			return false;
@@ -457,6 +467,11 @@ bool __initGsmRuntime() {
 	
 	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 15)) {
 		printf("AT+CGATT=1 error\r");
+		return false;
+	}	
+	
+	if (!ATCommandAndCheckReply("AT+CSQ\r", "OK", configTICK_RATE_HZ * 15)) {
+		printf("AT+CSQ error\r");
 		return false;
 	}	
 	
@@ -536,14 +551,6 @@ void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 	 __gsmSendTcpDataLowLevel(__gsmGetMessageData(msg), msg->length);
 }
 
-void trans(char *tmpa, char tmpb, char *tmpd){
-	if((tmpd[tmpb-3] - '0') > 0){
-		*tmpa = (tmpd[tmpb - 3] - '0') * 10 + (tmpd[tmpb - 2] - '0');
-	} else {
-		*tmpa = (tmpd[tmpb - 2] - '0');
-	}
-}
-
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 void __handleSIM900RTC(GsmTaskMessage *msg) {
@@ -558,40 +565,25 @@ void __handleSIM900RTC(GsmTaskMessage *msg) {
 	0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335, 366};
 	
 	sscanf(p, "%[^,]", tmp);
-	for(i = 0; i < 8; i++){
-		if(tmp[i] == 0x20){
-			tmp[i] = '0';
-		}
-	}
 	i = atoi((const char *)tmp);
 
 	dateTime.year = i - 2000;
-	for(i=4; i<100; i++){
-		if(p[i] == 0x0D){
-			break;
-		}
-		
-		if(p[i] == 0x20){
-			j++;
-		} else {
-			continue;
-		}
-		
-		if(j == 2){
-			trans((char*)&(dateTime.month), i, p);
-		} else if (j == 3){
-			trans((char*)&(dateTime.date), i, p);
-		} else if (j == 4){
-			trans((char*)&(dateTime.hour), i, p);
-			dateTime.hour= dateTime.hour + 8;
-		} else if (j == 5){
-			trans((char*)&(dateTime.minute), i, p);
-		} else if (j == 6){
-			trans((char*)&(dateTime.second), i, p);
-		} 
-	}
 	
-	i = dateTime.date;
+	sscanf(p, "%*[^,]%*c%[^,]", tmp);	
+	dateTime.month = atoi((const char *)tmp);
+	
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%[^,]", tmp);	
+	dateTime.date = atoi((const char *)tmp);
+	
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%[^,]", tmp);
+	dateTime.hour = atoi((const char *)tmp) + 8;
+	
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%*[^,]%*c%[^,]", tmp);
+	dateTime.minute = atoi((const char *)tmp);
+	
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%*[^,]%*c%*[^,]%*c%[^,]", tmp);
+	dateTime.second = atoi((const char *)tmp);
+	
 	if(dateTime.hour >= 24) {
 		i += 1;
 		dateTime.hour = dateTime.hour - 24;

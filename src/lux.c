@@ -169,20 +169,20 @@ static void __MaxTask(void *nouse) {
 					lastT = curT;
 				}
 				
-				if((curT - RecT) > UART_GET_DATA_TIME * 6){
-					GMSParameter g;
-					unsigned char size, *buf, tmp[142] = {0};			
-					
-					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
-					
-					memset(tmp, '0', 141);
-					tmp[1] = 
-					buf = ProtocolMessage(g.GWAddr, "08", (const char *)tmp, &size);
-					GsmTaskSendTcpData((const char *)buf, size);
-					vPortFree(buf);
-					
-					ResetFlag = 0;
-				}
+//				if((curT - RecT) > UART_GET_DATA_TIME * 6){
+//					GMSParameter g;
+//					unsigned char size, *buf, tmp[142] = {0};			
+//					
+//					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
+//					
+//					memset(tmp, '0', 141);
+//					
+//					buf = ProtocolMessage(g.GWAddr, "08", (const char *)tmp, &size);
+//					GsmTaskSendTcpData((const char *)buf, size);
+//					vPortFree(buf);
+//					
+//					ResetFlag = 0;
+//				}
 				
 				
 				if((ResetFlag == 0) && ((curT - RecT) > UART_GET_DATA_TIME * 2)){
