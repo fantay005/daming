@@ -11,7 +11,7 @@
 #include "second_datetime.h"
 #include "rtc.h"
 
-#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 2)
+#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
 
 #define AUTO_UPDATA_ELEC_PARAM_TIME     (configTICK_RATE_HZ * 30)
 
@@ -102,7 +102,7 @@ static void POLLTask(void *parameter) {
 						vPortFree(alter);
 						
 						ret++;
-						vTaskDelay(configTICK_RATE_HZ / 5);	
+					//	vTaskDelay(configTICK_RATE_HZ / 5);	
 					}	
 					break;
 					
@@ -243,7 +243,7 @@ static void POLLTask(void *parameter) {
 			
 			if(NumOfAddr >= (MAX + 50)){
 				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 1);
-				if((MAX > tmp[0]) && (MAX < 1000)){
+				if((MAX != tmp[0]) && (MAX < 1000)){
 					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)&MAX, 1);
 				} else if(tmp[0] == 0xFFFF){
 					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)&MAX, 1);

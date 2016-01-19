@@ -29,10 +29,12 @@ static unsigned char sunset[3] = {0};
 static unsigned char daybreak[3] = {0};
 static unsigned char daydark[3] = {0};
 
-static unsigned char SunTime = 0;
+unsigned char *DayToSunshine(void){
+	return daybreak;
+}
 
-unsigned char CurrentTime(void){
-	return SunTime;
+unsigned char *DayToNight(void){
+	return daydark;
 }
 
 /*************************
@@ -262,20 +264,7 @@ static void __TimeTask(void *nouse) {
 		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			
 			NVIC_SystemReset();			
-		}
-		
-		if(FLAG == 1){
-			
-			NowTime = dateTime.hour * 60 * 60 + dateTime.minute * 60 + dateTime.second;    /*当前时间*/
-			DayTime = daybreak[0] * 60 * 60 + daybreak[1] * 60 + daybreak[2];              /*破晓时间*/
-			DarkTime = daydark[0] * 60 * 60 + daydark[1] * 60 + daydark[2];                /*天黑时间*/
-			
-			if((NowTime > DayTime) && (NowTime < DarkTime))                                /*白天时间*/
-				SunTime = 1;
-			else
-				SunTime = 0;
-		}
-		
+		}		
 	}
 }
 

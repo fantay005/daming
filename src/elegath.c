@@ -185,7 +185,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 	GatewayParam1 s;
 	GatewayParam3 g;
 	unsigned char size;
-	char *buf, msg[150], tmp[5], loop = 0;
+	char *buf, msg[150], tmp[5], loop = 0xFF;
 	int i;
 	DateTime dateTime;
 	uint32_t second;	

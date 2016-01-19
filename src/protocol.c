@@ -1,6 +1,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "math.h"
 #include "gsm.h"
 #include "FreeRTOS.h"
 #include "queue.h"
@@ -292,7 +293,7 @@ static void __ParamWriteToFlash(const char *p){
 		g.LightSourceType = p[13];
 //		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
 		g.LoadPhaseLine = p[14];
-		sscanf(p, "%*16s%2s", g.Attribute);
+		sscanf(p, "%*15s%2s", g.Attribute);
 		
 		sprintf((char *)g.TimeOfSYNC, "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
  
@@ -840,18 +841,8 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 	}
 }
 
-
-#define HundredDimVal  300
-#define NinetDimVal    200
-#define EightyDimVal   150
-#define SeventyDimVal  100
-#define SixtyDimVal    50
-#define FivetyDimVal   5
-
 void GuideHandleDayLux(int lux){                 /*Òýµ¼¶Î´¦Àí°×Ìì¹âÕÕ¶Èº¯Êý*/
-	if(lux > SeventyDimVal){
-		SeekAddress(GUIDESECTION, NoChoice, NoChoice, NoChoice);
-	}
+
 }
 
 void GuideHandleNightLux(int lux){               /*Òýµ¼¶Î´¦ÀíÒ¹Íí¹âÕÕ¶Èº¯Êý*/
@@ -947,45 +938,108 @@ void TransitIIHandleLux(char time, int lux){     /*³ö¿Ú¹ý¶É¶Î´¦ÀíÊ±¼äºÍ¹âÕÕ¶Èº¯Ê
 	
 }
 
-void __handleDayLux(int lux){            /*°×Ìì¸ù¾Ý¹âÕÕ¶ÈÉèÖÃµ÷¹â²ßÂÔ*/
-	GuideHandleLux(1, lux);
-	EntryHandleLux(1, lux);
-	TransitIHandleLux(1, lux);
-	MiddleHandleLux(1, lux);
-	TransitIIHandleLux(1, lux);
-	ExitHandleLux(1, lux);
+void __handleLux(char tim, int lux){            /*°×Ìì¸ù¾Ý¹âÕÕ¶ÈÉèÖÃµ÷¹â²ßÂÔ*/
+	GuideHandleLux(tim, lux);
+	EntryHandleLux(tim, lux);
+	TransitIHandleLux(tim, lux);
+	MiddleHandleLux(tim, lux);
+	TransitIIHandleLux(tim, lux);
+	ExitHandleLux(tim, lux);
 }
 
-void __handleNightLux(int lux){          /*Ò¹Íí¸ù¾Ý¹âÕÕ¶ÈÉèÖÃµ÷¹â²ßÂÔ*/
-	GuideHandleLux(0, lux);
-	EntryHandleLux(0, lux);
-	TransitIHandleLux(0, lux);
-	MiddleHandleLux(0, lux);
-	TransitIIHandleLux(0, lux);
-	ExitHandleLux(0, lux);
-}
-
-extern unsigned char CurrentTime(void);
-
-static int LastLux = 0;                           /*ÉÏÒ»´Î´«½øÀ´µÄ¹âÕÕÇ¿¶ÈÖµÆ½¾ùÊý*/
-
-static unsigned int ArrayOfLuxValue[12] = {0};   /*´æ´¢¹âÕÕ¶ÈÖµÊý×é*/
 typedef struct{
 	char count;               /*ÊÕµ½µÄ¹âÕÕ¶ÈÖµ¼ÆÊý*/
+	char TimeArea;            /*µ±Ç°ËùÔÚµÄÊ±Óò*/
+	char LuxArea;             /*µ±Ç°ËùÔÚµÄ¹âÇ¿Óò*/
 	int LastLux;              /*ÉÏ´ÎÊÕµ½12´Î¹âÕÕ¶ÈÖµµÄÆ½¾ùÖµ*/
 	int ArrayOfLuxValue[12];  /*¼ÇÔØ×î½ü12´Î¹âÕÕ¶ÈµÄÊý×é*/	
 }StoreParam;                                     
 
-static StoreParam __Luxparam = {0, 0, 0};
+static StoreParam __Luxparam = {0, 0, 0, 0};
+
+static int LastLux = 0;                           /*ÉÏÒ»´Î´«½øÀ´µÄ¹âÕÕÇ¿¶ÈÖµÆ½¾ùÊý*/
+
+#define HardLight      10000    /*Ç¿¹âÖµ*/
+#define MiddleLight    500      /*ÖÐ¹âÖµ*/
+#define WeakLight      50       /*Èõ¹âÖµ*/
+#define NoneLight      5       /*ÎÞ¹âÖµ*/
+
+#define GoodSight      1        /*ÊÓÏßÊ®·ÖºÃ*/
+#define CommonSight    2        /*Õý³£ÊÓÏß*/
+#define HardSight      3        /*ÄÜ¼û¶ÈºÜµÍ*/
+#define LoseSight      4        /*¿´²»Çå*/
+#define Blind          5        /*Ï¹ÑÛÁË*/
+
+static void DivisiveLightArea(int lux){     /*¸ù¾Ýµ±Ç°¹âÕÕ¶È£¬Çø·ÖÆäËùÔÚÇøÓò*/
+	char state;
+	int val;
+	
+	if(lux >= HardLight){
+		state = GoodSight;
+	} else if ((lux >= MiddleLight) && (lux < HardLight)){
+		state = CommonSight;
+	} else if((lux >= WeakLight) && (lux < MiddleLight)){
+		state = HardSight;
+	} else if((lux >= NoneLight) && (lux < WeakLight)){
+		state = LoseSight;
+	} else{
+		state = Blind;
+	}
+	
+	if(state != __Luxparam.LuxArea)
+		val = abs(lux - __Luxparam.LastLux);
+}
+
+extern unsigned char *DayToSunshine(void);
+
+extern unsigned char *DayToNight(void);
+
+#define HaveSun        1     /*°×ÌìÊ±¶Î*/
+#define HaveMoon       2     /*Ò¹ÍíÊ±¶Î*/
+#define OnOffLight     3     /*¿ª¹ØµÆÊ±¶Î*/
+#define LateNight      4     /*ÉîÒ¹Ê±¶Î*/
+
+#define  WorkTime  (6 * 60 * 60)         /*ÔçÉÏ¹«½»³µ¿ªÊ¼¹¤×÷Ê±¼ä*/
+#define  RestTime  (10 * 60 * 60)        /*ÈËÃÇ¿ªÊ¼ÐÝÏ¢Ê±¼ä*/
+
+static void DivideTimeArea(DateTime time){   /*¸ù¾Ýµ±Ç°Ê±¼ä£¬»®·ÖÆäËùÊôÊ±Óò*/ 
+	int NowTime, DayTime, DarkTime;
+	unsigned char *buf;
+	
+	NowTime = time.hour * 60 * 60 + time.minute * 60 + time.second;    /*µ±Ç°Ê±¼ä*/
+	
+	buf = DayToSunshine();
+	DayTime = buf[0]* 60 * 60 + buf[1] * 60 + buf[2];                  /*ÆÆÏþÊ±¼ä*/
+	
+	buf = DayToNight();
+	DarkTime = buf[0] * 60 * 60 + buf[1] * 60 + buf[2];                /*ÌìºÚÊ±¼ä*/                             
+	
+	if((NowTime >= (DayTime + 3600)) && (NowTime <= (DarkTime - 3600))){  /*ÌìÁÁºóÒ»Ð¡Ê±µ½ÌìºÚÇ°Ò»Ð¡Ê±*/
+		__Luxparam.TimeArea = HaveSun;	                                  /*¶¨ÒåÎª°×ÌìÊ±¶Î*/
+	} else if((NowTime >= RestTime) && (NowTime <= DayTime) && (NowTime < WorkTime)){ /*ÐÝÏ¢Ê±¼äºóµ½ÔçÉÏÁùµãÇ°£¬ÇÒÌìÁÁÊ±¼äÇ°*/
+		__Luxparam.TimeArea = LateNight;                                  /*¶¨ÒåÎªÉÙÓÐÐÐÈËµÄÉîÒ¹Ê±¶Î*/
+	} else if(((NowTime > DayTime) && (NowTime < (DayTime + 3600))) || 
+						((NowTime < DarkTime) && (NowTime > (DarkTime - 3600)))){  /*ÌìºÚÇ°Ò»Ð¡Ê±£¬»òÕßÌìÁÁºóÒ»Ð¡Ê±*/
+		__Luxparam.TimeArea	= OnOffLight;				                           /*¶¨ÒåÎª¿ª¹ØµÆÊ±¼ä·¶Î§ÄÚ*/
+	} else {
+		__Luxparam.TimeArea	= HaveMoon;                                    /*ÆäËûÊ±¼ä¶¨ÒåÎªÈËÃÇ»¹Î´ÐÝÏ¢µÄÒ¹ÍíÊ±¼ä¶Î*/
+	}
+}
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
 	unsigned char *buf, size;
-	int LuxValue;
+	int LuxValue, second;
+	DateTime dateTime;
 	char StateChange = 0;           /*¹âÕÕ¶ÈÊÇ·ñ¸Ä±äËùÔÚÇøÓò£¬1Î»¸Ä±ä£¬0ÎªÎ´¸Ä*/
-	
+		
   sscanf(p, "%8s", msg);
 	LuxValue = atoi((const char *)msg);
+	
+	second = RtcGetTime();
+  SecondToDateTime(&dateTime, second);
+	
+	DivideTimeArea(dateTime);
 	
 	__Luxparam.ArrayOfLuxValue[__Luxparam.count] = LuxValue;
 	
@@ -995,15 +1049,11 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	}
 	if(LastLux)
 	
-	if(LuxValue > 1000000){
+	if(LuxValue > 200000){
 		return;
 	}
-	
-	if(CurrentTime() == 1){                  /*°×Ìì¹âÕÕ¶È´¦Àí*/
-		__handleDayLux(LuxValue);
-	} else if(CurrentTime() == 0){           /*Ò¹Íí¹âÕÕ¶È´¦Àí*/
-		__handleNightLux(LuxValue);
-	}
+
+	__handleLux(__Luxparam.TimeArea, LuxValue);
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
