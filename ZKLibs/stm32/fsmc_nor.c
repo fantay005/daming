@@ -102,18 +102,18 @@ void FSMC_NOR_Init(void) {
 * Return         : None
 *******************************************************************************/
 void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0090);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x02AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x0090);
 
 	NOR_ID->Manufacturer_Code = *(unsigned short *) ADDR_SHIFT(0x0000);
 	NOR_ID->Device_Code1 = *(unsigned short *) ADDR_SHIFT(0x0001);
-	NOR_ID->Device_Code2 = *(unsigned short *) ADDR_SHIFT(0x000E);
-	NOR_ID->Device_Code3 = *(unsigned short *) ADDR_SHIFT(0x000F);
+//	NOR_ID->Device_Code2 = *(unsigned short *) ADDR_SHIFT(0x000E);
+//	NOR_ID->Device_Code3 = *(unsigned short *) ADDR_SHIFT(0x000F);
 	FSMC_NOR_ReturnToReadMode();
 }
 /*******************************************************************************
-* Function Name  : FSMC_NOR_EraseSector  擦除一个扇区
+* Function Name  : FSMC_NOR_EraseSector  ??????
 * Description    : Erases the specified Nor memory Sector.
 * Input          : - BlockAddr: address of the block to erase.
 * Output         : None
@@ -122,12 +122,12 @@ void FSMC_NOR_ReadID(NOR_IDTypeDef *NOR_ID) {
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 	NOR_Status status;
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x50);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x0080);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x30);			   //39VF3210B?0x50
 
 	status = FSMC_NOR_GetStatus(BlockErase_Timeout);
 	FSMC_NOR_ReturnToReadMode();
@@ -135,7 +135,7 @@ NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 }
 
 /*******************************************************************************
-* Function Name  : FSMC_NOR_EraseBlock  擦除一个块
+* Function Name  : FSMC_NOR_EraseBlock  ?????
 * Description    : Erases the specified Nor memory block.
 * Input          : - BlockAddr: address of the block to erase.
 * Output         : None
@@ -144,12 +144,12 @@ NOR_Status FSMC_NOR_EraseSector(long BlockAddr) {
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
 	NOR_Status status;
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x30);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x0080);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE((Bank1_NOR2_ADDR + BlockAddr), 0x50);		   //39VF3201b?0x30
 
 
 	status = FSMC_NOR_GetStatus(BlockErase_Timeout);
@@ -167,12 +167,12 @@ NOR_Status FSMC_NOR_EraseBlock(long BlockAddr) {
 *******************************************************************************/
 NOR_Status FSMC_NOR_EraseChip(void) {
 	NOR_Status status;
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0080);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x0010);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x0080);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x2AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x5555), 0x0010);
 
 
 	status = FSMC_NOR_GetStatus(ChipErase_Timeout);
@@ -190,14 +190,14 @@ NOR_Status FSMC_NOR_EraseChip(void) {
 *                  or NOR_TIMEOUT
 *******************************************************************************/
 NOR_Status FSMC_NOR_WriteHalfWord(long WriteAddr, short Data) {
-	unsigned char t;
+	short t;
 	NOR_Status status;
 
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
-	NOR_WRITE(ADDR_SHIFT(0x0555), 0x00A0);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x02AAA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x00A0);
 	NOR_WRITE((Bank1_NOR2_ADDR + WriteAddr), Data);
-	for (t = 0; t < 200; t++);
+	for (t = 0; t < 100; t++);
 	status = (FSMC_NOR_GetStatus(Program_Timeout));
 	FSMC_NOR_ReturnToReadMode();
 	return status;
@@ -253,9 +253,9 @@ NOR_Status FSMC_NOR_ProgramBuffer(short *pBuffer, long WriteAddr, long NumHalfwo
 	lastloadedaddress = WriteAddr;
 
 	/* Issue unlock command sequence */
-	NOR_WRITE(ADDR_SHIFT(0x00555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x00AA);
 
-	NOR_WRITE(ADDR_SHIFT(0x02AA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x02AAA), 0x0055);
 
 	/* Write Write Buffer Load Command */
 	NOR_WRITE(ADDR_SHIFT(WriteAddr), 0x0025);
@@ -300,8 +300,8 @@ NOR_Status FSMC_NOR_ReturnToReadMode(void) {
 * Return         : NOR_SUCCESS
 *******************************************************************************/
 NOR_Status FSMC_NOR_Reset(void) {
-	NOR_WRITE(ADDR_SHIFT(0x00555), 0x00AA);
-	NOR_WRITE(ADDR_SHIFT(0x002AA), 0x0055);
+	NOR_WRITE(ADDR_SHIFT(0x05555), 0x00AA);
+	NOR_WRITE(ADDR_SHIFT(0x02AAA), 0x0055);
 	NOR_WRITE(Bank1_NOR2_ADDR, 0x00F0);
 	FSMC_NOR_ReturnToReadMode();
 	return (NOR_SUCCESS);
