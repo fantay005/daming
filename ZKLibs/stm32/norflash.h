@@ -12,8 +12,6 @@
 #define NORFLASH_SECTOR_SIZE   				          ((uint32_t)0x00001000)  
 #define NORFLASH_MANAGEM_BASE  				          ((uint32_t)0x00001000)/*网关参数-网关身份标识、经纬度、ZIGBEE频点、自动上传数据时间间隔*/
 #define NORFLASH_BALLAST_NUM   				          ((uint32_t)0x00002000)/*镇流器数目*/
-#define NORFLASH_ONOFFTIME1   				          ((uint32_t)0x00003000)/*开关灯时间1*/
-#define NORFLASH_ONOFFTIME2   				          ((uint32_t)0x00004000)/*开关灯时间2*/
 #define NORFLASH_CHIP_ERASE                     ((uint32_t)0x00005000)/*D*/ 
 
 #define NORFLASH_END_LIGHT_ADDR                 ((uint32_t)0x00016000)/*所有末端灯ZIGBEE地址存放处*/
@@ -26,74 +24,123 @@
 #define NORFLASH_RESET_TIME           		    	((uint32_t)0x00404000)/*重启时间*/
 #define NORFLASH_RESET_COUNT                    ((uint32_t)0x00405000)/*重启次数*/
 #define NORFLASH_ELEC_UPDATA_TIME               ((uint32_t)0x00406000)/*电量上传时间*/
-#define NORFLASH_STRATEGY_BASE 				          ((uint32_t)0x00418000)/*Zigbee1 策略参数基址*/
-#define NORFLASH_STY_PARAM_BASE                 ((uint32_t)0x00618000)/*Zigbee2 策略参数基址*/
-#define NORFLASH_STRATEGY_OK_OFFSET 		       	((uint32_t)0x00000d00)/*策略完整标识*/
 #define NORFLASH_PARAM_OFFSET   				        ((uint32_t)0x00001000)
 #define NORFLASH_STRATEGY_OFFSET        		    ((uint32_t)0x00001000)
 
-/*镇流器参数及策略扇区内偏移*/
-#define PARAM_ZIGBEE_ADDR_OFFSET                ((uint32_t)0x00000000) /*共4*2个字节ASCII码，存储ZIGBEE地址*/
-#define PARAM_TIME_FALG_OFFSET                  ((uint32_t)0x00000008) /*共12*2个字节ASCII码，存储参数同步标识*/
-#define PARAM_RATED_POWER_OFFSET                ((uint32_t)0x00000020) /*共4*2个字节ASCII码，存储标称功率值*/
-#define PARAM_LOOP_NUM_OFFSET                   ((uint32_t)0x00000028) /*共1*2个字节ASCII码，存储所属回路*/
-#define PARAM_LAMP_POST_NUM_OFFSET              ((uint32_t)0x0000002A) /*共4*2个字节ASCII码，存储所属灯杆号*/
-#define PARAM_LAMP_TYPE_OFFSET                  ((uint32_t)0x00000032) /*共1*2个字节ASCII码，存储光源类型*/
-#define PARAM_PHASE_OFFSET                      ((uint32_t)0x00000034) /*共1*2个字节ASCII码，存储负载相线*/
-#define PARAM_PORPERTY_OFFSET                   ((uint32_t)0x00000036) /*共2*2个字节ASCII码，存储主辅投属性*/
-#define STRATEGY_ZIGBEE_ADDR_OFFSET             ((uint32_t)0x00000000) /*共4*2个字节ASCII码，存储ZIGBEE地址*/
-#define STRATEGY_TIME_FALG_OFFSET               ((uint32_t)0x00000008) /*共12*2个字节ASCII码，存储策略同步标识*/
-#define STRATEGY_TYPE_OFFSET                    ((uint32_t)0x00000020) /*共2*2个字节ASCII码，存储方案类型*/
-#define STRATEGY_STAGE_NUM_OFFSET               ((uint32_t)0x00000024) /*共1*2个字节ASCII码，存储调光段数*/
-#define STRATEGY_FIRST_STATE_OFFSET             ((uint32_t)0x00000026) /*共6*2个字节ASCII码，存储调光功率及时间*/
-#define STRATEGY_SECOND_STATE_OFFSET            ((uint32_t)0x00000032) /*共6*2个字节ASCII码，存储调光功率及时间*/
-#define STRATEGY_THIRD_STATE_OFFSET             ((uint32_t)0x0000003E) /*共6*2个字节ASCII码，存储调光功率及时间*/
-#define STRATEGY_FOURTH_STATE_OFFSET            ((uint32_t)0x0000004A) /*共6*2个字节ASCII码，存储调光功率及时间*/
-#define STRATEGY_FIFTH_STATE_OFFSET             ((uint32_t)0x00000056) /*共6*2个字节ASCII码，存储调光功率及时间*/
+/*隧道内网关参数及策略在扇区内偏移*/
+#define PARAM_LUX_DOG_OFFSET                    ((uint32_t)0x00417000)/*光照度区域划分点参数*/              
+#define PARAM_TIME_DOG_OFFSET                   ((uint32_t)0x00418000)/*时间区域划分点参数*/
 
-/*日出日落时间扇区内偏移*/
-#define NORFLASH_RISE_TIME_OFFSET				        0
-#define NORFLASH_SET_TIME_OFFSET				        1
+#define SECTION_SPACE_SIZE                      ((uint32_t)0x00020000)/*段存储相隔空间大小*/
 
-/*网管地址、服务器IP、端口号扇区内偏移（共64字节）*/
-#define NORFLASH_MANNGEM_ADDR_OFFSET			      ((uint32_t)0x00000000)//(0x00000000-0x00000012)?10*2???ASCII???????
-#define NORFLASH_DNS1_NUM_OFFSET			        	((uint32_t)0x00000014)//(0x00000014-0x00000014)?1*2?????DNS1???
-#define NORFLASH_DNS1_OFFSET			    	        ((uint32_t)0x00000016)//(0x00000016-0x00000032)?15*2?????DNS1
-#define NORFLASH_DNS2_NUM_OFFSET			         	((uint32_t)0x00000034)//(0x00000034-0x00000034)?1*2?????DNS2???
-#define NORFLASH_DNS2_OFFSET			            	((uint32_t)0x00000036)//(0x00000036-0x00000052)?15*2?????DNS2
-#define NORFLASH_IP_NUM_OFFSET				          ((uint32_t)0x00000054)//(0x00000054-0x00000054)?1*2?????IP???
-#define NORFLASH_IP_OFFSET			    	          ((uint32_t)0x00000056)//(0x00000056-0x00000072)?15*2?????IP
-#define NORFLASH_PORT_NUM_OFFSET				        ((uint32_t)0x00000074)//(0x00000074-0x00000074)?1*2?????DNS2???
-#define NORFLASH_PORT_OFFSET			            	((uint32_t)0x00000076)//(0x00000076-0x0000007E)?15*2?????DNS2 
-/********************************************************************************************************
-* SRAM?????
-********************************************************************************************************/     
-//SRAM
-#define SRAM_SIZE              				          ((uint32_t)0x00080000)  
-#define SRAM_BALLAST_BASE      				          ((uint32_t)0x00000000)
-#define SRAM_BALLAST_OFFSET    				          ((uint32_t)0x00000400)
+/*引导段策略存储*/
+#define STRATEGY_GUIDE_ONOFF_DAZZLING           ((uint32_t)0x00420000)/*引导段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_GUIDE_ONOFF_BRIGHT             ((uint32_t)0x00421000)/*引导段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_GUIDE_ONOFF_VISIBLE            ((uint32_t)0x00422000)/*引导段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_GUIDE_ONOFF_UNSEEN             ((uint32_t)0x00423000)/*引导段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_GUIDE_DAY_DAZZLING             ((uint32_t)0x00424000)/*引导段，白天时间段，强光域策略*/ 
+#define STRATEGY_GUIDE_DAY_BRIGHT               ((uint32_t)0x00425000)/*引导段，白天时间段，中光域策略*/ 
+#define STRATEGY_GUIDE_DAY_VISIBLE              ((uint32_t)0x00426000)/*引导段，白天时间段，弱光域策略*/ 
+#define STRATEGY_GUIDE_DAY_UNSEEN               ((uint32_t)0x00427000)/*引导段，白天时间段，无光域策略*/ 
+#define STRATEGY_GUIDE_NIGHT_DAZZLING           ((uint32_t)0x00428000)/*引导段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_GUIDE_NIGHT_BRIGHT             ((uint32_t)0x00429000)/*引导段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_GUIDE_NIGHT_VISIBLE            ((uint32_t)0x0042A000)/*引导段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_GUIDE_NIGHT_UNSEEN             ((uint32_t)0x0042B000)/*引导段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_GUIDE_MIDNIGHT_DAZZLING        ((uint32_t)0x0042C000)/*引导段，深夜时间段，强光域策略*/ 
+#define STRATEGY_GUIDE_MIDNIGHT_BRIGHT          ((uint32_t)0x0042D000)/*引导段，深夜时间段，中光域策略*/ 
+#define STRATEGY_GUIDE_MIDNIGHT_VISIBLE         ((uint32_t)0x0042E000)/*引导段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_GUIDE_MIDNIGHT_UNSEEN          ((uint32_t)0x0042F000)/*引导段，深夜时间段，无光域策略*/ 
 
-#define DATA_MEM_OFFSET                          50
+/*入口段策略存储*/
+#define STRATEGY_ENTRY_ONOFF_DAZZLING           ((uint32_t)0x00440000)/*入口段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_ENTRY_ONOFF_BRIGHT             ((uint32_t)0x00441000)/*入口段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_ENTRY_ONOFF_VISIBLE            ((uint32_t)0x00442000)/*入口段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_ENTRY_ONOFF_UNSEEN             ((uint32_t)0x00443000)/*入口段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_ENTRY_DAY_DAZZLING             ((uint32_t)0x00444000)/*入口段，白天时间段，强光域策略*/ 
+#define STRATEGY_ENTRY_DAY_BRIGHT               ((uint32_t)0x00445000)/*入口段，白天时间段，中光域策略*/ 
+#define STRATEGY_ENTRY_DAY_VISIBLE              ((uint32_t)0x00446000)/*入口段，白天时间段，弱光域策略*/ 
+#define STRATEGY_ENTRY_DAY_UNSEEN               ((uint32_t)0x00447000)/*入口段，白天时间段，无光域策略*/ 
+#define STRATEGY_ENTRY_NIGHT_DAZZLING           ((uint32_t)0x00448000)/*入口段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_ENTRY_NIGHT_BRIGHT             ((uint32_t)0x00449000)/*入口段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_ENTRY_NIGHT_VISIBLE            ((uint32_t)0x0044A000)/*入口段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_ENTRY_NIGHT_UNSEEN             ((uint32_t)0x0044B000)/*入口段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_ENTRY_MIDNIGHT_DAZZLING        ((uint32_t)0x0044C000)/*入口段，深夜时间段，强光域策略*/ 
+#define STRATEGY_ENTRY_MIDNIGHT_BRIGHT          ((uint32_t)0x0044D000)/*入口段，深夜时间段，中光域策略*/ 
+#define STRATEGY_ENTRY_MIDNIGHT_VISIBLE         ((uint32_t)0x0044E000)/*入口段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_ENTRY_MIDNIGHT_UNSEEN          ((uint32_t)0x0044F000)/*入口段，深夜时间段，无光域策略*/ 
 
-#define SRAM_PROPER_BASE    		            ((uint32_t)0x00050000)
-#define SRAM_LOOP_OFFSET						((uint32_t)0x00004000)
-#define SRAM_ADDITIONAL_OFFSET        			((uint32_t)0x00000400)
-#define SRAM_PROPER_TG_BASE    		            ((uint32_t)0x00070000)
-#define SRAM_LOOP_TG_OFFSET						((uint32_t)0x00000400)
-//??????????
-#define SRAM_ZIGBEE_ADDR_OFFSET					((uint32_t)0x00000000)//(0x00000000-0x00000000)?1*2?????ZIGBEE??
-#define SRAM_PARAM_FLAG_OFFSET					((uint32_t)0x00000002)//(0x00000002-0x00000018)?12*2???ASCII?????????
-#define SRAM_STRATEGY_FLAG_OFFSET				((uint32_t)0x0000001A)//(0x0000001A-0x00000030)?12*2???ASCII?????????
-#define SRAM_DIMMING_PERCENT_OFFSET				((uint32_t)0x00000032)//(0x00000032-0x00000034)?2*2???ASCII????????
-#define SRAM_BALLAST_STATUS_OFFSET				((uint32_t)0x00000036)//(0x00000036-0x00000038)?2*2???ASCII???????
-#define SRAM_VOLTAGE_OFFSET				        ((uint32_t)0x0000003A)//(0x0000003A-0x00000040)?4*2???ASCII???????
-#define SRAM_CURRENT_OFFSET				        ((uint32_t)0x00000042)//(0x00000042-0x00000048)?4*2???ASCII???????
-#define SRAM_POWER_OFFSET				        ((uint32_t)0x0000004A)//(0x0000004A-0x00000050)?4*2???ASCII???????
-#define SRAM_LAMP_VOLTAGE_OFFSET				((uint32_t)0x00000052)//(0x00000052-0x00000058)?4*2???ASCII???????
-#define SRAM_PFC_VLATAGE_OFFSET				    ((uint32_t)0x0000005A)//(0x0000005A-0x00000060)?4*2???ASCII???PFC??
-#define SRAM_TEMPERATURE_OFFSET			   	    ((uint32_t)0x00000062)//(0x00000062-0x00000068)?4*2???ASCII?????
-#define SRAM_RUNNING_TIME_OFFSET				((uint32_t)0x0000006A)//(0x0000006A-0x00000074)?6*2???ASCII?????????
-/*******************************************************************************************************/
+/*入口过渡段策略存储*/
+#define STRATEGY_TRANSIT_I_ONOFF_DAZZLING       ((uint32_t)0x00460000)/*入口过渡段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_I_ONOFF_BRIGHT         ((uint32_t)0x00461000)/*入口过渡段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_I_ONOFF_VISIBLE        ((uint32_t)0x00462000)/*入口过渡段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_I_ONOFF_UNSEEN         ((uint32_t)0x00463000)/*入口过渡段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_I_DAY_DAZZLING         ((uint32_t)0x00464000)/*入口过渡段，白天时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_I_DAY_BRIGHT           ((uint32_t)0x00465000)/*入口过渡段，白天时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_I_DAY_VISIBLE          ((uint32_t)0x00466000)/*入口过渡段，白天时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_I_DAY_UNSEEN           ((uint32_t)0x00467000)/*入口过渡段，白天时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_I__NIGHT_DAZZLING      ((uint32_t)0x00468000)/*入口过渡段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_I__NIGHT_BRIGHT        ((uint32_t)0x00469000)/*入口过渡段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_I__NIGHT_VISIBLE       ((uint32_t)0x0046A000)/*入口过渡段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_I__NIGHT_UNSEEN        ((uint32_t)0x0046B000)/*入口过渡段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_I__MIDNIGHT_DAZZLING   ((uint32_t)0x0046C000)/*入口过渡段，深夜时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_I__MIDNIGHT_BRIGHT     ((uint32_t)0x0046D000)/*入口过渡段，深夜时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_I__MIDNIGHT_VISIBLE    ((uint32_t)0x0046E000)/*入口过渡段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_I__MIDNIGHT_UNSEEN     ((uint32_t)0x0046F000)/*入口过渡段，深夜时间段，无光域策略*/ 
+
+/*中间段策略存储*/
+#define STRATEGY_MIDDLE_ONOFF_DAZZLING          ((uint32_t)0x00480000)/*中间段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_MIDDLE_ONOFF_BRIGHT            ((uint32_t)0x00481000)/*中间段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_MIDDLE_ONOFF_VISIBLE           ((uint32_t)0x00482000)/*中间段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_MIDDLE_ONOFF_UNSEEN            ((uint32_t)0x00483000)/*中间段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_MIDDLE_DAY_DAZZLING            ((uint32_t)0x00484000)/*中间段，白天时间段，强光域策略*/ 
+#define STRATEGY_MIDDLE_DAY_BRIGHT              ((uint32_t)0x00485000)/*中间段，白天时间段，中光域策略*/ 
+#define STRATEGY_MIDDLE_DAY_VISIBLE             ((uint32_t)0x00486000)/*中间段，白天时间段，弱光域策略*/ 
+#define STRATEGY_MIDDLE_DAY_UNSEEN              ((uint32_t)0x00487000)/*中间段，白天时间段，无光域策略*/ 
+#define STRATEGY_MIDDLE_NIGHT_DAZZLING          ((uint32_t)0x00488000)/*中间段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_MIDDLE_NIGHT_BRIGHT            ((uint32_t)0x00489000)/*中间段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_MIDDLE_NIGHT_VISIBLE           ((uint32_t)0x0048A000)/*中间段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_MIDDLE_NIGHT_UNSEEN            ((uint32_t)0x0048B000)/*中间段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_MIDDLE_MIDNIGHT_DAZZLING       ((uint32_t)0x0048C000)/*中间段，深夜时间段，强光域策略*/ 
+#define STRATEGY_MIDDLE_MIDNIGHT_BRIGHT         ((uint32_t)0x0048D000)/*中间段，深夜时间段，中光域策略*/ 
+#define STRATEGY_MIDDLE_MIDNIGHT_VISIBLE        ((uint32_t)0x0048E000)/*中间段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_MIDDLE_MIDNIGHT_UNSEEN         ((uint32_t)0x0048F000)/*中间段，深夜时间段，无光域策略*/ 
+
+/*出口过渡段策略存储*/
+#define STRATEGY_TRANSIT_II_ONOFF_DAZZLING      ((uint32_t)0x004A0000)/*出口过渡段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_II_ONOFF_BRIGHT        ((uint32_t)0x004A1000)/*出口过渡段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_II_ONOFF_VISIBLE       ((uint32_t)0x004A2000)/*出口过渡段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_II_ONOFF_UNSEEN        ((uint32_t)0x004A3000)/*出口过渡段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_II_DAY_DAZZLING        ((uint32_t)0x004A4000)/*出口过渡段，白天时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_II_DAY_BRIGHT          ((uint32_t)0x004A5000)/*出口过渡段，白天时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_II_DAY_VISIBLE         ((uint32_t)0x004A6000)/*出口过渡段，白天时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_II_DAY_UNSEEN          ((uint32_t)0x004A7000)/*出口过渡段，白天时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_II_NIGHT_DAZZLING      ((uint32_t)0x004A8000)/*出口过渡段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_II_NIGHT_BRIGHT        ((uint32_t)0x004A9000)/*出口过渡段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_II_NIGHT_VISIBLE       ((uint32_t)0x004AA000)/*出口过渡段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_II_NIGHT_UNSEEN        ((uint32_t)0x004AB000)/*出口过渡段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_TRANSIT_II_MIDNIGHT_DAZZLING   ((uint32_t)0x004AC000)/*出口过渡段，深夜时间段，强光域策略*/ 
+#define STRATEGY_TRANSIT_II_MIDNIGHT_BRIGHT     ((uint32_t)0x004AD000)/*出口过渡段，深夜时间段，中光域策略*/ 
+#define STRATEGY_TRANSIT_II_MIDNIGHT_VISIBLE    ((uint32_t)0x004AE000)/*出口过渡段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_TRANSIT_II_MIDNIGHT_UNSEEN     ((uint32_t)0x004AF000)/*出口过渡段，深夜时间段，无光域策略*/ 
+
+/*出口段策略存储*/
+#define STRATEGY_EXPORT_ONOFF_DAZZLING          ((uint32_t)0x004C0000)/*出口段，开关灯时间段，强光域策略*/ 
+#define STRATEGY_EXPORT_ONOFF_BRIGHT            ((uint32_t)0x004C1000)/*出口段，开关灯时间段，中光域策略*/ 
+#define STRATEGY_EXPORT_ONOFF_VISIBLE           ((uint32_t)0x004C2000)/*出口段，开关灯时间段，弱光域策略*/ 
+#define STRATEGY_EXPORT_ONOFF_UNSEEN            ((uint32_t)0x004C3000)/*出口段，开关灯时间段，无光域策略*/ 
+#define STRATEGY_EXPORT_DAY_DAZZLING            ((uint32_t)0x004C4000)/*出口段，白天时间段，强光域策略*/ 
+#define STRATEGY_EXPORT_DAY_BRIGHT              ((uint32_t)0x004C5000)/*出口段，白天时间段，中光域策略*/ 
+#define STRATEGY_EXPORT_DAY_VISIBLE             ((uint32_t)0x004C6000)/*出口段，白天时间段，弱光域策略*/ 
+#define STRATEGY_EXPORT_DAY_UNSEEN              ((uint32_t)0x004C7000)/*出口段，白天时间段，无光域策略*/ 
+#define STRATEGY_EXPORT_NIGHT_DAZZLING          ((uint32_t)0x004C8000)/*出口段，夜晚时间段，强光域策略*/ 
+#define STRATEGY_EXPORT_NIGHT_BRIGHT            ((uint32_t)0x004C9000)/*出口段，夜晚时间段，中光域策略*/ 
+#define STRATEGY_EXPORT_NIGHT_VISIBLE           ((uint32_t)0x004CA000)/*出口段，夜晚时间段，弱光域策略*/ 
+#define STRATEGY_EXPORT_NIGHT_UNSEEN            ((uint32_t)0x004CB000)/*出口段，夜晚时间段，无光域策略*/ 
+#define STRATEGY_EXPORT_MIDNIGHT_DAZZLING       ((uint32_t)0x004CC000)/*出口段，深夜时间段，强光域策略*/ 
+#define STRATEGY_EXPORT_MIDNIGHT_BRIGHT         ((uint32_t)0x004CD000)/*出口段，深夜时间段，中光域策略*/ 
+#define STRATEGY_EXPORT_MIDNIGHT_VISIBLE        ((uint32_t)0x004CE000)/*出口段，深夜时间段，弱光域策略*/ 
+#define STRATEGY_EXPORT_MIDNIGHT_UNSEEN         ((uint32_t)0x004CF000)/*出口段，深夜时间段，无光域策略*/ 
+
 
 void NorFlashInit(void);
 void NorFlashWrite(uint32_t flash, const short *ram, int len);

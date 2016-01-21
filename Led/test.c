@@ -30,11 +30,11 @@ static unsigned char daybreak[3] = {0};
 static unsigned char daydark[3] = {0};
 
 unsigned char *DayToSunshine(void){
-	return daybreak;
+	return sunset;
 }
 
 unsigned char *DayToNight(void){
-	return daydark;
+	return sunup;
 }
 
 /*************************

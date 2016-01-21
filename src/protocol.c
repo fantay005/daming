@@ -35,12 +35,39 @@ typedef enum{
 	DATAQUERY = 0x08,       /*网关数据查询*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
   ELECTRICGATHER = 0x0E,  /*电量采集软件版本号查询*/	
+	SETPARAMLIMIT = 0x21,   /*设置光强度段和时间段划分点参数*/
+	STRATEGYDOWN = 0x22,    /*隧道内网关策略下载*/
 	GATEUPGRADE = 0x37,     /*网关远程升级*/
 	TIMEADJUST = 0x42,      /*校时*/
 	LUXVALUE = 0x43,        /*接收到光强度值*/
 	RESTART = 0x3F,         /*设备复位*/
 	RETAIN,                 /*保留*/
 } GatewayType;
+
+typedef struct{
+	char BeforClose[2];     /*关灯前偏移*/
+	char AfterClose[2];     /*关灯后偏移*/
+	char BeforOpen[2];      /*开灯前偏移*/
+	char AfterOpen[2];      /*开灯后偏移*/
+	char LateNightStart[4]; /*深夜开始时间*/
+	char LateNightEnd[4];   /*深夜结束时间*/
+}TimeZoneDog;             /*时间区域划分点*/
+
+typedef struct{
+	char HardLightDot[6];      /*强光界限点*/
+	char MiddleLightDot[6];    /*中光界限点*/
+	char WeakLightDot[6];      /*弱光界限点*/
+}LuxZoneDog;              /*光强度区域划分点*/
+
+
+typedef struct{
+	char MainACT;           /*主道动作*/
+	char MainSpaceNUM;      /*主道间隔点亮数目*/
+	char AssistantACT;      /*辅道动作*/
+	char AssistSpaceNUM;    /*辅道间隔点亮数目*/
+	char SpotLightACT;      /*投光动作*/
+	char SpotSpaceNUM;      /*投光间隔点亮数目*/
+}SectionStrategy;         /*隧道内段参数*/
 
 typedef struct {
 	unsigned char BCC[2];
@@ -433,12 +460,12 @@ void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
 }
 
 typedef enum{
-	ENTRANCE = 1,       /*入口段*/
+	GUIDESECTION = 1,   /*引导段*/
+	ENTRANCE,           /*入口段*/
 	TRANSITION_I,       /*入口过渡段*/
 	INTERMEDIATE,       /*中间段*/
 	TRANSITON_II,       /*出口过渡段*/
-	EXITSECTION,        /*出口段*/
-	GUIDESECTION,       /*引导段*/
+	EXITSECTION,        /*出口段*/	
 }PartType;            /*隧道各段定义*/
 
 #define NoChoice     0           /*属性没有选择*/
@@ -758,6 +785,126 @@ static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关
 	buf = ProtocolRespond(head->addr, head->contr, Version(), &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
+}
+
+static int HardLight = 10000;    /*强光值*/
+static int MiddleLight = 500;    /*中光值*/
+static int WeakLight = 50;       /*弱光值*/
+
+#define OnOffLight     1     /*开关灯时段*/
+#define HaveSun        2     /*白天时段*/
+#define HaveMoon       3     /*夜晚时段*/
+#define LateNight      4     /*深夜时段*/     /*顺序不可颠倒*/
+
+#define GoodSight      1        /*视线十分好*/ /*强光域*/
+#define CommonSight    2        /*正常视线*/   /*中光域*/
+#define HardSight      3        /*能见度很低*/ /*弱光域*/
+#define LoseSight      4        /*看不清*/     /*无光域*/   /*顺序不可颠倒*/
+
+static char BeforCloseOffset = 30;            /*关灯前偏移*/  
+static char AfterCloseOffset = 30;            /*关灯后偏移*/  
+static char BeforOpenOffset = 30;             /*开灯前偏移*/  
+static char AfterOpenOffset = 30;             /*开灯后偏移*/  
+static int DeepNightStart = (22 * 60 * 60);   /*深夜开始时间*/  
+static int DeepNightEnd = (6 * 60 * 60);      /*深夜结束时间*/  
+
+static void HandleSetParamDog(ProtocolHead *head, const char *p){         /*设置光强度区域和时间区域划分点*/
+	unsigned char *buf, size, tmp[8];
+	LuxZoneDog k;
+	TimeZoneDog g;
+	
+	sscanf(p, "%6s", tmp);
+	HardLight = atoi((const char *)tmp);
+	if(HardLight < 100000)
+		sscanf(p, "%6s", k.HardLightDot);          /*设置强光点*/
+	
+	sscanf(p, "%*6s%6s", tmp);
+	MiddleLight = atoi((const char *)tmp);    
+	if(MiddleLight < 10000)
+		sscanf(p, "%*6s%6s", k.MiddleLightDot);    /*设置中光点*/
+	
+	sscanf(p, "%*12s%6s", tmp);
+	WeakLight = atoi((const char *)tmp);
+	if(WeakLight > 1000)
+		sscanf(p, "%*12s%6s", k.WeakLightDot);     /*设置弱光点*/
+	
+	NorFlashWrite(PARAM_LUX_DOG_OFFSET, (short *)&k, (sizeof(LuxZoneDog) + 1) / 2);   /*存储光强度域划分点参数*/
+	
+	sscanf(p, "%*18s%2s", g.BeforClose);      /*设置关灯前偏移*/
+	sscanf(p, "%*20s%2s", g.AfterClose);      /*设置关灯后偏移*/
+	sscanf(p, "%*22s%2s", g.BeforOpen);       /*设置开灯前偏移*/
+	sscanf(p, "%*24s%2s", g.AfterOpen);       /*设置开灯后偏移*/
+	sscanf(p, "%*26s%4s", g.LateNightStart);  /*设置深夜开始时间*/
+	sscanf(p, "%*30s%4s", g.LateNightEnd);    /*设置深夜结束时间*/
+	
+	NorFlashWrite(PARAM_TIME_DOG_OFFSET, (short *)&k, (sizeof(TimeZoneDog) + 1) / 2);  /*存储时间段划分点参数*/
+	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
+}
+
+unsigned char FragOffset(char sec, char tim, char lux){                        /*根据回路，时间域，光强域找出策略存放位置*/    
+	uint32_t SecStart, SecOffset;
+	
+	SecStart = (sec - 1) * SECTION_SPACE_SIZE + STRATEGY_GUIDE_ONOFF_DAZZLING;   /*所在段的起始位置*/	
+	SecOffset = (4 * (tim - 1) + (lux - 1)) *NORFLASH_SECTOR_SIZE;               /*段内偏移地址*/
+	
+	return (SecStart + SecOffset);
+}
+
+static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下载*/
+	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
+	uint32_t StoreSpace;
+	short i, a, b;
+	char j, m, n;
+	SectionStrategy s;
+	
+	sscanf(p, "%*6s%2s", tmp);               /*主道动作选择*/
+	if(tmp[0] != '0'){
+		s.MainACT = tmp[0] - '0';
+		if(tmp[1] == '3')
+			s.MainSpaceNUM = tmp[1] - '0';
+	}	
+	
+	sscanf(p, "%*8s%2s", tmp);               /*辅道动作选择*/
+	if(tmp[0] != '0'){
+		s.AssistantACT = tmp[0] - '0';
+		if(tmp[1] == '3')
+			s.AssistSpaceNUM= tmp[1] - '0';
+	}
+	
+	sscanf(p, "%*10s%2s", tmp);              /*投光动作选择*/
+	if(tmp[0] != '0'){
+		s.SpotLightACT = tmp[0] - '0';
+		if(tmp[1] == '3')
+			s.SpotSpaceNUM = tmp[1] - '0';
+	}
+	
+	sscanf(p, "%2s", tmp);                   /*回路选择*/
+	loop = atoi((const char *)tmp);
+	
+	sscanf(p, "%*2s%2s", tmp);               /*时间段选择*/
+	Tim_Zone = atoi((const char *)tmp);
+	
+	sscanf(p, "%*4s%2s", tmp);               /*光强域选择*/
+	Lux_Zone = atoi((const char *)tmp);
+	
+	for(i = 0x1, j = 0; i&loop; (i = i << 1)){          /*判断有几个回路*/
+		j++;
+		for(a = 0x1, m = 0; a&Tim_Zone; (a = a << 1)){    /*判断有几个时间域*/
+			m++;
+			for(b = 0x1, n = 0; b&Lux_Zone; (b = b << 1)){  /*判断有几个光强域*/
+				n++;
+				StoreSpace = FragOffset(j, a, b);             /*策略存放位置*/
+				NorFlashWrite(StoreSpace, (short *)&s, (sizeof(SectionStrategy) + 1) / 2);
+			}
+		}
+	}
+	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+	ProtocolDestroyMessage((const char *)buf);	
 	
 }
 
@@ -959,31 +1106,22 @@ static StoreParam __Luxparam = {0, 0, 0, 0};
 
 static int LastLux = 0;                           /*上一次传进来的光照强度值平均数*/
 
-#define HardLight      10000    /*强光值*/
-#define MiddleLight    500      /*中光值*/
-#define WeakLight      50       /*弱光值*/
-#define NoneLight      5       /*无光值*/
-
-#define GoodSight      1        /*视线十分好*/
-#define CommonSight    2        /*正常视线*/
-#define HardSight      3        /*能见度很低*/
-#define LoseSight      4        /*看不清*/
-#define Blind          5        /*瞎眼了*/
-
 static void DivisiveLightArea(int lux){     /*根据当前光照度，区分其所在区域*/
 	char state;
 	int val;
+	LuxZoneDog k;
 	
+	NorFlashRead(PARAM_LUX_DOG_OFFSET, (short *)&k, (sizeof(LuxZoneDog) + 1) / 2); 
+	if(k.HardLightDot[0] < 0x46)
+		
 	if(lux >= HardLight){
 		state = GoodSight;
 	} else if ((lux >= MiddleLight) && (lux < HardLight)){
 		state = CommonSight;
 	} else if((lux >= WeakLight) && (lux < MiddleLight)){
 		state = HardSight;
-	} else if((lux >= NoneLight) && (lux < WeakLight)){
+	}  else{
 		state = LoseSight;
-	} else{
-		state = Blind;
 	}
 	
 	if(state != __Luxparam.LuxArea)
@@ -994,13 +1132,6 @@ extern unsigned char *DayToSunshine(void);
 
 extern unsigned char *DayToNight(void);
 
-#define HaveSun        1     /*白天时段*/
-#define HaveMoon       2     /*夜晚时段*/
-#define OnOffLight     3     /*开关灯时段*/
-#define LateNight      4     /*深夜时段*/
-
-#define  WorkTime  (6 * 60 * 60)         /*早上公交车开始工作时间*/
-#define  RestTime  (10 * 60 * 60)        /*人们开始休息时间*/
 
 static void DivideTimeArea(DateTime time){   /*根据当前时间，划分其所属时域*/ 
 	int NowTime, DayTime, DarkTime;
@@ -1016,7 +1147,7 @@ static void DivideTimeArea(DateTime time){   /*根据当前时间，划分其所属时域*/
 	
 	if((NowTime >= (DayTime + 3600)) && (NowTime <= (DarkTime - 3600))){  /*天亮后一小时到天黑前一小时*/
 		__Luxparam.TimeArea = HaveSun;	                                  /*定义为白天时段*/
-	} else if((NowTime >= RestTime) && (NowTime <= DayTime) && (NowTime < WorkTime)){ /*休息时间后到早上六点前，且天亮时间前*/
+	} else if((NowTime >= DeepNightStart) && (NowTime <= DayTime) && (NowTime < DeepNightEnd)){ /*休息时间后到早上六点前，且天亮时间前*/
 		__Luxparam.TimeArea = LateNight;                                  /*定义为少有行人的深夜时段*/
 	} else if(((NowTime > DayTime) && (NowTime < (DayTime + 3600))) || 
 						((NowTime < DarkTime) && (NowTime > (DarkTime - 3600)))){  /*天黑前一小时，或者天亮后一小时*/
@@ -1100,6 +1231,8 @@ void ProtocolHandler(ProtocolHead *head, char *p) {
 		{READDATA,       HandleReadBSNData},      /*0x06; 读镇流器数据*/
 		{DATAQUERY,      HandleGWDataQuery},      /*0x08; 网关数据查询*/           		    
 		{VERSIONQUERY,   HandleGWVersQuery},      /*0x0C; 查网关软件版本号*/       ///
+		{SETPARAMLIMIT,  HandleSetParamDog},      /*0x21; 设置光强度区域和时间域划分点参数*/
+		{STRATEGYDOWN,   HandleStrategy},         /*0x23; 策略下载*/
 		{GATEUPGRADE,    HandleGWUpgrade},        /*0x37; 网关远程升级*/
 		{TIMEADJUST,     HandleAdjustTime},       /*0x42; 校时*/                   ///  
 		{LUXVALUE,       HandleLuxGather},        /*0x43; 接收到光照度强度值*/		

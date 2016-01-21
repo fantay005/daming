@@ -318,15 +318,6 @@ static void __gsmTask(void *parameter) {
 					break;
 				}
 			}
-		} else if((curT - lastT) > configTICK_RATE_HZ * 3){
-			
-			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
-			
-			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
-				continue;
-			}
-			
-			lastT = curT;
 		}
 	}
 }
@@ -335,5 +326,5 @@ void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
 	__queue = xQueueCreate(30, sizeof( GsmTaskMessage));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }
