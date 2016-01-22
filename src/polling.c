@@ -80,8 +80,7 @@ static void POLLTask(void *parameter) {
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
-	while(1){
-		vTaskDelay(configTICK_RATE_HZ / 10);	
+	while(1){	
 		
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
@@ -229,6 +228,7 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(2, 0, 0);
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
+			short MaxAddr;
 //			portTickType curT;	
 //			curT = xTaskGetTickCount();
 //			
@@ -242,11 +242,15 @@ static void POLLTask(void *parameter) {
 //			  } 
 			
 			if(NumOfAddr >= (MAX + 50)){
-				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 1);
-				if((MAX != tmp[0]) && (MAX < 1000)){
-					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)&MAX, 1);
+				short ret[3] = {0};
+				
+				ret[0] = MAX;
+				ret[1] = MaxAddr;
+				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
+				if(((MAX != tmp[0]) && (MAX < 1000)) || (MaxAddr != tmp[1])){
+					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)ret, 2);
 				} else if(tmp[0] == 0xFFFF){
-					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)&MAX, 1);
+					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)ret, 2);
 				}
 					
 				NumOfAddr = 1;
@@ -291,6 +295,8 @@ static void POLLTask(void *parameter) {
 			} else {			
 				GatewayParam1 param;				
 				
+				if(NumOfAddr > MaxAddr)
+					MaxAddr = NumOfAddr - 1;            /*取最大地址数*/
 				if((k.Loop - '0') > Max_Loop){
 					Max_Loop = k.Loop - '0';
 				}

@@ -176,7 +176,10 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		isIPD = 0;
 		bufferIndex = 0;
 		lenIPD = 0;
-	} else if (bufferIndex > (lenIPD + 18)) {
+		return;
+	} 
+	
+	if ((data > 'F') || (data < '0')) {
 		isIPD = 0;
 		bufferIndex = 0;
 		lenIPD = 0;	
@@ -224,7 +227,7 @@ void USART3_IRQHandler(void) {
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
 		buffer[bufferIndex++] = data;
-		if(data == 0x02) {
+		if (data == 0x02) {
 			bufferIndex = 0;
 			buffer[bufferIndex++] = data;
 			isIPD = 1;

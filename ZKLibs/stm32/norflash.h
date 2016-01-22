@@ -141,6 +141,8 @@
 #define STRATEGY_EXPORT_MIDNIGHT_VISIBLE        ((uint32_t)0x004CE000)/*出口段，深夜时间段，弱光域策略*/ 
 #define STRATEGY_EXPORT_MIDNIGHT_UNSEEN         ((uint32_t)0x004CF000)/*出口段，深夜时间段，无光域策略*/ 
 
+#define GATEWAY_RUN_DAY                         ((uint32_t)0x004E0000)/*网关运行天数*/
+
 
 void NorFlashInit(void);
 void NorFlashWrite(uint32_t flash, const short *ram, int len);

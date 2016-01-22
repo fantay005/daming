@@ -320,6 +320,8 @@ char *SpaceShift(void){
 	return Shift;
 }
 
+extern short *LightZigbAddr(void);
+
 static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte, const char *p){
 	int i, instd;
 	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size, fitflag = 0;
@@ -332,25 +334,16 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	while(*ret){
 		fitcount++;
 		sscanf((const char *)header, "%*1s%4s", addr);
-		
-#if defined(__HEXADDRESS__)	
-		if(*ret == (unsigned short)strtol((const char *)addr, NULL, 16)){
-#else
-		if(*ret == (unsigned short)atoi((const char *)addr)){
-#endif			
+		if(*ret == (unsigned short)atoi((const char *)addr)){	
 			fitflag = 1;
 			break;
 		}
 		ret++;	
 	}
 	
-	sscanf(p, "%*1s%4s", addr);
-		
-#if defined(__HEXADDRESS__)
-	instd = strtol((const char *)addr, NULL, 16);
-#else				
+	sscanf(p, "%*1s%4s", addr);		
 	instd = atoi((const char *)addr);
-#endif
+
 	NorFlashRead(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 	
 	k.UpdataTime = RtcGetTime();
@@ -386,13 +379,43 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		DateTime dateTime;
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
+		char StateFlag = 0x01;   /*软关闭*/
+		char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x39, 0x42, 
+											0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x34, 0x44, 0x03};
+		char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x39, 0x42,
+											0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x31, 0x34, 0x43, 0x03};
 		
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
 		if((k.Loop <= '8') || (k.Loop >= '0')) {
-			Have_Param_Flag = 1;
+			Have_Param_Flag = 1;   
 		}
-
+		
+		ret = (unsigned short*)LightZigbAddr();
+		while(*ret){
+			if((*ret) == instd){
+				StateFlag = 0x02;   /*主运行*/
+				break;
+			}
+		}
+		
+		sscanf(p, "%*11s%2s", space);
+		i = atoi((const char *)space);  /*运行状态*/
+		if(i != StateFlag){	
+			if(StateFlag == 0x01){
+				CloseBuf[0] = instd << 8;
+				CloseBuf[1] = instd & 0xFF;
+				ZigbTaskSendData(CloseBuf, strlen(CloseBuf));
+			} else if(StateFlag == 0x02){
+				OpenBuf[0] = instd << 8;
+				OpenBuf[1] = instd & 0xFF;
+				ZigbTaskSendData(OpenBuf, strlen(OpenBuf));
+			}
+		}
+			
+		
+		sscanf(p, "%*43s%12s", SyncFlag);
+		
 		if((strncmp((const char *)k.TimeOfSYNC, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*灯参数同步标识比较*/	
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			while(*msg == 1){
