@@ -18,7 +18,7 @@
 #include "second_datetime.h"
 
 
-#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024)
+#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024 * 2)
 
 static xQueueHandle __ElectQueue;
 
@@ -475,7 +475,7 @@ static void EleGathTask(void *parameter) {
 	ElecTaskMsg msg;
 	
 	for (;;) {
-		rc = xQueueReceive(__ElectQueue, &msg, portMAX_DELAY);
+		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
