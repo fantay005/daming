@@ -21,11 +21,11 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 6)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
-static xQueueHandle __queue;
+static xQueueHandle __Transqueue;
 
 static GMSParameter __gsmRuntimeParameter;
 
@@ -65,7 +65,7 @@ bool GsmTaskSendAtCommand(const char *atcmd) {
 	message.length = len;
 	memcpy(message.infor, atcmd, len);
 	
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 5)) {
+	if (pdTRUE != xQueueSend(__Transqueue, &message, configTICK_RATE_HZ * 5)) {
 		return false;
 	}
 	return true;
@@ -79,7 +79,7 @@ bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 	message.length = len;
 	memcpy(message.infor, dat, len);	
 	
-	if (pdTRUE != xQueueSend(__queue, &message, configTICK_RATE_HZ * 15)) {
+	if (pdTRUE != xQueueSend(__Transqueue, &message, configTICK_RATE_HZ * 15)) {
 		return true;
 	}
 	return false;
@@ -168,7 +168,7 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		message.length = bufferIndex;
 		memcpy(message.infor, buffer, bufferIndex);	
 		
-		if (pdTRUE == xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken)) {
+		if (pdTRUE == xQueueSendFromISR(__Transqueue, &message, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
@@ -179,7 +179,7 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		return;
 	} 
 	
-	if ((data > 'F') || (data < '0')) {
+	if((data > 'F') || (data < '0') || (bufferIndex > (lenIPD + 18))) {
 		isIPD = 0;
 		bufferIndex = 0;
 		lenIPD = 0;	
@@ -216,7 +216,7 @@ void USART3_IRQHandler(void) {
 					message.length = bufferIndex;
 					memcpy(message.infor, buffer, bufferIndex);	
 					
-					xQueueSendFromISR(__queue, &message, &xHigherPriorityTaskWoken);
+					xQueueSendFromISR(__Transqueue, &message, &xHigherPriorityTaskWoken);
 					if (xHigherPriorityTaskWoken)
 						taskYIELD();
 				}
@@ -312,7 +312,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__queue, &message, portMAX_DELAY);
+		rc = xQueueReceive(__Transqueue, &message, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -328,6 +328,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
-	__queue = xQueueCreate(30, sizeof( GsmTaskMessage));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	__Transqueue = xQueueCreate(50, sizeof( GsmTaskMessage));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

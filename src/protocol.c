@@ -1069,19 +1069,18 @@ void __handleLux(char tim, char lux){            /*¸ù¾Ý»ØÂ·£¬¹âÇ¿Óò£¬Ê±¼äÓòÊµÐÐ²
 		LightPara = atoi((const char *)buf);
 		
 		NorFlashRead(StartAddr, (short *)&s, (sizeof(SectionStrategy) + 1) / 2);
-		if((s.AssistantACT > '9') && (s.MainACT > '9') && (s.SpotLightACT > '9')){	
-			NoneStrategy(k.Loop, tim, Zigb, LightPara);
+		
+		if((k.Attribute[0] == '0') && (s.MainACT < '9')){               /*Ö÷µÀ*/
+			ActionControl(Zigb, Pole, s.MainACT, s.MainSpaceNUM);
+			continue;
+		} else if((k.Attribute[0] == '1' )&& (s.AssistantACT < '9')){   /*¸¨µÀ*/
+			ActionControl(Zigb, Pole, s.AssistantACT, s.AssistSpaceNUM);
+			continue;
+		} else if((k.Attribute[0] > '1' )&& (s.SpotLightACT < '9')){    /*Í¶¹â*/
+			ActionControl(Zigb, Pole, s.SpotLightACT, s.SpotSpaceNUM);
 			continue;
 		}
-		
-		if(k.Attribute[0] == '0'){          /*Ö÷µÀ*/
-			ActionControl(Zigb, Pole, s.MainACT, s.MainSpaceNUM);
-		} else if(k.Attribute[0] == '1'){   /*¸¨µÀ*/
-			ActionControl(Zigb, Pole, s.AssistantACT, s.AssistSpaceNUM);
-		} else {                            /*Í¶¹â*/
-			ActionControl(Zigb, Pole, s.SpotLightACT, s.SpotSpaceNUM);
-		}
-		
+		NoneStrategy(k.Loop, tim, Zigb, LightPara);
 	}
 	
 }
@@ -1229,7 +1228,7 @@ void bubble(int *a,int n){     /*Êý×é´ÓÐ¡µ½´óÅÅÐò*/
 
 void BegAverage(int *p){
 	char i;
-	int sum;
+	int sum = 0;
 	
 	bubble(p, 12);
 	for(i = 2; i < 10; i++){

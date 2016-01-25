@@ -81,7 +81,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){	
-		
+		vTaskDelay(configTICK_RATE_HZ / 10);	
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){
