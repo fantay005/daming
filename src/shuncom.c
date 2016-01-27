@@ -380,39 +380,16 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
 		char StateFlag = 0x01;   /*软关闭*/
-		char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x39, 0x42, 
-											0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x30, 0x31, 0x34, 0x44, 0x03};
-		char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x39, 0x42,
-											0x30, 0x30, 0x30, 0x31, 0x30, 0x30, 0x30, 0x31, 0x34, 0x43, 0x03};
+		char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
+											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
+		char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41,
+											0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03};
 		
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
 		if((k.Loop <= '8') || (k.Loop >= '0')) {
 			Have_Param_Flag = 1;   
 		}
-		
-		ret = (unsigned short*)LightZigbAddr();
-		while(*ret){
-			if((*ret) == instd){
-				StateFlag = 0x02;   /*主运行*/
-				break;
-			}
-		}
-		
-		sscanf(p, "%*11s%2s", space);
-		i = atoi((const char *)space);  /*运行状态*/
-		if(i != StateFlag){	
-			if(StateFlag == 0x01){
-				CloseBuf[0] = instd << 8;
-				CloseBuf[1] = instd & 0xFF;
-				ZigbTaskSendData(CloseBuf, strlen(CloseBuf));
-			} else if(StateFlag == 0x02){
-				OpenBuf[0] = instd << 8;
-				OpenBuf[1] = instd & 0xFF;
-				ZigbTaskSendData(OpenBuf, strlen(OpenBuf));
-			}
-		}
-			
 		
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
@@ -426,6 +403,36 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			DataFalgQueryAndChange(5, 1, 0);
 			
 			NumbOfRank = instd;
+		}
+		ret = (unsigned short*)LightZigbAddr();
+		while(*ret){
+			if((*ret++) == instd){
+				StateFlag = 0x02;   /*主运行*/
+				break;
+			}	
+		}
+		
+		sscanf(p, "%*11s%2s", space);
+		i = atoi((const char *)space);  /*运行状态*/
+		if(i != StateFlag){	
+			if(StateFlag == 0x01){
+				CloseBuf[0] = (instd >> 8) & 0xFF;
+				CloseBuf[1] = instd & 0xFF;
+				vTaskDelay(configTICK_RATE_HZ / 2);	
+				for(i = 0; i < 19; i++){
+					SZ05SendChar(CloseBuf[i]);
+				}
+				vTaskDelay(configTICK_RATE_HZ / 2);
+
+			} else if(StateFlag == 0x02){
+				OpenBuf[0] = (instd >> 8) & 0xFF;
+				OpenBuf[1] = instd & 0xFF;
+				vTaskDelay(configTICK_RATE_HZ / 2);	
+				for(i = 0; i < 19; i++){
+					SZ05SendChar(OpenBuf[i]);
+				}
+				vTaskDelay(configTICK_RATE_HZ / 2);
+			}
 		}
 
 		Have_Param_Flag = 0;
@@ -526,6 +533,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			
 			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	 			 
 		}
+
 	}
 }
 

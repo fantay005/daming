@@ -24,6 +24,26 @@
 
 static xSemaphoreHandle __ProSemaphore;
 
+static xSemaphoreHandle __TransSemaphore; 
+
+static xSemaphoreHandle __ElecSemaphore;
+
+static xSemaphoreHandle __BSNSemaphore;
+
+void SemaInit(void) {
+	if (__TransSemaphore == NULL) {
+		vSemaphoreCreateBinary(__TransSemaphore);
+	}
+	
+	if (__ElecSemaphore == NULL) {
+		vSemaphoreCreateBinary(__ElecSemaphore);
+	}
+	
+	if (__BSNSemaphore == NULL) {
+		vSemaphoreCreateBinary(__BSNSemaphore);
+	}
+}
+
 typedef enum{
 	ACKERROR = 0,           /*´ÓÕ¾Ó¦´ðÒì³£*/
 	GATEPARAM = 0x01,       /*Íø¹Ø²ÎÊýÏÂÔØ*/
@@ -116,7 +136,9 @@ unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2]
 	return ret;
 }
 
-unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
+static unsigned char *BSNRespondBuf[240];
+
+void BsnFuntion(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
 	unsigned char *p, *ret;
@@ -124,7 +146,7 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
 	*size = 9 + len + 3 + 2;
 	
-	ret = pvPortMalloc(*size + 1);
+	ret = (unsigned char *)BSNRespondBuf;
 	
 	
 	if(strncmp((const char *)address, "FFFF", 4) == 0){
@@ -160,16 +182,27 @@ unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4],
 	*p++ = hexTable[verify & 0x0F];
 	*p++ = 0x03;
 	*p = 0;
-	return ret;
 }
 
-extern char HexToAscii(char hex);
+unsigned char *DataSendToBSN(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	if (xSemaphoreTake(__BSNSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		
+		BsnFuntion(address, type, msg, size);
+		xSemaphoreGive(__BSNSemaphore);
+		
+		return (unsigned char *)BSNRespondBuf;
+	}
+}
 
-unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+static unsigned char RespondBuf[240];
+
+void NoRenntry(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
-	unsigned char *p, *ret;
+	unsigned char *p;
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char hexTable[] = "0123456789ABCDEF";
+	
 	*size = 15 + len + 3;
 	if(type[1] > '9'){
 		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
@@ -177,72 +210,88 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
 	}
 	i = i | 0x80;
-	ret = pvPortMalloc(*size + 1);
 	{
-		ProtocolHead *h = (ProtocolHead *)ret;
+		ProtocolHead *h = (ProtocolHead *)RespondBuf;
 		h->header = 0x02;	
 		strcpy((char *)h->addr, (const char *)address);
-		h->contr[0] = HexToAscii(i >> 4);
-		h->contr[1] = HexToAscii(i & 0x0F);
-		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
-		h->lenth[1] = HexToAscii(len & 0x0F);
+		h->contr[0] = hexTable[i >> 4];
+		h->contr[1] = hexTable[i & 0x0F];
+		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
+		h->lenth[1] = hexTable[len & 0x0F];
 	}
 
 	if (msg != NULL) {
-		strcpy((char *)(ret + 15), msg);
+		strcpy((char *)(RespondBuf + 15), msg);
 	}
 	
-	p = ret;
+	p = RespondBuf;
 	for (i = 0; i < (len + 15); ++i) {
 		verify ^= *p++;
 	}
 	
-	*p++ = HexToAscii((verify >> 4) & 0x0F);
-	*p++ = HexToAscii(verify & 0x0F);
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
 	*p++ = 0x03;
 	*p = 0;
-	return ret;
 }
 
-unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+
+
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		
+		NoRenntry(address, type, msg, size);
+		xSemaphoreGive(__TransSemaphore);
+		
+		return RespondBuf;
+	}
+}
+
+static unsigned char ElecRespondBuf[240];
+
+void NoRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	int i;
 	unsigned int verify = 0;
-	unsigned char *p, *ret;
+	unsigned char *p;
 	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char hexTable[] = "0123456789ABCDEF";
 	
 	*size = 15 + len + 3;
 	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
 	
-	ret = pvPortMalloc(*size + 1);
 	{
-		ProtocolHead *h = (ProtocolHead *)ret;
+		ProtocolHead *h = (ProtocolHead *)ElecRespondBuf;
 		h->header = 0x02;
 		strcpy((char *)h->addr, (const char *)address);
-		h->contr[0] = HexToAscii(i >> 4);
-		h->contr[1] = HexToAscii(i & 0x0F);
-		h->lenth[0] = HexToAscii((len >> 4) & 0x0F);
-		h->lenth[1] = HexToAscii(len & 0x0F);
+		h->contr[0] = hexTable[i >> 4];
+		h->contr[1] = hexTable[i & 0x0F];
+		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
+		h->lenth[1] = hexTable[len & 0x0F];
 	}
 
 	if (msg != NULL) {
-		strcpy((char *)(ret + 15), msg);
+		strcpy((char *)(ElecRespondBuf + 15), msg);
 	}
 	
-	p = ret;
+	p = ElecRespondBuf;
 	for (i = 0; i < (len + 15); ++i) {
 		verify ^= *p++;
 	}
 	
-	*p++ = HexToAscii((verify >> 4) & 0x0F);
-	*p++ = HexToAscii(verify & 0x0F);
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
 	*p++ = 0x03;
 	*p = 0;
-	return ret;
 }
 
-
-void ProtocolDestroyMessage(const char *p) {
-	vPortFree((void *)p);
+unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	if (xSemaphoreTake(__ElecSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+		
+		NoRespond(address, type, msg, size);
+		xSemaphoreGive(__ElecSemaphore);
+		
+		return ElecRespondBuf;
+	}
 }
 
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
@@ -291,7 +340,6 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);
 }
 
 static void __ParamWriteToFlash(const char *p){
@@ -377,7 +425,6 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 typedef struct{	
@@ -399,6 +446,7 @@ void ProtocolInit(void) {
 	if (__ProSemaphore == NULL) {
 		vSemaphoreCreateBinary(__ProSemaphore);
 	}
+	SemaInit();
 }
 
 void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
@@ -676,7 +724,6 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 	
 	ret = pvPortMalloc(strlen(p) + 1);
 	strcpy((char *)ret, p);
@@ -705,7 +752,6 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 	
 	ret = pvPortMalloc(strlen(p) + 1);
 	strcpy((char *)ret, p);
@@ -733,7 +779,6 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 	
 	__DataFlagJudge(p);
 }
@@ -758,7 +803,6 @@ static void HandleLightAuto(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
@@ -776,7 +820,6 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*²éÍø¹ØÈí¼þ°æ±¾ºÅ*/
@@ -784,7 +827,6 @@ static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*²éÍø¹Ø
 	
 	buf = ProtocolRespond(head->addr, head->contr, Version(), &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static int HardLight = 10000;    /*Ç¿¹âÖµ*/
@@ -801,10 +843,10 @@ static int WeakLight = 50;       /*Èõ¹âÖµ*/
 #define HardSight      3        /*ÄÜ¼û¶ÈºÜµÍ*/ /*Èõ¹âÓò*/
 #define LoseSight      4        /*¿´²»Çå*/     /*ÎÞ¹âÓò*/   /*Ë³Ðò²»¿Éµßµ¹*/
 
-static char BeforCloseOffset = 30;            /*¹ØµÆÇ°Æ«ÒÆ*/  
-static char AfterCloseOffset = 30;            /*¹ØµÆºóÆ«ÒÆ*/  
-static char BeforOpenOffset = 30;             /*¿ªµÆÇ°Æ«ÒÆ*/  
-static char AfterOpenOffset = 30;             /*¿ªµÆºóÆ«ÒÆ*/  
+static short BeforCloseOffset = 30 * 60;            /*¹ØµÆÇ°Æ«ÒÆ*/  
+static short AfterCloseOffset = 30 * 60;            /*¹ØµÆºóÆ«ÒÆ*/  
+static short BeforOpenOffset = 30 * 60;             /*¿ªµÆÇ°Æ«ÒÆ*/  
+static short AfterOpenOffset = 30 * 60;             /*¿ªµÆºóÆ«ÒÆ*/  
 static int DeepNightStart = (22 * 60 * 60);   /*ÉîÒ¹¿ªÊ¼Ê±¼ä*/  
 static int DeepNightEnd = (6 * 60 * 60);      /*ÉîÒ¹½áÊøÊ±¼ä*/  
 
@@ -841,7 +883,6 @@ static void HandleSetParamDog(ProtocolHead *head, const char *p){         /*ÉèÖÃ
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static uint32_t RealAddr = 0;
@@ -849,6 +890,7 @@ static uint32_t RealAddr = 0;
 uint32_t FragOffset(char sec, char tim, char lux){                        /*¸ù¾Ý»ØÂ·£¬Ê±¼äÓò£¬¹âÇ¿ÓòÕÒ³ö²ßÂÔ´æ·ÅÎ»ÖÃ*/    
 	uint32_t SecStart, SecOffset;
 	
+	sec = sec - '0';
 	SecStart = (sec - 1) * SECTION_SPACE_SIZE + STRATEGY_GUIDE_ONOFF_DAZZLING;   /*ËùÔÚ¶ÎµÄÆðÊ¼Î»ÖÃ*/	
 	SecOffset = (4 * (tim - 1) + (lux - 1)) *NORFLASH_SECTOR_SIZE;               /*¶ÎÄÚÆ«ÒÆµØÖ·*/
 	
@@ -910,7 +952,6 @@ static void HandleStrategy(ProtocolHead *head, const char *p){          /*²ßÂÔÏÂ
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 	
 }
 
@@ -919,7 +960,6 @@ static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond((unsigned char *)"9999999999", head->contr, NULL, &size);
 	ElecTaskSendData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 }
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTPÔ¶³ÌÉý¼¶
@@ -1052,7 +1092,7 @@ void __handleLux(char tim, char lux){            /*¸ù¾Ý»ØÂ·£¬¹âÇ¿Óò£¬Ê±¼äÓòÊµÐÐ²
 	char buf[5], LightPara;
 	
 	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);      /*È¡³ö×î´óZIGBEEµØÖ·*/
-	for(i = 1; i < tmp[2]; i++){		
+	for(i = 1; i <= tmp[1]; i++){		
 		NorFlashRead((NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE), (short *)&k, (sizeof(Lightparam) + 1) / 2);
 		if((k.Loop > '8') || (k.Loop < '0'))
 			continue;
@@ -1165,22 +1205,22 @@ static void DivideTimeArea(DateTime time){   /*¸ù¾Ýµ±Ç°Ê±¼ä£¬»®·ÖÆäËùÊôÊ±Óò*/
 	
 	if(k.AfterClose[0] < 0x41){
 		sscanf(k.AfterClose, "%2s", tmp);
-		AfterCloseOffset = atoi((const char *)tmp);
+		AfterCloseOffset = atoi((const char *)tmp) * 60;
 	}
 	
 	if(k.AfterOpen[0] < 0x41){
 		sscanf(k.AfterOpen, "%2s", tmp);
-		AfterOpenOffset = atoi((const char *)tmp);
+		AfterOpenOffset = atoi((const char *)tmp) * 60;
 	}
 	
 	if(k.BeforClose[0] < 0x41){
 		sscanf(k.BeforClose, "%2s", tmp);
-		BeforCloseOffset = atoi((const char *)tmp);
+		BeforCloseOffset = atoi((const char *)tmp) * 60;
 	}
 	
 	if(k.BeforOpen[0] < 0x41){
 		sscanf(k.BeforOpen, "%2s", tmp);
-		BeforOpenOffset = atoi((const char *)tmp);
+		BeforOpenOffset = atoi((const char *)tmp) * 60;
 	}
 	
 	if(k.LateNightEnd[0] < 0x41){
@@ -1201,7 +1241,7 @@ static void DivideTimeArea(DateTime time){   /*¸ù¾Ýµ±Ç°Ê±¼ä£¬»®·ÖÆäËùÊôÊ±Óò*/
 		DeepNightStart = hour * 3600 + minute * 60;
 	}
 	
-	if((NowTime >= (DayTime + AfterOpenOffset)) && (NowTime <= (DarkTime - BeforOpenOffset))){  /*¹ØµÆºóÆ«ÒÆ£¬µ½¿ªµÆÇ°Æ«ÒÆ*/
+	if((NowTime >= (DayTime + AfterOpenOffset )) && (NowTime <= (DarkTime - BeforOpenOffset ))){  /*¹ØµÆºóÆ«ÒÆ£¬µ½¿ªµÆÇ°Æ«ÒÆ*/
 		__Luxparam.TimeArea = HaveSun;	                                  /*¶¨ÒåÎª°×ÌìÊ±¶Î*/
 	} else if((NowTime >= DeepNightStart) && (NowTime <= (DayTime - BeforCloseOffset)) && (NowTime < DeepNightEnd)){ /*ÉîÒ¹¿ªÊ¼Ê±¼äµ½µÚ¶þÌì¿ªµÆÆ«ÒÆÇ°»òÕßÉîÒ¹½áÊø*/
 		__Luxparam.TimeArea = LateNight;                                  /*¶¨ÒåÎªÉÙÓÐÐÐÈËµÄÉîÒ¹Ê±¶Î*/
@@ -1247,7 +1287,6 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
 	
   sscanf(p, "%8s", msg);
 	LuxValue = atoi((const char *)msg);
@@ -1283,7 +1322,6 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 		sscanf(p, "%10s", msg);
 		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
 		ElecTaskSendData((const char *)buf, size);
-		ProtocolDestroyMessage((const char *)buf);	
 	}
 }
 
