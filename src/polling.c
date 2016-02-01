@@ -22,7 +22,6 @@
 extern unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
-extern char __sendstatus(char tmp);
 extern unsigned short PowerStatus(void);
 
 static bool JudgeParam(unsigned char param){
@@ -41,10 +40,6 @@ static bool JudgeParam(unsigned char param){
 	return false;
 }
 
-extern char TCPStatus(char type, char value);
-
-extern char SendStatus(void);
-
 extern unsigned char *__datamessage(void);
 
 extern short CallTransfer(void);
@@ -56,8 +51,6 @@ extern char Conect_server_start(void);
 extern unsigned char *setTime_back(void);
 
 extern unsigned char *upTime_back(void);
-
-extern bool GSMTaskSendErrorTcpData(void);
 
 static void ShortToStr(unsigned short *s, char *r){
 	int i;
@@ -92,7 +85,7 @@ static void POLLTask(void *parameter) {
 	GMSParameter a;
 	unsigned char *buf, ID[16], size, *msg, *alter, *bum;
 	char *p;
-	portTickType lastT = 0, HeartT = 0;
+	portTickType HeartT = 0;
 	unsigned short *ret, tmp[3];
 	DateTime dateTime;
 	uint32_t second, ResetTime;
@@ -101,21 +94,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){
-		vTaskDelay(configTICK_RATE_HZ / 5);
-
-		if(__sendstatus(1) == 1){
-			while(1) {
-				vTaskDelay(configTICK_RATE_HZ);
-				while(TCPStatus(0, 0) == 0){
-					vTaskDelay(configTICK_RATE_HZ / 2);
-				}
-				if(GSMTaskSendErrorTcpData() == 0){
-					continue;
-				}
-				__sendstatus(0);
-				break;
-			}
-		}			
+		vTaskDelay(configTICK_RATE_HZ / 5);		
 		
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
@@ -362,15 +341,6 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(2, 0, 0);
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
-			if(TCPStatus(0, 0) == 0) {
-				continue;
-			}
-			
-			if(TCPStatus(0, 0) == 1){
-				vTaskDelay(configTICK_RATE_HZ * 3);
-				TCPStatus(1, 2);
-				continue;
-			}
 			
 			if(NumOfAddr >= (MAX + 50)){
 				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 1);
@@ -497,7 +467,7 @@ static void POLLTask(void *parameter) {
 						DataFalgQueryAndChange(8, 0, 0);
 						for(i = 0; i < 1000; i++) {
 							NorFlashRead((NORFLASH_BALLAST_BASE + i * NORFLASH_SECTOR_SIZE), (short *)&L, (sizeof(Lightparam) + 1) / 2);
-							if((L.CommState >= 0) && (L.CommState < 20)){
+							if(L.CommState < 20){
 								if((second > L.UpdataTime) &&((second - L.UpdataTime) > 60)){
 									DataFalgQueryAndChange(1, i, 0);
 								}

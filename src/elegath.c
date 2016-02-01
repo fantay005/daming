@@ -74,34 +74,13 @@ typedef enum{
 }ElecTaskMessageType;
 
 typedef struct {
-	/// Message type.
 	ElecTaskMessageType type;
-	/// Message lenght.
 	unsigned char length;
+	unsigned char infor[200];
 } ElecTaskMsg;
 
-//static void *ElectaskApplyMemory(int size){
-////	printf("M");
-//	return pvPortMalloc(size);
-//}
-
-//static void ElecTaskFreeMemory(void *p){
-////	printf("F");
-//	vPortFree(p);
-//}
-
-static ElecTaskMsg *__ElectCreateMessage(ElecTaskMessageType type, const char *dat, unsigned char len) {
-  ElecTaskMsg *message = pvPortMalloc(ALIGNED_SIZEOF(ElecTaskMsg) + len);
-	if (message != NULL) {
-		message->type = type;
-		message->length = len;
-		memcpy(&message[1], dat, len);
-	}
-	return message;
-}
-
 static inline void *__ElecGetMsgData(ElecTaskMsg *message) {
-	return &message[1];
+	return message->infor;
 }
 
 static void EleComSendChar(char c) {
@@ -113,7 +92,6 @@ static char buffer[255];
 static char bufferIndex = 0;
 static char isPRO = 0;
 static unsigned char LenPRO = 0;
-static char ELEC_IRQ = 0;
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -160,7 +138,11 @@ void USART2_IRQHandler(void) {
 		ElecTaskMsg *msg;
 		portBASE_TYPE xHigherPriorityTaskWoken;
 		buffer[bufferIndex++] = 0;
-		msg = __ElectCreateMessage(TYPE_RECIEVE_DATA, (const char *)buffer, bufferIndex);		
+			
+		msg->type = TYPE_RECIEVE_DATA;
+		msg->length = bufferIndex;
+		memcpy(msg->infor, buffer, bufferIndex);
+		
 		if (pdTRUE == xQueueSendFromISR(__ElectQueue, &msg, &xHigherPriorityTaskWoken)) {
 			if (xHigherPriorityTaskWoken) {
 				portYIELD();
@@ -463,10 +445,13 @@ void __handleRecieve(ElecTaskMsg *p) {
 }
 
 bool ElecTaskSendData(const char *dat, unsigned char len) {
-	ElecTaskMsg *message = NULL;
-  message = __ElectCreateMessage(TYPE_SEND_DATA, dat, len);
+	ElecTaskMsg *message;
+
+	message->type = TYPE_SEND_DATA;
+	message->length = len;
+	memcpy(message->infor, dat, len);
+	
 	if (pdTRUE != xQueueSend(__ElectQueue, &message, configTICK_RATE_HZ * 5)) {
-		vPortFree(message);
 		return true;
 	}
 	return false;
@@ -499,23 +484,20 @@ static void EleGathTask(void *parameter) {
 	for (;;) {
 		rc = xQueueReceive(__ElectQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {
-			//ElectricHandler(msg);
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
 				if (msg->type == map->type) {
-//					vTaskDelay(configTICK_RATE_HZ);
 					map->handlerFunc(msg);
 					break;
 				}
 			}		
-			vPortFree(msg);
-			msg = NULL;
+
 		}
 	}
 }
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg *));
+	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg));
 	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

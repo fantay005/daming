@@ -17,7 +17,6 @@ bool FirmwareUpdaterIsValidMark(const FirmwareUpdaterMark *mark) {
 		return false;
 	}
 
-
 	for (i = 0; i < strlen(mark->ftpHost); ++i) {
 		if ((!isdigit(mark->ftpHost[i])) && (mark->ftpHost[i] != '.')) {
 			return false ;

@@ -250,20 +250,9 @@ void ProtocolDestroyMessage(const char *p) {
 	vPortFree((void *)p);
 }
 
-//static void Analysis(ProtocolHead *data, const char *p){
-//	sscanf(&p[1], "%10s", data->addr);
-//	sscanf(p, "%*11s%2s", data->contr);
-//	sscanf(p, "%*13s%2s", data->lenth);
-//}
-
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	unsigned char size;
 	unsigned char *buf, msg[2];
-	
-//	if((strlen(p) != 27) || ((strlen(p) != 50)) || (strlen(p) != 78)){
-//		return;
-//	}
-//	len = strlen(p);
 
 	if(strlen(p) == (50 - 15)){
 		GatewayParam1 g;
@@ -332,7 +321,6 @@ void StoreZigbAddr(unsigned char rank, short Address){
 }
 
 static void __ParamWriteToFlash(const char *p){
-	int i;
 	unsigned char msg[5];
 	unsigned short len;
 	DateTime dateTime;
@@ -360,12 +348,8 @@ static void __ParamWriteToFlash(const char *p){
 		g.LoadPhaseLine = p[14];
 		sscanf(p, "%*16s%2s", g.Attribute);
 		
-		sprintf((char *)g.TimeOfSYNC, "%2d%2d%2d%2d%2d%2d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
-    for(i = 0; i < 12; i++){
-			if(g.TimeOfSYNC[i] == 0x20){
-				g.TimeOfSYNC[i] = '0';
-			}
-		}
+		sprintf((char *)g.TimeOfSYNC, "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
+  
 		g.CommState = 0x04;
 		g.InputPower = 0;
 		
@@ -401,45 +385,8 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 			__ParamWriteToFlash(&p[1 + i * 17]);
 			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4]));
 		}
-		msg[i * 4 + 1] = p[0];
-//		sscanf(p, "%*1s%4s", g.AddrOfZigbee);
+		msg[i * 4] = p[0];
 
-//		sscanf(p, "%*5s%4s", g.NorminalPower);
-////		sscanf(p, "%*16s%12s", g->Loop);
-//		g.Loop = p[13];
-//		
-//		sscanf(p, "%*10s%4s", g.LightPole);		
-//		len = atoi((const char *)g.LightPole);
-//		
-//		if(len >= 9000){
-//			
-//		}
-////		sscanf(p, "%*16s%12s", g->LightSourceType);
-//		g.LightSourceType = p[14];
-////		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
-//		g.LoadPhaseLine = p[15];
-//		sscanf(p, "%*16s%2s", g.Attribute);
-//		
-//		sprintf((char *)g.TimeOfSYNC, "%2d%2d%2d%2d%2d%2d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
-//    for(i = 0; i < 12; i++){
-//			if(g.TimeOfSYNC[i] == 0x20){
-//				g.TimeOfSYNC[i] = '0';
-//			}
-//		}
-//		g.CommState = 0x04;
-//		g.InputPower = 0;
-//		
-//	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
-//		
-//		sscanf(p, "%*5s%4s",msg);
-
-//#if defined(__HEXADDRESS__)
-//		len = strtol((const char *)msg, NULL, 16);
-//#else				
-//		len = atoi((const char *)msg);
-//#endif		
-//		
-//		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
 		
 	} else if (p[0] == '2'){   /*…æ≥˝“ª’µµ∆*/
 		len = (strlen(p) - 18) / 17;
@@ -1341,24 +1288,8 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //F
 }
 
 extern bool GsmTaskSendAtCommand(const char *atcmd);
-extern unsigned char RSSIValue(unsigned char p);
 
-static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSM–≈∫≈≤È—Ø
-	unsigned char *buf, size;
-	unsigned char tmp[5];
-	int i;
-	
-	GsmTaskSendAtCommand("AT+CSQ");
-	vTaskDelay(configTICK_RATE_HZ / 4);
-	sprintf((char *)tmp, "%2d%2d", RSSIValue(1), RSSIValue(0));	
-	for(i = 0; i < 4; i++){
-		if(tmp[i] == 0x20){
-			tmp[i] = '0';
-		}
-	}
-	buf = ProtocolRespond(head->addr, head->contr, (const char *)tmp, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-	ProtocolDestroyMessage((const char *)buf);	
+static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSM–≈∫≈≤È—Ø	
 }
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
