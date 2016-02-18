@@ -1131,7 +1131,7 @@ typedef struct{
 	char LuxArea;             /*当前所在的光强域*/
 	int LastLux;              /*上次改变光强域时收到12次光照度值的平均值*/
 	int NowLux;               /*当前1分钟内光照度的平均值*/
-	int ArrayOfLuxValue[12];  /*记载最近12次光照度的数组*/	
+	int ArrayOfLuxValue[8];   /*记载最近12次光照度的数组*/	
 }StoreParam;                                     
 
 static char LastTimArea = 2;  /*前一分钟时间区域*/
@@ -1270,12 +1270,12 @@ void BegAverage(int *p){
 	char i;
 	int sum = 0;
 	
-	bubble(p, 12);
-	for(i = 2; i < 10; i++){
+	bubble(p, 8);
+	for(i = 1; i < 7; i++){
 		sum += p[i];
 	}
 	
-	__Luxparam.NowLux = sum / 8;
+	__Luxparam.NowLux = sum / 6;
 }
 
 static void HandleLuxGather(ProtocolHead *head, const char *p) {
@@ -1283,22 +1283,19 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
 	unsigned char *buf, size;
 	int LuxValue, second;
 	DateTime dateTime;
-	char StateChange = 0;           /*光照度是否改变所在区域，1位改变，0为未改*/	
-	
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
 	
   sscanf(p, "%8s", msg);
 	LuxValue = atoi((const char *)msg);
 	
-	second = RtcGetTime();
-  SecondToDateTime(&dateTime, second);
-	
-	DivideTimeArea(dateTime);
-	
 	__Luxparam.ArrayOfLuxValue[__Luxparam.count] = LuxValue;
 	__Luxparam.count++;
-	if(__Luxparam.count > 11){
+	
+	if(__Luxparam.count > 7){
+		second = RtcGetTime();
+		SecondToDateTime(&dateTime, second);
+	
+		DivideTimeArea(dateTime);
+		
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
 		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea)){
@@ -1311,6 +1308,9 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
 		LastTimArea = __Luxparam.TimeArea;
 		LasrLuxArea = __Luxparam.LuxArea;
 	}
+	
+	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*设备复位*/

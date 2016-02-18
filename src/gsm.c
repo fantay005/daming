@@ -172,6 +172,8 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
+		} else {
+			NVIC_SystemReset();
 		}
 		isIPD = 0;
 		bufferIndex = 0;
@@ -185,7 +187,6 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		lenIPD = 0;	
 	}
 }
-
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
@@ -221,8 +222,6 @@ void USART3_IRQHandler(void) {
 						taskYIELD();
 				}
 			}
-
-
 		}
 		bufferIndex = 0;
 	} else if (data != 0x0D) {
@@ -290,7 +289,6 @@ void __handleM35RTC(GsmTaskMessage *msg) {
 	RtcSetTime(DateTimeToSecond(&dateTime));
 }
 
-
 typedef struct {
 	GsmTaskMessageType type;
 	void (*handlerFunc)(GsmTaskMessage *);
@@ -328,6 +326,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
-	__Transqueue = xQueueCreate(50, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
