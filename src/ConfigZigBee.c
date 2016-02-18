@@ -243,11 +243,11 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			vTaskDelay(waitTime);
 			ConfigComSendStr(ConfigMsg.MAC_ADDR);
 			vTaskDelay(delayTime);
-			ConfigComSendStr("2");
-		} else if(strncasecmp(p, "节点名称:", 9) == 0){
-			vTaskDelay(waitTime);
-			ConfigComSendStr(ConfigMsg.NODE_NAME);
-			vTaskDelay(delayTime);
+//			ConfigComSendStr("2");
+//		} else if(strncasecmp(p, "节点名称:", 9) == 0){
+//			vTaskDelay(waitTime);
+//			ConfigComSendStr(ConfigMsg.NODE_NAME);
+//			vTaskDelay(delayTime);
 			ConfigComSendStr("4");
 		} else if(strncasecmp(p, "节点类型:", 9) == 0){
 			vTaskDelay(waitTime);
@@ -293,21 +293,21 @@ static void __TaskHandleRecieve(ConfigTaskMsg *msg){
 			vTaskDelay(waitTime);
 			ConfigComSendStr(ConfigMsg.BAUDRATE);
 			vTaskDelay(delayTime);
-			ConfigComSendStr("A");
-		} else if(strncasecmp(p, "校 验:", 6) == 0){
-			vTaskDelay(waitTime);
-			ConfigComSendStr(ConfigMsg.DATA_PARITY);
-			vTaskDelay(delayTime);
-			ConfigComSendStr("B");
-		} else if(strncasecmp(p, "数据位:", 7) == 0){
-			vTaskDelay(waitTime);
-			ConfigComSendStr(ConfigMsg.DATA_BIT);
-			vTaskDelay(delayTime);
-			ConfigComSendStr("F");
-		} else if(strncasecmp(p, "数据源地址:", 11) == 0){
-			vTaskDelay(waitTime);
-			ConfigComSendStr(ConfigMsg.SRC_ADR);
-			vTaskDelay(delayTime);
+//			ConfigComSendStr("A");
+//		} else if(strncasecmp(p, "校 验:", 6) == 0){
+//			vTaskDelay(waitTime);
+//			ConfigComSendStr(ConfigMsg.DATA_PARITY);
+//			vTaskDelay(delayTime);
+//			ConfigComSendStr("B");
+//		} else if(strncasecmp(p, "数据位:", 7) == 0){
+//			vTaskDelay(waitTime);
+//			ConfigComSendStr(ConfigMsg.DATA_BIT);
+//			vTaskDelay(delayTime);
+//			ConfigComSendStr("F");
+//		} else if(strncasecmp(p, "数据源地址:", 11) == 0){
+//			vTaskDelay(waitTime);
+//			ConfigComSendStr(ConfigMsg.SRC_ADR);
+//			vTaskDelay(delayTime);
 			ConfigComSendStr("E");
 		} else if((strncasecmp(p, "SHUNCOM Z-BEE CONFIG:", 21) == 0)|| (strncasecmp(p, "Z-BEE CONFIG:", 13) == 0)){
 			Open_DisPlay = 1;
