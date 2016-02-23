@@ -19,8 +19,6 @@
 
 #define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 10)
 
-static xSemaphoreHandle __Zigbeesemaphore;
-
 extern void *DataFalgQueryAndChange(char Obj, char Alter, char Query);
 
 #define COMx      USART1
@@ -172,7 +170,6 @@ extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  
 SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	int i, j;
 	unsigned short addr;
-	unsigned short *mem;
 	char hextable[] = "0123456789ABCDEF";
 	ZigbTaskMsg message;
 	unsigned char *buf, tmp[5], *ret, size;
@@ -375,7 +372,6 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			compare = atoi((const char *)SyncFlag);
 							
 	} else {                       /*网关轮询镇流器数据*/
-		StrategyParam s;
 		DateTime dateTime;
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
@@ -642,9 +638,6 @@ void SHUNCOMInit(void) {
 	SZ05_ADV_Init();
 	Zibee_Baud_CFG(9600);
 	ProtocolInit();
-	if (__Zigbeesemaphore == NULL) {
-		vSemaphoreCreateBinary(__Zigbeesemaphore);
-	}
-	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg));
+	__ZigbeeQueue = xQueueCreate(5, sizeof(ZigbTaskMsg));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

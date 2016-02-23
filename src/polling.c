@@ -11,7 +11,7 @@
 #include "second_datetime.h"
 #include "rtc.h"
 
-#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 10)
+#define POLL_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
 
 #define AUTO_UPDATA_ELEC_PARAM_TIME     (configTICK_RATE_HZ * 30)
 
@@ -65,14 +65,13 @@ static short Max_Loop = 0;
 
 static void POLLTask(void *parameter) {
 	static char MarkRead, count = 0, OverTurn;
-	int len = 0, i = 1, NumOfAddr= 0;
+	int len = 0, NumOfAddr= 0;
 //	unsigned int sum;
 	Lightparam k;
 	FrameHeader h;
 	GMSParameter a;
 	unsigned char *buf, ID[16], size, *msg, *alter, *bum;
 	char *p;
-	portTickType HeartT = 0, UpdataTime = 0;
 	unsigned short *ret, tmp[3];
 	DateTime dateTime;
 	uint32_t second, ResetTime;

@@ -12,7 +12,7 @@
 #include "protocol.h"
 #include "gsm.h"
 
-#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024)
+#define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
 
 #define DetectionTime  1
 
@@ -174,7 +174,7 @@ static void __TimeTask(void *nouse) {
   double wd_seconds = 52;
 	static unsigned char FLAG = 0, Anti = 0;
 	portTickType curT, lastT = 0;
-	int NowTime, DayTime, DarkTime;
+//	int NowTime, DayTime, DarkTime;
 		 
 	while (1) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {

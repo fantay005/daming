@@ -21,7 +21,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 6)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 10)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
@@ -172,8 +172,8 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
-		} else {
-			NVIC_SystemReset();
+//		} else {
+//			NVIC_SystemReset();
 		}
 		isIPD = 0;
 		bufferIndex = 0;
@@ -310,7 +310,7 @@ static void __gsmTask(void *parameter) {
 	for (;;) {
 //		printf("Gsm: loop again\n");					
 		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__Transqueue, &message, portMAX_DELAY);
+		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -327,5 +327,5 @@ void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
 	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

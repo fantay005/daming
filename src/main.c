@@ -6,6 +6,7 @@
 #include "misc.h"
 #include "version.h"
 #include "gsm.h"
+#include "stm32f10x_usart.h"
 
 static void PreSetupHardware(void) {
 	extern unsigned int *__Vectors;
@@ -50,7 +51,7 @@ static void PreSetupHardware(void) {
 	/* Enable peripheral clocks --------------------------------------------------*/
 
 	/* Enable DMA1 clock */
-	//RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
+	RCC_AHBPeriphClockCmd(RCC_AHBPeriph_DMA1, ENABLE);
 
 	/* Enable USART2 clock */
 	/* Enable UART4 clock */
@@ -88,10 +89,10 @@ int main(void) {
 #else
 	WatchdogInit();
 #endif	
-	GSMInit();
-	SHUNCOMInit();
+	GSMInit();	
+	SHUNCOMInit();	
+	TimePlanInit();	
 	ElectricInit();
-	TimePlanInit();
 	POLLSTART();
 
 	printf("\n==============================\n");

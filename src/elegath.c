@@ -18,8 +18,7 @@
 #include "second_datetime.h"
 
 
-#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024 * 2)
-
+#define ELECTRIC_TASK_STACK_SIZE		(configMINIMAL_STACK_SIZE + 1024 * 5)
 static xQueueHandle __ElectQueue;
 
 #define BAUD   9600
@@ -61,7 +60,7 @@ static inline void __ElectrolHardwareInit(void) {
 
 	NVIC_InitStructure.NVIC_IRQChannel = COMy_IRQ;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -91,7 +90,7 @@ static char buffer[255];
 static char bufferIndex = 0;
 static char isPRO = 0;
 static unsigned char LenPRO = 0;
-static char ELEC_IRQ = 0;
+//static char ELEC_IRQ = 0;
 
 void USART2_IRQHandler(void) {
 	unsigned char data;
@@ -490,6 +489,7 @@ static void EleGathTask(void *parameter) {
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg));
-	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
+	__ElectQueue = xQueueCreate(4, sizeof(ElecTaskMsg));	
+	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	
 }
