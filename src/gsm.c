@@ -537,7 +537,7 @@ void __handleProtocol(GsmTaskMessage *msg) {
 	sscanf((const char *)dat, "%*11s%2s", h->contr);
 	sscanf((const char *)dat, "%*13s%2s", h->lenth);
 
-	GPRSProtocolHandler(h, (char *)dat);
+	ProtocolHandler(h, (char *)dat);
 
 	__gsmPortFree(h);
 }
@@ -743,5 +743,5 @@ void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
 	__queue = xQueueCreate(6, sizeof( GsmTaskMessage));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

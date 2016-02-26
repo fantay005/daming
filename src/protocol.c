@@ -44,6 +44,7 @@ typedef enum{
 	SETSERVERIP = 0x14,     /*ÉèÖÃÍø¹ØÄ¿±ê·þÎñÆ÷IP*/
 	GATEUPGRADE = 0x15,     /*Íø¹ØÔ¶³ÌÉý¼¶*/
 	RSSIVALUE = 0x17,       /*GSMÐÅºÅÇ¿¶È²éÑ¯*/
+	CALLBALANCE = 0x18,     /*????????*/
 	GATHERUPGRADE = 0x1E,   /*µçÁ¿²É¼¯Ä£¿éÔ¶³ÌÉý¼¶*/
 	BALLASTUPGRADE= 0x2A,   /*ÕòÁ÷Æ÷Ô¶³ÌÉý¼¶*/
 	RESTART = 0x3F,         /*Éè±¸¸´Î»*/
@@ -1281,16 +1282,13 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //F
 		return;
 	}
 
-	if (FirmwareUpdateSetMark(mark, host, port, remoteFile)) {
+	if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)) {
 		NVIC_SystemReset();
 	}
 	vPortFree(mark);
 }
 
 extern bool GsmTaskSendAtCommand(const char *atcmd);
-
-static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSMÐÅºÅ²éÑ¯	
-}
 
 static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
@@ -1339,8 +1337,7 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 	
 	if(Ballast_Count == Total){
 		DataFalgQueryAndChange(2, 9, 0);
-	}
-	
+	}	
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸´Î»*/
@@ -1355,6 +1352,30 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
 		ElecTaskSendData((const char *)buf, size);
 		ProtocolDestroyMessage((const char *)buf);	
+	}
+}
+
+extern bool GsmTaskSendAtCommand(const char *atcmd);
+extern void SwitchCommand(void);
+
+static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSM????
+	SwitchCommand();	
+	GsmTaskSendAtCommand("AT+CSQ\r");
+}
+
+extern void __cmd_QUERYFARE_Handler(void);
+extern void __cmd_QUERYFLOW_Handler(void);
+
+static void HandleCallBalance(ProtocolHead *head, const char *p) {        /*???????*/
+	char tmp[8];
+	
+	sscanf(p, "%2s", tmp);
+	if(strncmp(tmp, "00", 2) == 0){          /*???????*/
+		SwitchCommand();
+		__cmd_QUERYFARE_Handler();
+	} else if(strncmp(tmp, "01", 2) == 0){   /*?????????*/
+		SwitchCommand();
+		__cmd_QUERYFLOW_Handler();
 	}
 }
 

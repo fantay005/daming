@@ -499,5 +499,5 @@ static void EleGathTask(void *parameter) {
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
 	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg));
-	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5, NULL);
 }

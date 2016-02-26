@@ -719,5 +719,5 @@ void SHUNCOMInit(void) {
 		vSemaphoreCreateBinary(__Zigbeesemaphore);
 	}
 	__ZigbeeQueue = xQueueCreate(100, sizeof(ZigbTaskMsg *));
-	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
+	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }

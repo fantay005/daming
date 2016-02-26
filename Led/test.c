@@ -453,7 +453,7 @@ static void __TimeTask(void *nouse) {
 }
 
 void TimePlanInit(void) {
-	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
+	xTaskCreate(__TimeTask, (signed portCHAR *) "TEST", SHT_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }
 
 
