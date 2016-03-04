@@ -62,6 +62,11 @@ static inline void __uartDebugHardwareInit(void) {
 	NVIC_Init(&NVIC_InitStructure);
 }
 
+static uint8_t *__uartDebugCreateMessage(const uint8_t *dat, int len) {
+	uint8_t *r = pvPortMalloc(len);
+	memcpy(r, dat, len);
+	return r;
+}
 
 static void __uartDebugTask(void *nouse) {
 	portBASE_TYPE rc;
@@ -79,12 +84,6 @@ static void __uartDebugTask(void *nouse) {
 	}
 }
 
-static uint8_t *__uartDebugCreateMessage(const uint8_t *dat, int len) {
-	uint8_t *r = pvPortMalloc(len);
-	memcpy(r, dat, len);
-	return r;
-}
-
 static inline void __uartDebugCreateTask(void) {
 	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY, NULL);
 }
@@ -95,7 +94,7 @@ void UartDebugInit() {
 }
 
 void UART5_IRQHandler(void) {
-	static uint8_t buffer[255];
+	static uint8_t *buffer;
 	static int index = 0;
 
 	uint8_t dat;
@@ -121,7 +120,6 @@ void UART5_IRQHandler(void) {
 		}
 	}
 }
-
 
 int fputc(int c, FILE *f) {
 	while (USART_GetFlagStatus(COM_PRINT, USART_FLAG_TXE) == RESET);
