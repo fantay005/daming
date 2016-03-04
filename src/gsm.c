@@ -23,15 +23,21 @@
 
 #define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 10)
 
-#define RELAY_EXTI          EXTI15_10_IRQn
-/// GSM task message queue.
+#define RELAY_EXTI      USART3_IRQn
+ 
+#define TransCom        USART3      
+
+#define RX_Pin_Trans    GPIO_Pin_11 
+#define TX_Pin_Trans    GPIO_Pin_10
+#define GPIO_Trans      GPIOB
+
 static xQueueHandle __Transqueue;
 
 static GMSParameter __gsmRuntimeParameter;
 
 void ATCmdSendChar(char c) {
-	USART_SendData(USART3, c);
-	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
+	USART_SendData(TransCom, c);
+	while (USART_GetFlagStatus(TransCom, USART_FLAG_TXE) == RESET);
 }
 
 typedef enum {
@@ -93,10 +99,10 @@ static void __gsmInitUsart(int baud) {
 	USART_InitStructure.USART_Parity = USART_Parity_No;
 	USART_InitStructure.USART_HardwareFlowControl = USART_HardwareFlowControl_None;
 	USART_InitStructure.USART_Mode = USART_Mode_Rx | USART_Mode_Tx;
-	USART_Init(USART3, &USART_InitStructure);
+	USART_Init(TransCom, &USART_InitStructure);
 	
-	USART_ITConfig(USART3, USART_IT_RXNE, ENABLE);
-	USART_Cmd(USART3, ENABLE);
+	USART_ITConfig(TransCom, USART_IT_RXNE, ENABLE);
+	USART_Cmd(TransCom, ENABLE);
 }
 
 /// Init the CPU on chip hardware for the GSM modem.
@@ -104,20 +110,20 @@ static void __gsmInitHardware(void) {
 	GPIO_InitTypeDef GPIO_InitStructure;
 	NVIC_InitTypeDef NVIC_InitStructure;
 
-	GPIO_InitStructure.GPIO_Pin =  GPIO_Pin_10;
+	GPIO_InitStructure.GPIO_Pin =  TX_Pin_Trans;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_AF_PP;
 	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);
+	GPIO_Init(GPIO_Trans, &GPIO_InitStructure);
 
-	GPIO_InitStructure.GPIO_Pin = GPIO_Pin_11;
+	GPIO_InitStructure.GPIO_Pin = RX_Pin_Trans;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIOB, &GPIO_InitStructure);				   //GSM模块的串口
+	GPIO_Init(GPIO_Trans, &GPIO_InitStructure);				   //GSM模块的串口
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
-	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
+	NVIC_InitStructure.NVIC_IRQChannel = RELAY_EXTI;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 2;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -172,8 +178,8 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
-//		} else {
-//			NVIC_SystemReset();
+		} else {
+			NVIC_SystemReset();
 		}
 		isIPD = 0;
 		bufferIndex = 0;
@@ -190,15 +196,15 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 
 void USART3_IRQHandler(void) {
 	unsigned char data;
-	if (USART_GetITStatus(USART3, USART_IT_RXNE) == RESET) {
+	if (USART_GetITStatus(TransCom, USART_IT_RXNE) == RESET) {
 		return;
 	}
 
-	data = USART_ReceiveData(USART3);
+	data = USART_ReceiveData(TransCom);
 #if defined (__MODEL_DEBUG__)	
 	USART_SendData(UART5, data);
 #endif	
-	USART_ClearITPendingBit(USART3, USART_IT_RXNE);
+	USART_ClearITPendingBit(TransCom, USART_IT_RXNE);
 	if (isIPD) {
 		__gmsReceiveIPDData(data);		
 		return;
@@ -326,6 +332,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(19200);
-	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(10, sizeof(GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

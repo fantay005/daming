@@ -26,9 +26,5 @@ void vApplicationStackOverflowHook( xTaskHandle xTask, signed char *pcTaskName )
 /// Application idle hook for FreeRTOS.
 void vApplicationIdleHook(void){
 	//RecoveryToFactory();
-#if defined (__MODEL_DEBUG__)
-	
-#else	
-  	WatchdogFeed();
-#endif	
+  	WatchdogFeed();	
 }

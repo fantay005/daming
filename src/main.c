@@ -84,11 +84,7 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-#if defined (__MODEL_DEBUG__)
-	
-#else
 	WatchdogInit();
-#endif	
 	GSMInit();	
 	SHUNCOMInit();	
 	TimePlanInit();	
