@@ -407,7 +407,7 @@ bool __initGsmRuntime() {
 		return false;
 	}
 	
-	vTaskDelay(configTICK_RATE_HZ * 2);
+	//vTaskDelay(configTICK_RATE_HZ * 2);
 
 	if (!ATCommandAndCheckReply("AT+IPR=57600\r", "OK", configTICK_RATE_HZ / 2)) {		   //设置通讯波特率
 		printf("AT+IPR error\r");

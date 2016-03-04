@@ -24,6 +24,7 @@ static void __setGatewayParam(const char *p) {
 	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%d", &(g.serverPORT));
 
 	NorFlashWrite(NORFLASH_MANAGEM_ADDR, (const short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	
 }
 
 static void __QueryParamInfor(const char *p){

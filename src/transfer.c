@@ -15,7 +15,7 @@
 #include "transfer.h"
 #include "libupdater.h"
 
-#define BAUD                19200
+#define BAUD                9600
 
 #define  ComX               USART1
 
