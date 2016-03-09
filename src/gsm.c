@@ -710,10 +710,20 @@ bool __GPRSmodleReset(void){
 	return false;
 }
 
+static void CheckGPRSConnect(void){
+	SwitchCommand();
+	vTaskDelay(configTICK_RATE_HZ / 2);
+	if (!ATCommandAndCheckReply("AT+CIPSTATUS\r", "STATE: CONNECT OK", configTICK_RATE_HZ * 15)){
+		RelinkTCP();
+		return;
+	}		
+	SwitchData();	
+}
+
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
-	portTickType lastT = 0, heartT = 0;
+	portTickType lastT = 0, heartT = 0, queryT = 0;
 	portTickType curT;	
 	
 	while (1) {
@@ -739,23 +749,13 @@ static void __gsmTask(void *parameter) {
 		} else if((TCPLost) && ((curT - lastT) > configTICK_RATE_HZ / 5)){
 			RelinkTCP();
 			lastT = curT;
-		} else if((curT - heartT) > configTICK_RATE_HZ * 60){
+		} else if((curT - heartT) > configTICK_RATE_HZ * 30){
 			RemainTCPConnect();
 			heartT = curT;
+		} else if((curT - queryT) > configTICK_RATE_HZ * 60 * 53){
+			CheckGPRSConnect();
+			queryT = curT;
 		}
-//		else if((curT - lastT) > configTICK_RATE_HZ * 3){
-//			
-//			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);
-//			
-//			if(__gsmRuntimeParameter.GWAddr[0] == 0xFF){
-//				continue;
-//			}
-//			
-//			if (0 == __gsmCheckTcpAndConnect(__gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT)) {
-//				printf("Gsm: Connect TCP error\n");
-//			} 
-//			lastT = curT;
-//		}
 	}
 }
 
