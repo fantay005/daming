@@ -206,7 +206,7 @@ void NoRenntry(unsigned char address[10], unsigned char  type[2], const char *ms
 	*size = 15 + len + 3;
 	if(type[1] > '9'){
 		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
-	} else{
+	} else {
 		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
 	}
 	i = i | 0x80;
@@ -238,13 +238,13 @@ void NoRenntry(unsigned char address[10], unsigned char  type[2], const char *ms
 
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
-	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+//	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		
 		NoRenntry(address, type, msg, size);
-		xSemaphoreGive(__TransSemaphore);
+//		xSemaphoreGive(__TransSemaphore);
 		
 		return RespondBuf;
-	}
+//	}
 }
 
 static unsigned char ElecRespondBuf[240];
@@ -1064,7 +1064,7 @@ void ActionControl(short addr, short pole, char act, char num){                 
 	}	
 }
 
-void NoneStrategy(char loop, char tim, char param, short addr){      /*没有设置策略的部分*/
+void NoneStrategy(char loop, char tim, short addr, char param){      /*没有设置策略的部分*/
 	if((loop- '0') > 1){                  /*非引导段*/
 		if((tim == 1) || (tim == 2)){       /*白天*/
 			if(param == 0){                   /*主道*/ 
@@ -1309,8 +1309,8 @@ static void HandleLuxGather(ProtocolHead *head, const char *p) {
 		LasrLuxArea = __Luxparam.LuxArea;
 	}
 	
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
+//	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+//  GsmTaskSendTcpData((const char *)buf, size);
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*设备复位*/

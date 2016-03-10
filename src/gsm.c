@@ -21,7 +21,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 5)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
@@ -181,11 +181,11 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		return;
 	} 
 	
-	if((data > 'F') || (data < '0') || (bufferIndex > (lenIPD + 18))) {
-		isIPD = 0;
-		bufferIndex = 0;
-		lenIPD = 0;	
-	}
+//	if((data > 'F') || (data < '0') || (bufferIndex > (lenIPD + 18))) {
+//		isIPD = 0;
+//		bufferIndex = 0;
+//		lenIPD = 0;	
+//	}
 }
 
 void USART3_IRQHandler(void) {
@@ -306,13 +306,13 @@ extern void WatchdogFeed(void);
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
-	portTickType lastT = 0;
-	portTickType curT;	
+//	portTickType lastT = 0;
+//	portTickType curT;	
 
 	for (;;) {
 //		printf("Gsm: loop again\n");	
 		WatchdogFeed();
-		curT = xTaskGetTickCount();
+//		curT = xTaskGetTickCount();
 		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;

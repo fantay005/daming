@@ -261,7 +261,7 @@ static void __TimeTask(void *nouse) {
 			
 			FLAG = 0;
 			vTaskDelay(configTICK_RATE_HZ);		
-		} else if((dateTime.hour == 0x0C)&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
+		} else if(((dateTime.hour == 0x0C) || (dateTime.hour == 0x07) || (dateTime.hour== 0x12))&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			vTaskDelay(configTICK_RATE_HZ);
 			NVIC_SystemReset();			
 		}		
