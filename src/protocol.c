@@ -138,8 +138,6 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 	return ret;
 }
 
-extern bool __GPRSmodleReset(void);
-
 static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /**/
 	unsigned char *buf, msg[5], size;	
 	GMSParameter g;
@@ -152,10 +150,20 @@ static void HandleGWAddrQuery(ProtocolHead *head, const char *p) {   /**/
 	ProtocolDestroyMessage((const char *)buf);	
 }
 
+static bool ResetSoftware = false;   /*软件重启*/
+
+bool IsSoftwareReset(char p){
+	if(p == 1)
+		return ResetSoftware;
+	if(p == 2)
+		ResetSoftware = false;
+}
+
 static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关目标服务器IP*/
 	unsigned char *buf, size, tmp[6];
 	GMSParameter g;
 	
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
 	sscanf(p, "%[^,]", g.serverIP);
 	sscanf(p, "%*[^,]%*c%[^;]", tmp);
 	
@@ -166,8 +174,11 @@ static void HandleSetGWServ(ProtocolHead *head, const char *p) {      /*设置网关
   GsmTaskSendTcpData((const char *)buf, size);
 	ProtocolDestroyMessage((const char *)buf);	
 	
-	while(!__GPRSmodleReset());	
+	ResetSoftware = true;             /*需要软件重启*/
 }
+
+extern bool GsmTaskSendAtCommand(const char *atcmd);
+extern void SwitchCommand(void);
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p){             
 	const char *remoteFile = "STM32.PAK";
@@ -178,31 +189,30 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p){
 	
 	sscanf((const char *)head->lenth, "%2s", tmp);
   len = strtol((const char *)tmp, NULL, 16);
-	sprintf(tmp, "%%%ds", (len - 8));
-	sscanf((p + 8), tmp, host);
+	sprintf(tmp, "%%%ds", (len - 6));
+	sscanf((p + 6), tmp, host);
 	mark = pvPortMalloc(sizeof(*mark));
 	if (mark == NULL) {
 		return;
 	}
 	
-	sscanf(p, "%2s", tmp);
+	sscanf(p, "%1s", tmp);
 
-	if(strncmp(tmp, "00", 2) == 0){
+	SwitchCommand();
+	
+	if(strncasecmp(tmp, "A", 1) == 0){
 		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)){    //光照传感器DTU，FTP远程升级
 			NVIC_SystemReset();
 		}
 	}
 	
-	if(strncmp(tmp, "01", 2) == 0){
+	if(strncasecmp(tmp, "B", 1) == 0){
 		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)){     //隧道内网关，FTP远程升级
 			NVIC_SystemReset();
 		}
 	}
 	vPortFree(mark);
 }
-
-extern bool GsmTaskSendAtCommand(const char *atcmd);
-extern void SwitchCommand(void);
 
 static void HandleRSSIQuery(ProtocolHead *head, const char *p) {           //GSM信号查询
 	SwitchCommand();	

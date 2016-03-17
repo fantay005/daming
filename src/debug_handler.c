@@ -16,6 +16,8 @@ void __sendAtCommandToGSM(const char *p) {
 	}
 }
 
+extern bool ChangeIPAndPort(void);
+
 static void __setGatewayParam(const char *p) {
 	GMSParameter g;
 
@@ -25,6 +27,7 @@ static void __setGatewayParam(const char *p) {
 
 	NorFlashWrite(NORFLASH_MANAGEM_ADDR, (const short *)&g, (sizeof(GMSParameter) + 1) / 2);
 	
+	while(!ChangeIPAndPort());	
 }
 
 static void __QueryParamInfor(const char *p){

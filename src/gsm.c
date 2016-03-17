@@ -351,9 +351,9 @@ void __gsmModemStart(){
 //	vTaskDelay(configTICK_RATE_HZ / 2);
 
 	GPIO_ResetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 2);
+	vTaskDelay(configTICK_RATE_HZ * 4);
 	GPIO_SetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 4);		
+	vTaskDelay(configTICK_RATE_HZ * 3);		
 }
 
 static void RemainTCPConnect(void){
@@ -383,7 +383,7 @@ bool __gsmSendTcpDataLowLevel(const char *p, int len) {
 	GPRSDataTransparent((char *)p, len);
 }
 
-bool __initGsmRuntime() {
+bool __initGsmRuntime(void) {
 	int i;
 	static const int bauds[] = {57600, 19200};
 	char buf[48];
@@ -457,21 +457,16 @@ bool __initGsmRuntime() {
 		printf("AT+CIPCCFG error\r");
 		return false;
 	}	
-
-	vTaskDelay(configTICK_RATE_HZ * 5);
 	
 	if (!ATCommandAndCheckReply("AT+CGATT=0\r", "OK", configTICK_RATE_HZ * 2)) {
 			printf("AT+CGATT=0 error\r");
 			return false;
   }
 	
+	vTaskDelay(configTICK_RATE_HZ * 5);
+	
 	if (!ATCommandAndCheckReply("AT+CGATT=1\r", "OK", configTICK_RATE_HZ * 15)) {
 		printf("AT+CGATT=1 error\r");
-		return false;
-	}	
-	
-	if (!ATCommandAndCheckReply("AT+CSQ\r", "OK", configTICK_RATE_HZ * 15)) {
-		printf("AT+CSQ error\r");
 		return false;
 	}	
 	
@@ -488,15 +483,36 @@ bool __initGsmRuntime() {
 }
 
 void SwitchCommand(void){
-	vTaskDelay(configTICK_RATE_HZ);
+	vTaskDelay(configTICK_RATE_HZ * 3 / 2);
 	ATCmdSendStr("+++");
-	vTaskDelay(configTICK_RATE_HZ / 2);
+	vTaskDelay(configTICK_RATE_HZ);
 }
 
 void SwitchData(void){
 	if (!ATCommandAndCheckReply("ATO\r", "CONNECT", configTICK_RATE_HZ )) {
 		printf("ATO error\r");
 	}	
+}
+
+bool ChangeIPAndPort(void){
+	char buf[48];
+	
+	SwitchCommand();
+	vTaskDelay(configTICK_RATE_HZ * 2);
+	while (!ATCommandAndCheckReply("AT+CIPCLOSE\r", "CLOSE OK", configTICK_RATE_HZ * 5)) {
+		printf("AT+CIPCLOSE error\r");
+	}	
+			
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&__gsmRuntimeParameter, (sizeof(GMSParameter)  + 1)/ 2);	
+	
+	sprintf(buf, "AT+CIPSTART=\"TCP\",\"%s\",%d\r", __gsmRuntimeParameter.serverIP, __gsmRuntimeParameter.serverPORT);
+	
+	if (!ATCommandAndCheckReply(buf, "CONNECT", configTICK_RATE_HZ * 5)) {
+		printf("AT+CIPSTART error\r");
+		return false;
+	}
+	
+	return true;
 }
 
 const char *GetBack(void){
@@ -720,10 +736,14 @@ static void CheckGPRSConnect(void){
 	SwitchData();	
 }
 
+extern bool IsSoftwareReset(char p);
+
+//static char war3 = 0;
+
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
-	portTickType lastT = 0, heartT = 0, queryT = 0;
+	portTickType lastT = 0, heartT = 0, queryT = 0, resetT = 0xFFFFFFFF;
 	portTickType curT;	
 	
 	while (1) {
@@ -756,12 +776,30 @@ static void __gsmTask(void *parameter) {
 			CheckGPRSConnect();
 			queryT = curT;
 		}
+		
+		if(IsSoftwareReset(1)){
+			printf("Change IP and Port\n");
+			
+			IsSoftwareReset(2);
+			resetT = curT + configTICK_RATE_HZ * 2;
+		}
+		
+//		if(war3 == 0){
+//			resetT = curT + configTICK_RATE_HZ * 5;
+//			war3 = 1;
+//		}
+		
+		if(curT > resetT){
+			while(!ChangeIPAndPort());
+			resetT = 0xFFFFFFFF;
+//			war3 = 0;
+		}
 	}
 }
 
 void GSMInit(void) {
 	ATCommandRuntimeInit();
 	__gsmInitHardware();
-	__queue = xQueueCreate(6, sizeof( GsmTaskMessage));
+	__queue = xQueueCreate(10, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
