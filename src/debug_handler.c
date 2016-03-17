@@ -41,8 +41,8 @@ static void __writeStrategyToFlash(const char *p){
 	StrategyParam g;
 	
 	g.DimmingNOS = 0x31;
-	sscanf("0FFF", "%4s", g.FifthDCTime);
-	sscanf("64", "%2s", g.FifthDPVal);
+	sscanf("0FFF", "%4s", g.FirstDCTime);
+	sscanf("64", "%2s", g.FirstDPVal);
 	sscanf("160315000000", "%12s", g.SYNCTINE);
 	
 	NorFlashWrite(NORFLASH_STRATEGY_ADDR, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);

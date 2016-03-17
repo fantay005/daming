@@ -77,7 +77,7 @@ static void __uartDebugTask(void *nouse) {
 	while (1) {
 		rc = xQueueReceive(__uartDebugQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {
-			extern void DebugHandler(char * msg);
+			extern void DebugHandler(char *msg);
 			DebugHandler(msg);
 			vPortFree(msg);
 		}
@@ -94,7 +94,7 @@ void UartDebugInit() {
 }
 
 void UART5_IRQHandler(void) {
-	static uint8_t *buffer;
+	static uint8_t buffer[64];
 	static int index = 0;
 
 	uint8_t dat;
