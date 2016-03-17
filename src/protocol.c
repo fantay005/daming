@@ -868,7 +868,7 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关软件版本号*/
 	unsigned char *buf, size;
 	
-	buf = ProtocolRespond(head->addr, head->contr, Version(), &size);
+	buf = ProtocolRespond(head->addr, head->contr, __TARGET_STRING__, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 }
 
