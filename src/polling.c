@@ -55,27 +55,20 @@ static void ShortToStr(unsigned short *s, char *r){
 	sprintf(r, "%04d", *s);							
 }
 
-static short MAX = 0;
-
 static short Max_Loop = 0;
 
-//static unsigned int TotalOfPower = 0;
-
-//static char ELEC_FLAG = 0;
-
 static void POLLTask(void *parameter) {
-	static char MarkRead, count = 0, OverTurn;
+	static char MarkRead, OverTurn;
 	int len = 0, NumOfAddr= 0;
-//	unsigned int sum;
 	Lightparam k;
 	FrameHeader h;
 	GMSParameter a;
+	StrategyParam s;
 	unsigned char *buf, ID[16], size, *msg, *alter, *bum;
 	char *p;
 	unsigned short *ret, tmp[3];
 	DateTime dateTime;
 	uint32_t second, ResetTime;
-//unsigned char *addr = (unsigned char *)"FFFF";
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
@@ -100,7 +93,6 @@ static void POLLTask(void *parameter) {
 						vPortFree(alter);
 						
 						ret++;
-					//	vTaskDelay(configTICK_RATE_HZ / 5);	
 					}	
 					break;
 					
@@ -144,26 +136,18 @@ static void POLLTask(void *parameter) {
 					ID[0] = *bum;
 					ID[1] = 0;
 				
-					//vTaskDelay(configTICK_RATE_HZ * 5);
-				
 					if(ID[0] != '0'){
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size);	
 						vPortFree(buf);	
 					} else {
-						if(Max_Loop == 0){
-							break;
-						}
-
 						sprintf((char *)ID, "%02d", 0);
 						
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 
 						vPortFree(buf);
 						
-					}
-					//vTaskDelay(configTICK_RATE_HZ * 5);
-					
+					}				
 					break;
 				
 				case 5:
@@ -190,7 +174,56 @@ static void POLLTask(void *parameter) {
 					ZigbTaskSendData((const char *)buf, size);	
 					vPortFree(buf);
 					vPortFree(msg);				
-					break;	
+					break;
+					
+				case 6:
+					Numb = CallTransfer();
+					NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
+					msg = pvPortMalloc(47 + 1);
+					
+					sscanf((const char *)s.SYNCTINE, "%12s", msg);
+					sscanf((const char *)s.SchemeType, "%2s", msg + 12);
+					msg[14] = s.DimmingNOS;
+				
+					sscanf((const char *)s.FirstDCTime, "%4s", msg + 15);
+					sscanf((const char *)s.FirstDPVal, "%2s", msg + 19);
+					msg[21] = 0;
+				
+					if (strncmp((char *)s.SecondDCTime, (char *)"FFFF", 4) != 0){
+						sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
+						sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
+						msg[27] = 0;
+					}
+					
+					if (strncmp((char *)s.ThirdDCTime, (char *)"FFFF", 4) != 0){
+						sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
+						sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
+						msg[33] = 0;
+					}
+					
+					if (strncmp((char *)s.FourthDCTime, (char *)"FFFF", 4) != 0){
+						sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
+						sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
+						msg[39] = 0;
+					}
+					
+					if (strncmp((char *)s.FifthDCTime, (char *)"FFFF", 4) != 0){
+						sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
+						sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
+						msg[45] = 0;
+					}
+					
+					#if defined(__HEXADDRESS__)
+							sprintf((char *)h.AD, "%04X", Numb);
+					#else				
+							sprintf((char *)h.AD, "%04d", Numb);
+					#endif	
+					
+					buf = DataSendToBSN((unsigned char *)"03", h.AD, (const char *)msg, &size);
+					ZigbTaskSendData((const char *)buf, size);					
+					vPortFree(buf);
+					vPortFree(msg);					
+					break;
 					
 				case 7:	
 
@@ -226,66 +259,13 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(2, 0, 0);
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
-			short MaxAddr;
-//			portTickType curT;	
-//			curT = xTaskGetTickCount();
-//			
-//			if ((curT - UpdataTime) >= AUTO_UPDATA_ELEC_PARAM_TIME) {
-//					buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)"0", &size);
-//					ElecTaskSendData((const char *)buf, size); 
-//					vPortFree(buf);
-//					
-//					UpdataTime = curT;
-//					continue;
-//			  } 
+			NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
 			
-			if(NumOfAddr >= (MAX + 20)){
-				short ret[3] = {0};
-				
-				ret[0] = MAX;
-				ret[1] = MaxAddr;
-				NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
-				if(((MAX != tmp[0]) && (MAX < 1000)) || (MaxAddr != tmp[1])){
-					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)ret, 2);
-				} else if(tmp[0] == 0xFFFF){
-					NorFlashWrite(NORFLASH_LIGHT_NUMBER, (short *)ret, 2);
-				}
-					
+			if(NumOfAddr > tmp[1]){
 				NumOfAddr = 1;
-				MAX = 0;
 			}		
 
 			NorFlashRead((NORFLASH_BALLAST_BASE + NumOfAddr * NORFLASH_SECTOR_SIZE), (short *)&k, (sizeof(Lightparam) + 1) / 2);
-			
-#if defined(__MODEL_DEBUG__)	
-			
-#else				
-//			if((k.InputPower > 0) && (k.InputPower < 1000)){
-//				sum += k.InputPower; 
-//				if(NumOfAddr == 0){
-//					TotalOfPower = sum;
-//					sum = 0;
-//					ELEC_FLAG++;
-//				}	
-//			}
-//			
-//			if((ELEC_FLAG == 2) && (TotalOfPower > PowerStatus())){
-//				vTaskDelay(configTICK_RATE_HZ * 5);
-//				for(i = 0; i < (Max_Loop + 1); i++){						
-//					sprintf((char *)ID, "%d", i);
-//					*(ID + 1) = 0;
-//					bum = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
-//					ElecTaskSendData((const char *)bum, size); 
-//					vPortFree(bum);
-//				}
-
-//				vTaskDelay(configTICK_RATE_HZ * 2);
-//			}
-			
-//			if(ELEC_FLAG == 2){
-//				ELEC_FLAG = 0;
-//			}
-#endif			
 			
 			NumOfAddr++;
 			if(JudgeParam(k.Loop)){
@@ -293,8 +273,6 @@ static void POLLTask(void *parameter) {
 			} else {			
 				GatewayParam1 param;				
 				
-				if(NumOfAddr > MaxAddr)
-					MaxAddr = NumOfAddr - 1;            /*取最大地址数*/
 				if((k.Loop - '0') > Max_Loop){
 					Max_Loop = k.Loop - '0';
 				}
@@ -342,7 +320,6 @@ static void POLLTask(void *parameter) {
 					NorFlashRead(NORFLASH_ELEC_UPDATA_TIME, (short *)tmp, 2);
 					ResetTime = (tmp[0] << 16) | tmp[1];
 					
-				//	vTaskDelay(configTICK_RATE_HZ * 5);
 					sprintf((char *)ID, "%02d", 0);
 					
 					if((second - ResetTime) > 60){
@@ -350,8 +327,6 @@ static void POLLTask(void *parameter) {
 						ElecTaskSendData((const char *)buf, size); 
 						vPortFree(buf);
 					}
-					
-				//	vTaskDelay(configTICK_RATE_HZ * 5);
 					
 					if(MarkRead == 2){
 						tmp[0] = second >> 16;
@@ -369,14 +344,11 @@ static void POLLTask(void *parameter) {
 					OverTurn = 0;
 				}			
 				
-				MAX++;
-				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 				h.CT[0] = '0';
 				h.CT[1] = '6';
 				buf = DataSendToBSN(h.CT, ID, NULL, &size);			
 				ZigbTaskSendData((const char *)buf, size);
-				count++;
 				vPortFree(buf);	
 			}
 		}
@@ -385,6 +357,6 @@ static void POLLTask(void *parameter) {
 
 void POLLSTART(void) {
 	
-	xTaskCreate(POLLTask, (signed portCHAR *) "POLL", POLL_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
+	xTaskCreate(POLLTask, (signed portCHAR *) "POLL", POLL_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 3, NULL);
 }
 

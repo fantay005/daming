@@ -311,7 +311,7 @@ static void __gsmTask(void *parameter) {
 
 	for (;;) {
 //		printf("Gsm: loop again\n");	
-		WatchdogFeed();
+//		WatchdogFeed();
 //		curT = xTaskGetTickCount();
 		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
@@ -329,6 +329,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(9600);
-	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
-	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	__Transqueue = xQueueCreate(30, sizeof( GsmTaskMessage));
+	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

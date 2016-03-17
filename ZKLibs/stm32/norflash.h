@@ -13,9 +13,10 @@
 #define NORFLASH_MANAGEM_BASE  				          ((uint32_t)0x00001000)/*网关参数-网关身份标识、经纬度、ZIGBEE频点、自动上传数据时间间隔*/
 #define NORFLASH_BALLAST_NUM   				          ((uint32_t)0x00002000)/*镇流器数目*/
 #define NORFLASH_CHIP_ERASE                     ((uint32_t)0x00005000)/*D*/ 
+#define NORFLASH_STRATEGY_ADDR                  ((uint32_t)0x00006000)/*隧道网关下镇流器统一策略放置地址*/
 
 #define NORFLASH_END_LIGHT_ADDR                 ((uint32_t)0x00016000)/*所有末端灯ZIGBEE地址存放处*/
-#define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00017000)/*下载的灯参数量，即控制的灯总量*/
+#define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00017000)/*第一个short类型数据位下载的灯参数量，即控制的灯总量，第二个short类型数据为最大的zigbee地址*/
 #define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00018000)/*Zigbee1 镇流器参数基址*/
 #define NORFLASH_BSN_PARAM_BASE                 ((uint32_t)0x00218000)/*Zigbee2 镇流器参数基址*/
 #define NORFLASH_MANAGEM_ADDR                   ((uint32_t)0x00400000)/*网关地址、服务器IP地址、端口号*/

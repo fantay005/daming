@@ -342,6 +342,9 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
   GsmTaskSendTcpData((const char *)buf, size);
 }
 
+static unsigned short MaxZigbeeAdress = 0;       /*网关下最大的ZigBee地址*/
+static unsigned short MaxZigBeeNumb = 0;         /*网关下节点的数目*/
+
 static void __ParamWriteToFlash(const char *p){
 	unsigned char msg[5];
 	unsigned short len;
@@ -380,18 +383,28 @@ static void __ParamWriteToFlash(const char *p){
 		sscanf(p, "%4s",msg);
 	
 	  len = atoi((const char *)msg);	
+		
+		if(len > 1000)
+			return;
+		
+		if(MaxZigbeeAdress < len){
+			MaxZigbeeAdress = len;		
+		}
+		
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
 }
 
 static void HandleLightParam(ProtocolHead *head, const char *p) {
-	int len, i, lenth;
+	short len, i, j, lenth;
 	unsigned char size;
-	DateTime dateTime;
-	uint32_t second;	
+
 	unsigned char *buf, msg[48], tmp[5];
+	unsigned short temp[3] = {0};
 	
-	second = RtcGetTime();
-	SecondToDateTime(&dateTime, second);
+	
+	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)temp, 2);
+	MaxZigBeeNumb = temp[0];
+	MaxZigbeeAdress = temp[1];
 
 	if(p[0] == '1'){          /*增加一盏灯*/
 		
@@ -400,28 +413,58 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		for(i = 0; i < len; i++) {
 			__ParamWriteToFlash(&p[1 + i * 17]);
 			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4])); 
+			
+			
+			MaxZigBeeNumb++;
 		}
 		msg[i * 4] = p[0];
 		
 	} else if (p[0] == '2'){   /*删除一盏灯*/
-		len = (strlen(p) - 18) / 17;
+		Lightparam g;
+		
+		len = (strlen(p) - 3) / 17;
 
 		for(i = 0; i < len; i++) {
 			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4]));
 			sscanf(&p[1 + i * 17], "%4s", tmp);
 		
 			lenth = atoi((const char *)tmp);
-			NorFlashEraseParam(NORFLASH_BALLAST_BASE + lenth * NORFLASH_SECTOR_SIZE);
+			
+			if(lenth < 1000)
+				NorFlashEraseParam(NORFLASH_BALLAST_BASE + lenth * NORFLASH_SECTOR_SIZE);
+			
+			MaxZigBeeNumb--;
+			
+			for(j = MaxZigBeeNumb; j <= MaxZigbeeAdress; j++){
+				NorFlashRead(NORFLASH_BALLAST_BASE + j * NORFLASH_SECTOR_SIZE, (short *)&g, (sizeof(Lightparam) + 1) / 2);
+				
+				if(g.AddrOfZigbee[0] == 0xFF)
+					continue;
+				sscanf(g.AddrOfZigbee, "%4s", tmp);
+				lenth = atoi((const char *)tmp);
+				
+				if(lenth < 1000)			
+					MaxZigbeeAdress = lenth;
+			}
+				
+			
 		}
 		msg[i * 4] = p[0];
 		
 	} else if (p[0] == '4'){
+		MaxZigBeeNumb = 0;
+		MaxZigbeeAdress = 0;
+		
 		for(len = 0; len < 1000; len++){
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 		}
 	}
 	
 	msg[i * 4 + 1] = 0;
+	
+	temp[0] =  MaxZigBeeNumb;
+	temp[1] =  MaxZigbeeAdress;
+	NorFlashWrite(NORFLASH_LIGHT_NUMBER, temp, 2);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -890,7 +933,6 @@ static uint32_t RealAddr = 0;
 uint32_t FragOffset(char sec, char tim, char lux){                        /*根据回路，时间域，光强域找出策略存放位置*/    
 	uint32_t SecStart, SecOffset;
 	
-	sec = sec - '0';
 	SecStart = (sec - 1) * SECTION_SPACE_SIZE + STRATEGY_GUIDE_ONOFF_DAZZLING;   /*所在段的起始位置*/	
 	SecOffset = (4 * (tim - 1) + (lux - 1)) *NORFLASH_SECTOR_SIZE;               /*段内偏移地址*/
 	
