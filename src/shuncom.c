@@ -330,6 +330,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
+	char StateFlag = 0x01;   /*软关闭*/
 	
 	char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
 											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
@@ -367,13 +368,30 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			memcpy((msg + 4 + 4), (p + sizeof(FrameHeader)), 34);
 			msg[38 + 4] = 0;
 			
-			sscanf(msg, "%*10s%2s", space);
+			sscanf((const char *)msg, "%*10s%2s", space);
 			i = atoi((const char *)space);  /*运行状态*/
-			if(i == 0x01){
-				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
-				OpenBuf[1] = hexAddr & 0xFF;
-				for(i = 0; i < 19; i++){
-					SZ05SendChar(OpenBuf[i]);
+			
+			ret = (unsigned short*)LightZigbAddr();
+			while(*ret){
+				if((*ret++) == instd){
+					StateFlag = 0x02;   /*主运行*/
+					break;
+				}	
+			}
+		
+			if(i != StateFlag){	
+				if(StateFlag == 0x01){
+					CloseBuf[0] = (hexAddr >> 8) & 0xFF;
+					CloseBuf[1] = hexAddr & 0xFF;
+					for(i = 0; i < 19; i++){
+						SZ05SendChar(CloseBuf[i]);
+					}
+				} else if(StateFlag == 0x02){
+					OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+					OpenBuf[1] = hexAddr & 0xFF;
+					for(i = 0; i < 19; i++){
+						SZ05SendChar(OpenBuf[i]);
+					}
 				}
 			}
 			
@@ -396,7 +414,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		DateTime dateTime;
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
-		char StateFlag = 0x01;   /*软关闭*/
+		
 		
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
@@ -428,13 +446,13 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 		sscanf(p, "%*11s%2s", space);
 		i = atoi((const char *)space);  /*运行状态*/
-		if(i == 0x01){
-			OpenBuf[0] = (hexAddr >> 8) & 0xFF;
-			OpenBuf[1] = hexAddr & 0xFF;
-			for(i = 0; i < 19; i++){
-				SZ05SendChar(OpenBuf[i]);
-			}
-		} 
+//		if(i == 0x01){
+//			OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+//			OpenBuf[1] = hexAddr & 0xFF;
+//			for(i = 0; i < 19; i++){
+//				SZ05SendChar(OpenBuf[i]);
+//			}
+//		} 
 //		if(i == 0x02){
 //			
 //			CloseBuf[0] = (hexAddr >> 8) & 0xFF;
@@ -443,26 +461,21 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 //				SZ05SendChar(CloseBuf[i]);
 //			}
 //		}
-//		if(i != StateFlag){	
-//			if(StateFlag == 0x01){
-//				CloseBuf[0] = (hexAddr >> 8) & 0xFF;
-//				CloseBuf[1] = hexAddr & 0xFF;
-//				vTaskDelay(configTICK_RATE_HZ / 2);	
-//				for(i = 0; i < 19; i++){
-//					SZ05SendChar(CloseBuf[i]);
-//				}
-//				vTaskDelay(configTICK_RATE_HZ / 2);
-
-//			} else if(StateFlag == 0x02){
-//				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
-//				OpenBuf[1] = hexAddr & 0xFF;
-//				vTaskDelay(configTICK_RATE_HZ / 2);	
-//				for(i = 0; i < 19; i++){
-//					SZ05SendChar(OpenBuf[i]);
-//				}
-//				vTaskDelay(configTICK_RATE_HZ / 2);
-//			}
-//		}
+		if(i != StateFlag){	
+			if(StateFlag == 0x01){
+				CloseBuf[0] = (hexAddr >> 8) & 0xFF;
+				CloseBuf[1] = hexAddr & 0xFF;
+				for(i = 0; i < 19; i++){
+					SZ05SendChar(CloseBuf[i]);
+				}
+			} else if(StateFlag == 0x02){
+				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+				OpenBuf[1] = hexAddr & 0xFF;
+				for(i = 0; i < 19; i++){
+					SZ05SendChar(OpenBuf[i]);
+				}
+			}
+		}
 
 		Have_Param_Flag = 0;
 		sscanf(p, "%*55s%12s", SyncFlag);

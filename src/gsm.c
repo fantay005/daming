@@ -311,9 +311,9 @@ static void __gsmTask(void *parameter) {
 
 	for (;;) {
 //		printf("Gsm: loop again\n");	
-//		WatchdogFeed();
+		WatchdogFeed();
 //		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__Transqueue, &message, portMAX_DELAY);
+		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
