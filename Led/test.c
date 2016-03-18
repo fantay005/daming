@@ -208,7 +208,7 @@ static void __TimeTask(void *nouse) {
 			 curT = xTaskGetTickCount();
 			 
 			 if((curT - lastT) > configTICK_RATE_HZ * 60){
-				 buf = ProtocolMessage("9999999999", "45", NULL, &size);
+				 buf = ProtocolMessage("9999999999", "45", NULL, &size);   /*«Î«Û ±º‰*/
 				 GsmTaskSendTcpData((const char *)buf, size);
 				 vPortFree(buf);
 				 lastT = curT;

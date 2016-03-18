@@ -60,6 +60,9 @@ typedef enum{
 	GATEUPGRADE = 0x37,     /*网关远程升级*/
 	TIMEADJUST = 0x42,      /*校时*/
 	LUXVALUE = 0x43,        /*接收到光强度值*/
+	/*0x40, 隧道网关请求升级包指令*/
+	/*0x45, 隧道网关请求时间数据指令*/
+	/*0x44, 两个板子地址不一致时发送的指令*/
 	RESTART = 0x3F,         /*设备复位*/
 	RETAIN,                 /*保留*/
 } GatewayType;
