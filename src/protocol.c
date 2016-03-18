@@ -241,13 +241,13 @@ void NoRenntry(unsigned char address[10], unsigned char  type[2], const char *ms
 
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
-//	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
+	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		
 		NoRenntry(address, type, msg, size);
-//		xSemaphoreGive(__TransSemaphore);
+		xSemaphoreGive(__TransSemaphore);
 		
 		return RespondBuf;
-//	}
+	}
 }
 
 static unsigned char ElecRespondBuf[240];

@@ -116,7 +116,7 @@ static void __gsmInitHardware(void) {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
 	NVIC_InitStructure.NVIC_IRQChannel = USART3_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 2;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -313,7 +313,7 @@ static void __gsmTask(void *parameter) {
 //		printf("Gsm: loop again\n");	
 //		WatchdogFeed();
 //		curT = xTaskGetTickCount();
-		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__Transqueue, &message, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {

@@ -49,7 +49,7 @@ static void SZ05_ADV_Init(void) {
 	
 	NVIC_InitStructure.NVIC_IRQChannel = COMx_IRQn;
 	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
-	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 5;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
 }
@@ -165,6 +165,17 @@ void USART1_IRQHandler(void) {
 	}
 }
 
+static void SZ05SendChar(char c) {
+	USART_SendData(COMx, c);
+	while (USART_GetFlagStatus(COMx, USART_FLAG_TXE) == RESET);
+}
+
+void SZ05SendString(char *str){
+	while(*str){
+		SZ05SendChar(*str++);
+	}
+}
+
 extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
@@ -214,14 +225,19 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		return RTOS_ERROR;
 	}
 	
-	message.type = TYPE_IOT_SEND_DATA;
-	message.length = len;
-	memcpy(message.infor, dat, len);
+//	message.type = TYPE_IOT_SEND_DATA;
+//	message.length = len;
+//	memcpy(message.infor, dat, len);
 	
 	for(i = 0; i < 3; i++){	
-		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ *5)) {
-			return RTOS_ERROR;
+		ret = (unsigned char *)dat;
+		
+		for(j = 0; j < len; j++){
+			SZ05SendChar(*ret++);
 		}
+//		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ *5)) {
+//			return RTOS_ERROR;
+//		}
 //		TIM_Cmd(TIMx, ENABLE); 
 
 		for(j = 0; j < 500; j++){
@@ -267,24 +283,12 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 			
 			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
-			ZigbTaskFreeMemory(buf);
 			ZigbTaskFreeMemory(ret);
 			WAITFLAG = 0;
 			return COM_FAIL;
 		}
 	}
 	return HANDLE_ERROR;
-}
-
-static void SZ05SendChar(char c) {
-	USART_SendData(COMx, c);
-	while (USART_GetFlagStatus(COMx, USART_FLAG_TXE) == RESET);
-}
-
-void SZ05SendString(char *str){
-	while(*str){
-		SZ05SendChar(*str++);
-	}
 }
 
 extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, int *size);
@@ -320,12 +324,17 @@ char *SpaceShift(void){
 extern short *LightZigbAddr(void);
 
 static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte, const char *p){
-	int i, instd;
+	int i, instd, hexAddr;
 	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size, fitflag = 0;
 	unsigned short *ret, fitcount = 0, compare;
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
+	
+	char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
+											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
+	char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41,
+											0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03};
 
  // buf = DataFalgQueryAndChange(4, 0, 1);    /*查看是否是服务器发来查询指令*/
 	ret = DataFalgQueryAndChange(1, 0, 1);
@@ -341,6 +350,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	
 	sscanf(p, "%*1s%4s", addr);		
 	instd = atoi((const char *)addr);
+	hexAddr = strtol((const char *)addr, NULL, 16);
 
 	NorFlashRead(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 	
@@ -356,6 +366,16 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			memcpy((msg + 4), header->AD, 4);
 			memcpy((msg + 4 + 4), (p + sizeof(FrameHeader)), 34);
 			msg[38 + 4] = 0;
+			
+			sscanf(msg, "%*10s%2s", space);
+			i = atoi((const char *)space);  /*运行状态*/
+			if(i == 0x01){
+				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+				OpenBuf[1] = hexAddr & 0xFF;
+				for(i = 0; i < 19; i++){
+					SZ05SendChar(OpenBuf[i]);
+				}
+			}
 			
 			buf = ProtocolRespond(g.GWAddr, header->CT, (const char *)msg, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
@@ -377,10 +397,6 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
 		char StateFlag = 0x01;   /*软关闭*/
-		char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
-											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
-		char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41,
-											0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03};
 		
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
@@ -412,26 +428,41 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 		sscanf(p, "%*11s%2s", space);
 		i = atoi((const char *)space);  /*运行状态*/
-		if(i != StateFlag){	
-			if(StateFlag == 0x01){
-				CloseBuf[0] = (instd >> 8) & 0xFF;
-				CloseBuf[1] = instd & 0xFF;
-				vTaskDelay(configTICK_RATE_HZ / 2);	
-				for(i = 0; i < 19; i++){
-					SZ05SendChar(CloseBuf[i]);
-				}
-				vTaskDelay(configTICK_RATE_HZ / 2);
-
-			} else if(StateFlag == 0x02){
-				OpenBuf[0] = (instd >> 8) & 0xFF;
-				OpenBuf[1] = instd & 0xFF;
-				vTaskDelay(configTICK_RATE_HZ / 2);	
-				for(i = 0; i < 19; i++){
-					SZ05SendChar(OpenBuf[i]);
-				}
-				vTaskDelay(configTICK_RATE_HZ / 2);
+		if(i == 0x01){
+			OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+			OpenBuf[1] = hexAddr & 0xFF;
+			for(i = 0; i < 19; i++){
+				SZ05SendChar(OpenBuf[i]);
 			}
-		}
+		} 
+//		if(i == 0x02){
+//			
+//			CloseBuf[0] = (hexAddr >> 8) & 0xFF;
+//			CloseBuf[1] = hexAddr & 0xFF;
+//			for(i = 0; i < 19; i++){
+//				SZ05SendChar(CloseBuf[i]);
+//			}
+//		}
+//		if(i != StateFlag){	
+//			if(StateFlag == 0x01){
+//				CloseBuf[0] = (hexAddr >> 8) & 0xFF;
+//				CloseBuf[1] = hexAddr & 0xFF;
+//				vTaskDelay(configTICK_RATE_HZ / 2);	
+//				for(i = 0; i < 19; i++){
+//					SZ05SendChar(CloseBuf[i]);
+//				}
+//				vTaskDelay(configTICK_RATE_HZ / 2);
+
+//			} else if(StateFlag == 0x02){
+//				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
+//				OpenBuf[1] = hexAddr & 0xFF;
+//				vTaskDelay(configTICK_RATE_HZ / 2);	
+//				for(i = 0; i < 19; i++){
+//					SZ05SendChar(OpenBuf[i]);
+//				}
+//				vTaskDelay(configTICK_RATE_HZ / 2);
+//			}
+//		}
 
 		Have_Param_Flag = 0;
 		sscanf(p, "%*55s%12s", SyncFlag);
@@ -485,7 +516,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			compare = atoi((const char *)SyncFlag);
 		}
 		
-		if((k.CommState != i) || (k.InputPower > (compare + 15)) || ((k.InputPower + 15) < compare)){   /*当前输入功率与上次功率的比较*/  /*当前工作状态与上次的状态比较*/
+		if((k.CommState != i) || (k.InputPower > (compare + 25)) || ((k.InputPower + 25) < compare)){   /*当前输入功率与上次功率的比较*/  /*当前工作状态与上次的状态比较*/
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			while(*msg == 1){
 				vTaskDelay(configTICK_RATE_HZ / 50);
@@ -640,6 +671,6 @@ void SHUNCOMInit(void) {
 	SZ05_ADV_Init();
 	Zibee_Baud_CFG(9600);
 	ProtocolInit();
-	__ZigbeeQueue = xQueueCreate(5, sizeof(ZigbTaskMsg));
+	__ZigbeeQueue = xQueueCreate(20, sizeof(ZigbTaskMsg));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

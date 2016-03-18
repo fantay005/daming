@@ -56,7 +56,7 @@ static inline void __uartDebugHardwareInit(void) {
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 
 	NVIC_InitStructure.NVIC_IRQChannel = COMM_IRQn;
-	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 0;
+	NVIC_InitStructure.NVIC_IRQChannelPreemptionPriority = 1;
 	NVIC_InitStructure.NVIC_IRQChannelSubPriority = 3;
 	NVIC_InitStructure.NVIC_IRQChannelCmd = ENABLE;
 	NVIC_Init(&NVIC_InitStructure);
@@ -75,7 +75,7 @@ static void __uartDebugTask(void *nouse) {
 	printf("UartDebugTask: start\n");
 	__uartDebugQueue = xQueueCreate(10, sizeof(char *));
 	while (1) {
-		rc = xQueueReceive(__uartDebugQueue, &msg, configTICK_RATE_HZ);
+		rc = xQueueReceive(__uartDebugQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {
 			extern void DebugHandler(char *msg);
 			DebugHandler(msg);

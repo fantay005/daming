@@ -50,6 +50,10 @@ extern char Conect_server_start(void);
 
 extern bool GSMTaskSendErrorTcpData(void);
 
+extern unsigned char *DayToSunshine(void);
+
+extern unsigned char *DayToNight(void);
+
 static void ShortToStr(unsigned short *s, char *r){
 
 	sprintf(r, "%04d", *s);							
@@ -73,7 +77,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){	
-		vTaskDelay(configTICK_RATE_HZ / 5);	
+		vTaskDelay(configTICK_RATE_HZ / 20);	
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){
@@ -90,7 +94,6 @@ static void POLLTask(void *parameter) {
 						alter = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
-						vPortFree(alter);
 						
 						ret++;
 					}	
@@ -108,7 +111,6 @@ static void POLLTask(void *parameter) {
 						alter = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
-						vPortFree(alter);
 						ret++;
 						vTaskDelay(configTICK_RATE_HZ / 5);	
 					}
@@ -117,7 +119,6 @@ static void POLLTask(void *parameter) {
 				case 3:		
 					buf = DataSendToBSN((unsigned char *)"05", (unsigned char *)"FFFF", (const char *) __datamessage(), &size);
 					ZigbTaskSendData((const char *)buf, size);
-					vPortFree(buf);
 				
 					ret = DataFalgQueryAndChange(1, 0, 1);
 					while(*ret){
@@ -125,7 +126,6 @@ static void POLLTask(void *parameter) {
 						alter = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);
 						DataFalgQueryAndChange(4, 1, 0);
 						ZigbTaskSendData((const char *)alter, size);
-						vPortFree(alter);		
 						ret++;
 						vTaskDelay(configTICK_RATE_HZ / 5);	
 					}						
@@ -145,7 +145,6 @@ static void POLLTask(void *parameter) {
 						
 						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
 						ElecTaskSendData((const char *)buf, size); 
-						vPortFree(buf);
 						
 					}				
 					break;
@@ -172,7 +171,6 @@ static void POLLTask(void *parameter) {
 				
 					buf = DataSendToBSN((unsigned char *)"02", h.AD, (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);	
-					vPortFree(buf);
 					vPortFree(msg);				
 					break;
 					
@@ -189,25 +187,25 @@ static void POLLTask(void *parameter) {
 					sscanf((const char *)s.FirstDPVal, "%2s", msg + 19);
 					msg[21] = 0;
 				
-					if (strncmp((char *)s.SecondDCTime, (char *)"FFFF", 4) != 0){
+					if ((s.DimmingNOS - '0') == 2){
 						sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
 						sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
 						msg[27] = 0;
 					}
 					
-					if (strncmp((char *)s.ThirdDCTime, (char *)"FFFF", 4) != 0){
+					if ((s.DimmingNOS - '0') == 3){
 						sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
 						sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
 						msg[33] = 0;
 					}
 					
-					if (strncmp((char *)s.FourthDCTime, (char *)"FFFF", 4) != 0){
+					if ((s.DimmingNOS - '0') == 4){
 						sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
 						sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
 						msg[39] = 0;
 					}
 					
-					if (strncmp((char *)s.FifthDCTime, (char *)"FFFF", 4) != 0){
+					if ((s.DimmingNOS - '0') == 5){
 						sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
 						sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
 						msg[45] = 0;
@@ -221,13 +219,25 @@ static void POLLTask(void *parameter) {
 					
 					buf = DataSendToBSN((unsigned char *)"03", h.AD, (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);					
-					vPortFree(buf);
-					vPortFree(msg);					
+					vPortFree(msg);			
 					break;
 					
 				case 7:	
+					msg = pvPortMalloc(20);
+				
+					second = RtcGetTime();
+					SecondToDateTime(&dateTime, second);
+				
+					sprintf((char *)msg, "%02d%02d%02d%02d%02d%02d%02d%02d%02d", dateTime.month, dateTime.date, dateTime.week, 
+																								dateTime.hour, dateTime.minute, *DayToNight(), *(DayToNight() + 1),
+																								*DayToSunshine(), *(DayToSunshine() + 1));
 
+					
+					buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
+					ZigbTaskSendData((const char *)buf, size);
+					vPortFree(msg);
 					break;
+				
 				case 8:			
 				  p = SpaceShift();
 					Numb = CallTransfer();
@@ -247,7 +257,6 @@ static void POLLTask(void *parameter) {
 					vPortFree(p);
 					buf = ProtocolRespond(a.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
 					GsmTaskSendTcpData((const char *)buf, size);
-					vPortFree(buf);
 					vPortFree(msg);
 					break;
 					
@@ -349,7 +358,6 @@ static void POLLTask(void *parameter) {
 				h.CT[1] = '6';
 				buf = DataSendToBSN(h.CT, ID, NULL, &size);			
 				ZigbTaskSendData((const char *)buf, size);
-				vPortFree(buf);	
 			}
 		}
 	}

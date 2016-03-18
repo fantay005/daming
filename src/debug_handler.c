@@ -39,7 +39,8 @@ static void __erasureFlashChip(const char *p){
 
 static void __writeStrategyToFlash(const char *p){
 	StrategyParam g;
-	
+		
+	sscanf("01", "%2s", g.SchemeType);   
 	g.DimmingNOS = 0x31;
 	sscanf("0FFF", "%4s", g.FirstDCTime);
 	sscanf("64", "%2s", g.FirstDPVal);

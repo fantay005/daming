@@ -474,7 +474,7 @@ static void EleGathTask(void *parameter) {
 	ElecTaskMsg msg;
 	
 	for (;;) {
-		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__ElectQueue, &msg, portMAX_DELAY);
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -489,7 +489,7 @@ static void EleGathTask(void *parameter) {
 
 void ElectricInit(void) {
 	__ElectrolHardwareInit();
-	__ElectQueue = xQueueCreate(4, sizeof(ElecTaskMsg));	
+	__ElectQueue = xQueueCreate(8, sizeof(ElecTaskMsg));	
 	xTaskCreate(EleGathTask, (signed portCHAR *) "ELECTRIC", ELECTRIC_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 	
 }
