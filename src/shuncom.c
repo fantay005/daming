@@ -330,7 +330,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
-	char StateFlag = 0x01;   /*软关闭*/
+	char StateFlag = 0x02;   /*软关闭*/
 	
 	char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
 											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
@@ -373,7 +373,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			
 			ret = (unsigned short*)LightZigbAddr();
 			while(*ret){
-				if((*ret++) == instd){
+				if((*ret++) = instd){
 					StateFlag = 0x02;   /*主运行*/
 					break;
 				}	

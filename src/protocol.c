@@ -398,7 +398,7 @@ static void __ParamWriteToFlash(const char *p){
 }
 
 static void HandleLightParam(ProtocolHead *head, const char *p) {
-	short len, i, j, lenth;
+	short len, i = 0, j, lenth;
 	unsigned char size;
 
 	unsigned char *buf, msg[48], tmp[5];
@@ -406,6 +406,10 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	
 	
 	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)temp, 2);
+	if(temp[0] > 0x1000)
+		temp[0] = 0;
+	if(temp[1] == 0x1000)
+		temp[1] = 0;
 	MaxZigBeeNumb = temp[0];
 	MaxZigbeeAdress = temp[1];
 
@@ -436,7 +440,8 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 			if(lenth < 1000)
 				NorFlashEraseParam(NORFLASH_BALLAST_BASE + lenth * NORFLASH_SECTOR_SIZE);
 			
-			MaxZigBeeNumb--;
+			if(MaxZigBeeNumb > 0)
+				MaxZigBeeNumb--;
 			
 			for(j = MaxZigBeeNumb; j <= MaxZigbeeAdress; j++){
 				NorFlashRead(NORFLASH_BALLAST_BASE + j * NORFLASH_SECTOR_SIZE, (short *)&g, (sizeof(Lightparam) + 1) / 2);
@@ -461,6 +466,12 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		for(len = 0; len < 1000; len++){
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
 		}
+		msg[0] = '0';
+		msg[1] = '0';
+		msg[2] = '0';
+		msg[3] = '0';
+		i++;
+		msg[i * 4] = p[0];
 	}
 	
 	msg[i * 4 + 1] = 0;
@@ -936,6 +947,7 @@ static uint32_t RealAddr = 0;
 uint32_t FragOffset(char sec, char tim, char lux){                        /*根据回路，时间域，光强域找出策略存放位置*/    
 	uint32_t SecStart, SecOffset;
 	
+	sec = sec - '0';
 	SecStart = (sec - 1) * SECTION_SPACE_SIZE + STRATEGY_GUIDE_ONOFF_DAZZLING;   /*所在段的起始位置*/	
 	SecOffset = (4 * (tim - 1) + (lux - 1)) *NORFLASH_SECTOR_SIZE;               /*段内偏移地址*/
 	
@@ -1323,7 +1335,7 @@ void BegAverage(int *p){
 	__Luxparam.NowLux = sum / 6;
 }
 
-static void HandleLuxGather(ProtocolHead *head, const char *p) {
+ void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
 	unsigned char *buf, size;
 	int LuxValue, second;

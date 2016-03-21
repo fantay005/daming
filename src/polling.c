@@ -55,11 +55,22 @@ extern unsigned char *DayToSunshine(void);
 extern unsigned char *DayToNight(void);
 
 static void ShortToStr(unsigned short *s, char *r){
-
 	sprintf(r, "%04d", *s);							
 }
 
 static short Max_Loop = 0;
+
+typedef enum {
+	TYPE_NONE = 0,
+	TYPE_GPRS_DATA,         /*网关下发灯参数*/
+	TYPE_RTC_DATA,          /*网关下发单灯策略*/
+	TYPE_SEND_TCP_DATA,     /*服务器下发查询镇流器数据*/
+	TYPE_CSQ_DATA,          /*服务器下发查询电量数据*/
+	TYPE_RESET,             /*网关*/
+	TYPE_SEND_AT,           /**/
+	TYPE_SEND_SMS,          /**/
+	TYPE_SETIP,
+} PollTaskMessageType;    /*轮询任务类型*/
 
 static void POLLTask(void *parameter) {
 	static char MarkRead, OverTurn;
@@ -174,7 +185,7 @@ static void POLLTask(void *parameter) {
 					vPortFree(msg);				
 					break;
 					
-				case 6:
+				case 6:                               /*网关下发策略*/
 //					Numb = CallTransfer();
 					NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
 					msg = pvPortMalloc(47 + 1);
@@ -222,7 +233,7 @@ static void POLLTask(void *parameter) {
 					vPortFree(msg);			
 					break;
 					
-				case 7:	
+				case 7:	                                   /*网关下发当前时间和开关灯时间*/
 					msg = pvPortMalloc(20);
 				
 					second = RtcGetTime();
@@ -238,7 +249,7 @@ static void POLLTask(void *parameter) {
 					vPortFree(msg);
 					break;
 				
-//				case 8:			
+//				case 8:			                                  /*输入功率变化25W时，发送信息*/
 //				  p = SpaceShift();
 //					Numb = CallTransfer();
 //				

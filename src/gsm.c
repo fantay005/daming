@@ -303,16 +303,16 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 
 extern void WatchdogFeed(void);
 
+extern void __handleLux(char tim, char lux);
+
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
-//	portTickType lastT = 0;
-//	portTickType curT;	
 
 	for (;;) {
 //		printf("Gsm: loop again\n");	
-		WatchdogFeed();
-//		curT = xTaskGetTickCount();
+//  	WatchdogFeed();
+//		__handleLux(2, 2);
 		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
@@ -329,6 +329,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(9600);
-	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(20, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
