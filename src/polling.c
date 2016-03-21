@@ -88,7 +88,7 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){	
-		vTaskDelay(configTICK_RATE_HZ / 20);	
+		vTaskDelay(configTICK_RATE_HZ / 4);	
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){
@@ -280,6 +280,9 @@ static void POLLTask(void *parameter) {
 			DataFalgQueryAndChange(5, 0, 0);
 		} else {
 			NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
+			
+			if(tmp[0] == 0)
+				continue;
 			
 			if(NumOfAddr > tmp[1]){
 				NumOfAddr = 1;

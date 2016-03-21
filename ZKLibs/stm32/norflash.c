@@ -27,7 +27,7 @@ void NorFlashWrite(uint32_t flash, const short *ram, int len) {
 
 void NorFlashEraseParam(uint32_t flash) {
 	if (xSemaphoreTake(__semaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		FSMC_NOR_EraseSector(flash);
+		while(FSMC_NOR_EraseSector(flash) != NOR_SUCCESS);
 		//FSMC_NOR_EraseSector(flash);
 		xSemaphoreGive(__semaphore);
 	}

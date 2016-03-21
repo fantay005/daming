@@ -463,8 +463,9 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		MaxZigBeeNumb = 0;
 		MaxZigbeeAdress = 0;
 		
-		for(len = 0; len < 1000; len++){
+		for(len = 1; len < 1000; len++){
 			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
+			vTaskDelay(configTICK_RATE_HZ / 500);
 		}
 		msg[0] = '0';
 		msg[1] = '0';
@@ -473,7 +474,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		i++;
 		msg[i * 4] = p[0];
 	}
-	
+		
 	msg[i * 4 + 1] = 0;
 	
 	temp[0] =  MaxZigBeeNumb;
@@ -771,7 +772,7 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
 	while(*ret != 0){
-		vTaskDelay(configTICK_RATE_HZ / 500);
+		return;
 	}
 	
 	DataFalgQueryAndChange(5, 1, 0);
@@ -799,7 +800,7 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 	ret = DataFalgQueryAndChange(5, 0, 1);
 	while(*ret != 0){
-		vTaskDelay(configTICK_RATE_HZ / 500);
+		return;
 	}
 	
 	DataFalgQueryAndChange(5, 1, 0);
@@ -826,7 +827,7 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	
 	buf = DataFalgQueryAndChange(5, 0, 1);
 	while(*buf != 0){
-		vTaskDelay(configTICK_RATE_HZ / 500);
+		return;
 	}
 	
 	DataFalgQueryAndChange(5, 1, 0);
@@ -845,7 +846,7 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	
 	buf = DataFalgQueryAndChange(5, 0, 1);
 	while(*buf != 0){
-		vTaskDelay(configTICK_RATE_HZ / 500);
+		return;
 	}
 	
 	DataFalgQueryAndChange(2, 4, 0);
@@ -947,7 +948,6 @@ static uint32_t RealAddr = 0;
 uint32_t FragOffset(char sec, char tim, char lux){                        /*¸ù¾Ý»ØÂ·£¬Ê±¼äÓò£¬¹âÇ¿ÓòÕÒ³ö²ßÂÔ´æ·ÅÎ»ÖÃ*/    
 	uint32_t SecStart, SecOffset;
 	
-	sec = sec - '0';
 	SecStart = (sec - 1) * SECTION_SPACE_SIZE + STRATEGY_GUIDE_ONOFF_DAZZLING;   /*ËùÔÚ¶ÎµÄÆðÊ¼Î»ÖÃ*/	
 	SecOffset = (4 * (tim - 1) + (lux - 1)) *NORFLASH_SECTOR_SIZE;               /*¶ÎÄÚÆ«ÒÆµØÖ·*/
 	
@@ -1094,7 +1094,7 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 static short LightAddr[600];            /*ÐèÒª±»µãÁÁµÆµØÖ·Êý×é*/
 static short LightCount = 0;            /*ÐèÒª±»µãÁÁµÆ¼ÆÊý*/
 
-short *LightZigbAddr(void){
+const short *LightZigbAddr(void){
 	return LightAddr;
 }
 
@@ -1154,7 +1154,7 @@ void __handleLux(char tim, char lux){            /*¸ù¾Ý»ØÂ·£¬¹âÇ¿Óò£¬Ê±¼äÓòÊµÐÐ²
 		if((k.Loop > '8') || (k.Loop < '0'))
 			continue;
 		
-		StartAddr = FragOffset(k.Loop, tim, lux);
+		StartAddr = FragOffset(k.Loop - '0', tim, lux);
 		
 		sscanf((const char *)k.AddrOfZigbee, "%4s", buf);
 		Zigb = atoi((const char *)buf);

@@ -321,12 +321,12 @@ char *SpaceShift(void){
 	return Shift;
 }
 
-extern short *LightZigbAddr(void);
+extern const short *LightZigbAddr(void);
 
 static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte, const char *p){
 	int i, instd, hexAddr;
 	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size, fitflag = 0;
-	unsigned short *ret, fitcount = 0, compare;
+	unsigned short *ret, fitcount = 0, compare, *smt;
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
@@ -371,9 +371,9 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			sscanf((const char *)msg, "%*10s%2s", space);
 			i = atoi((const char *)space);  /*运行状态*/
 			
-			ret = (unsigned short*)LightZigbAddr();
-			while(*ret){
-				if((*ret++) = instd){
+			smt = (unsigned short*)LightZigbAddr();
+			while(*smt){
+				if((*smt++) == instd){
 					StateFlag = 0x02;   /*主运行*/
 					break;
 				}	
@@ -397,7 +397,6 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			
 			buf = ProtocolRespond(g.GWAddr, header->CT, (const char *)msg, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
-			ZigbTaskFreeMemory(buf);
 			ZigbTaskFreeMemory(msg);
 			DataFalgQueryAndChange(1, fitcount - 1, 0);
 			

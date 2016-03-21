@@ -199,10 +199,19 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 	
 	
 	NorFlashRead(NORFLASH_MANAGEM_BASE, (short *)&s, (sizeof(GatewayParam1) + 1) / 2);
-	sscanf((const char *)s.GatewayID, "%6s", &msg[119]);
+
+	if(s.GatewayID[0] == 0xFF)
+		sscanf((const char *)"000000", "%6s", &msg[119]);
+	else
+		sscanf((const char *)s.GatewayID, "%6s", &msg[119]);
+	
 	
 	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)&gath, 1);
-	sprintf((char *)&msg[125], "%4d", gath);
+	if(gath == 0xFFFF){
+		gath = 0;
+		sprintf((char *)&msg[125], "%4d", gath);
+	} else
+		sprintf((char *)&msg[125], "%4d", gath);
 
 	for(i = 0; i < 4; i++){
 		if(msg[125 + i] == 0x20){
