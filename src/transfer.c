@@ -283,6 +283,7 @@ static void __transTask(void *parameter) {
 	//printf("End");
 	for (;;) {
 //		printf("Trans : loop again\n");	
+		
 		curT = xTaskGetTickCount();		
 		rc = xQueueReceive(__TransQueue, &message, configTICK_RATE_HZ / 10);
 		if (rc == pdTRUE) {
@@ -301,6 +302,12 @@ static void __transTask(void *parameter) {
 			lastT = curT;
 		}			
 	}
+}
+
+void HardwareInit(void){
+	__TransInitHardware();
+	__TransInitUsart(BAUD);
+	__TransQueue = xQueueCreate(20, sizeof( TransTaskMessage));
 }
 
 void TransInit(void) {
