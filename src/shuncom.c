@@ -330,7 +330,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
-	char StateFlag = 0x02;   /*»Ìπÿ±’*/
+	char StateFlag = 0x01;   /*»Ìπÿ±’*/
 	
 	char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
 											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
@@ -468,16 +468,18 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(CloseBuf[i]);
 				}
+				vTaskDelay(configTICK_RATE_HZ / 2);
 			} else if(StateFlag == 0x02){
 				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
 				OpenBuf[1] = hexAddr & 0xFF;
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(OpenBuf[i]);
 				}
+				vTaskDelay(configTICK_RATE_HZ / 2);
 			}
 		}
 
-		Have_Param_Flag = 0;
+//		Have_Param_Flag = 0;
 		sscanf(p, "%*55s%12s", SyncFlag);
 		NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
 		
