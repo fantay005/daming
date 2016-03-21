@@ -488,7 +488,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		if((strncmp((const char *)s.SYNCTINE, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 50);
+				vTaskDelay(configTICK_RATE_HZ / 500);
 			}
 			DataFalgQueryAndChange(2, 6, 0);
 			DataFalgQueryAndChange(3, 1, 0);
@@ -511,7 +511,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		if((dateTime.month != time_m) || (dateTime.date != time_d) || (dateTime.week != time_w)){    /*镇流器时间对照*/
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 50);
+				vTaskDelay(configTICK_RATE_HZ / 500);
 			}
 			DataFalgQueryAndChange(2, 7, 0);
 			DataFalgQueryAndChange(3, 1, 0);
@@ -530,19 +530,28 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		}
 		
 		if((k.CommState != i) || (k.InputPower > (compare + 25)) || ((k.InputPower + 25) < compare)){   /*当前输入功率与上次功率的比较*/  /*当前工作状态与上次的状态比较*/
-			msg = DataFalgQueryAndChange(5, 0, 1);
-			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 50);
-			}
-			DataFalgQueryAndChange(2, 8, 0);
-			DataFalgQueryAndChange(3, 1, 0);
-			DataFalgQueryAndChange(5, 1, 0);
+//			msg = DataFalgQueryAndChange(5, 0, 1);
+//			while(*msg == 1){
+//				vTaskDelay(configTICK_RATE_HZ / 500);
+//			}
+//			DataFalgQueryAndChange(2, 8, 0);
+//			DataFalgQueryAndChange(3, 1, 0);
+//			DataFalgQueryAndChange(5, 1, 0);
+//			
+//			Shift = ZigbtaskApplyMemory(77);
+
+//			strcpy(Shift, p);
+
+//			NumbOfRank = instd;
+			msg = pvPortMalloc(34 + 9);
+			memcpy(msg, "B000", 4);
+			memcpy((msg + 4), header->AD, 4);
+			memcpy((msg + 4 + 4), (p + 9), 34);
+			msg[38 + 4] = 0;
+		
+			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
+			GsmTaskSendTcpData((const char *)buf, size);
 			
-			Shift = ZigbtaskApplyMemory(77);
-
-			strcpy(Shift, p);
-
-			NumbOfRank = instd;
 			
 			k.CommState = i;
 			k.InputPower = compare;

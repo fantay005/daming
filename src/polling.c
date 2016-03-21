@@ -175,7 +175,7 @@ static void POLLTask(void *parameter) {
 					break;
 					
 				case 6:
-					Numb = CallTransfer();
+//					Numb = CallTransfer();
 					NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
 					msg = pvPortMalloc(47 + 1);
 					
@@ -211,13 +211,13 @@ static void POLLTask(void *parameter) {
 						msg[45] = 0;
 					}
 					
-					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%04X", Numb);
-					#else				
-							sprintf((char *)h.AD, "%04d", Numb);
-					#endif	
+//					#if defined(__HEXADDRESS__)
+//							sprintf((char *)h.AD, "%04X", Numb);
+//					#else				
+//							sprintf((char *)h.AD, "%04d", Numb);
+//					#endif	
 					
-					buf = DataSendToBSN((unsigned char *)"03", h.AD, (const char *)msg, &size);
+					buf = DataSendToBSN((unsigned char *)"03", "FFFF", (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);					
 					vPortFree(msg);			
 					break;
@@ -238,27 +238,27 @@ static void POLLTask(void *parameter) {
 					vPortFree(msg);
 					break;
 				
-				case 8:			
-				  p = SpaceShift();
-					Numb = CallTransfer();
-				
-					#if defined(__HEXADDRESS__)
-							sprintf((char *)h.AD, "%04X", Numb);
-					#else				
-							sprintf((char *)h.AD, "%04d", Numb);
-					#endif	
-		
-					msg = pvPortMalloc(34 + 9);
-					memcpy(msg, "B000", 4);
-					memcpy((msg + 4), h.AD, 4);
-					memcpy((msg + 4 + 4), (p + 9), 34);
-					msg[38 + 4] = 0;
-				
-					vPortFree(p);
-					buf = ProtocolRespond(a.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
-					GsmTaskSendTcpData((const char *)buf, size);
-					vPortFree(msg);
-					break;
+//				case 8:			
+//				  p = SpaceShift();
+//					Numb = CallTransfer();
+//				
+//					#if defined(__HEXADDRESS__)
+//							sprintf((char *)h.AD, "%04X", Numb);
+//					#else				
+//							sprintf((char *)h.AD, "%04d", Numb);
+//					#endif	
+//		
+//					msg = pvPortMalloc(34 + 9);
+//					memcpy(msg, "B000", 4);
+//					memcpy((msg + 4), h.AD, 4);
+//					memcpy((msg + 4 + 4), (p + 9), 34);
+//					msg[38 + 4] = 0;
+//				
+//					vPortFree(p);
+//					buf = ProtocolRespond(a.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
+//					GsmTaskSendTcpData((const char *)buf, size);
+//					vPortFree(msg);
+//					break;
 					
 				default:
 					break;	
