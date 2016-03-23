@@ -28,6 +28,7 @@ extern void STMFLASH_Visit(uint32_t ReadAddr, uint8_t *pBuffer, uint16_t NumToRe
 typedef enum{
 	ACKERROR = 0,           /*从站应答异常*/
 	VERSIONQUERY = 0x0C,    /*网关软件版本号查询*/ 
+	LUXVERSION = 0x0E,      /*光照度板软件号查询*/
 	ADDRESSQUERY = 0x11,    /*网关地址查询*/
 	SETSERVERIP = 0x14,     /*设置网关目标服务器IP*/
 	GATEUPGRADE = 0x16,     /*光照传感器网关远程升级*/
@@ -223,6 +224,13 @@ static void HandleEGUpgrade(ProtocolHead *head, const char *p) {
 	
 }
 
+static void HandleLuxVersion(ProtocolHead *head, const char *p){
+	unsigned char *buf, size;
+	
+	buf = ProtocolRespond(head->addr, head->contr, __TARGET_STRING__, &size);
+  GsmTaskSendTcpData((const char *)buf, size);
+}
+
 extern void __cmd_QUERYFARE_Handler(void);
 extern void __cmd_QUERYFLOW_Handler(void);
 
@@ -279,7 +287,7 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 		{SETSERVERIP,   HandleSetGWServ},        /*0x14; 设置网关目标服务器IP*/   ///
 		{GATEUPGRADE,   HandleGWUpgrade},        /*0x16; 光照传感器网关远程升级*/
 		{RSSIVALUE,     HandleRSSIQuery},        /*0x17; GSM模块信号强度查询*/
-//		{TUNNELUPGRADE, HandleTunnelUpgrate},    /*0x20; 隧道内传感器网关升级*/
+		{LUXVERSION,    HandleLuxVersion},    /*0x20; 隧道内传感器网关升级*/
 		{CALLBALANCE,   HandleCallBalance},      /*0x18; 查询手机卡使用信息*/
 //		{FLOWBALANCE,   HandleFlowBalance},      /*0x22; 查询手机使用流量*/
 		{LUXQUERY,      HandleLuxQuery},         /*0x20; 查询光照度*/
