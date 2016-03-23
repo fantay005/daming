@@ -1197,8 +1197,8 @@ typedef struct{
 	int ArrayOfLuxValue[8];   /*记载最近12次光照度的数组*/	
 }StoreParam;                                     
 
-static char LastTimArea = 2;  /*前一分钟时间区域*/
-static char LasrLuxArea = 2;  /*前一分钟光强区域*/
+static char LastTimArea = 4;  /*前一分钟时间区域*/
+static char LasrLuxArea = 1;  /*前一分钟光强区域*/
 
 static StoreParam __Luxparam = {0, 2, 2, 0, 0, 0};
 
