@@ -788,8 +788,14 @@ static void __gsmTask(void *parameter) {
 //		}
 		
 		if(curT > resetT){
-			while(!ChangeIPAndPort());
+			char i;
+			for(i = 0; i < 5; i++){
+				if(ChangeIPAndPort())
+					break;
+			}
 			resetT = 0xFFFFFFFF;
+			if(i >= 5)
+				NVIC_SystemReset();
 //			war3 = 0;
 		}
 	}
