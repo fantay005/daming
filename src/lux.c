@@ -136,6 +136,8 @@ void Max_Send_Str(unsigned char *s, int size){
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
+extern char StopLuxDataSend(void);
+
 static char ResetFlag = 0;             /*发送重启指令标志位*/
 
 static void __MaxTask(void *nouse) {
@@ -162,7 +164,7 @@ static void __MaxTask(void *nouse) {
 		} else {	    
 			  curT = xTaskGetTickCount();
 			
-				if ((curT - lastT) >= UART_GET_DATA_TIME){
+				if (((curT - lastT) >= UART_GET_DATA_TIME) && (!StopLuxDataSend())){
 					Max_Tx_dir();
 					Max_Send_Str((unsigned char *)&frame, 8);
 					Max_Rx_dir();

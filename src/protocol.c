@@ -310,10 +310,17 @@ void GPRSProtocolHandler(ProtocolHead *head, char *p) {
 
 /*下面的程序是用来处理光照度采集板和隧道内网关板之间传输数据的协议*/
 
+static char LuxDataStop = 0;
+
+char StopLuxDataSend(void){
+	return LuxDataStop;
+}
+
 static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 	unsigned char section, buf[16], temp[1024], i;
 	short size;
 	
+	LuxDataStop = 1;
 	
 	sscanf(p, "%2s", buf);
 	section = atoi((const char *)buf);
@@ -338,6 +345,8 @@ static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 extern void FirmwareUpdaterEraseMark(void);
 
 static void HandleUpgrareOK(ProtocolHead *head, const char *p) {
+	
+	LuxDataStop = 0;
 	FirmwareUpdaterEraseMark();
 }
 
