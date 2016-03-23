@@ -398,9 +398,8 @@ static void __ParamWriteToFlash(const char *p){
 }
 
 static void HandleLightParam(ProtocolHead *head, const char *p) {
-	short len, i = 0, j, lenth;
+	unsigned short len, i = 0, j, lenth, e;
 	unsigned char size;
-
 	unsigned char *buf, msg[48], tmp[5];
 	unsigned short temp[3] = {0};
 	
@@ -408,10 +407,14 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)temp, 2);
 	if(temp[0] > 0x1000)
 		temp[0] = 0;
-	if(temp[1] == 0x1000)
+	if(temp[1] > 0x1000)
 		temp[1] = 0;
 	MaxZigBeeNumb = temp[0];
 	MaxZigbeeAdress = temp[1];
+	
+//	NorFlashRead(NORFLASH_ERASE_LIGHT, (short *)&e, 1);
+//	if(e == 0xFFFF)
+//			e = 0;
 
 	if(p[0] == '1'){          /*增加一盏灯*/
 		
@@ -446,27 +449,27 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 			for(j = MaxZigBeeNumb; j <= MaxZigbeeAdress; j++){
 				NorFlashRead(NORFLASH_BALLAST_BASE + j * NORFLASH_SECTOR_SIZE, (short *)&g, (sizeof(Lightparam) + 1) / 2);
 				
-				if(g.AddrOfZigbee[0] == 0xFF)
-					continue;
-				sscanf(g.AddrOfZigbee, "%4s", tmp);
-				lenth = atoi((const char *)tmp);
-				
-				if(lenth < 1000)			
-					MaxZigbeeAdress = lenth;
-			}
-				
+			if(g.AddrOfZigbee[0] == 0xFF)
+				continue;
 			
+			sscanf(g.AddrOfZigbee, "%4s", tmp);
+			lenth = atoi((const char *)tmp);
+			
+			if(lenth < 1000)			
+				MaxZigbeeAdress = lenth;
+			}						
 		}
 		msg[i * 4] = p[0];
 		
 	} else if (p[0] == '4'){
+		
+		
 		MaxZigBeeNumb = 0;
 		MaxZigbeeAdress = 0;
+		e++;
 		
-		for(len = 1; len < 1000; len++){
-			NorFlashEraseParam(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE);
-			vTaskDelay(configTICK_RATE_HZ / 500);
-		}
+//		NorFlashWrite(NORFLASH_ERASE_LIGHT, (const short *)&e, 1);	
+		
 		msg[0] = '0';
 		msg[1] = '0';
 		msg[2] = '0';
@@ -479,7 +482,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	
 	temp[0] =  MaxZigBeeNumb;
 	temp[1] =  MaxZigbeeAdress;
-	NorFlashWrite(NORFLASH_LIGHT_NUMBER, temp, 2);
+	NorFlashWrite(NORFLASH_LIGHT_NUMBER, (const short *)temp, 2);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
@@ -955,6 +958,8 @@ uint32_t FragOffset(char sec, char tim, char lux){                        /*根据
 	return RealAddr;
 }
 
+static char StrategeFlag = 0;
+
 static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下载*/
 	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
 	uint32_t StoreSpace = 0;
@@ -1010,6 +1015,7 @@ static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	
+	StrategeFlag = 1;
 }
 
 static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
@@ -1355,10 +1361,12 @@ void BegAverage(int *p){
 		
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
-		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea)){
+		
+		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea) || (StrategeFlag == 1)){
 			LightCount = 0;
 			memset(LightAddr, 0, 600);
 			__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
+			StrategeFlag = 0;
 		}
 		__Luxparam.count = 0;
 		

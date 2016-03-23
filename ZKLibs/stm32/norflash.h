@@ -15,6 +15,7 @@
 #define NORFLASH_CHIP_ERASE                     ((uint32_t)0x00005000)/*D*/ 
 #define NORFLASH_STRATEGY_ADDR                  ((uint32_t)0x00006000)/*隧道网关下镇流器统一策略放置地址*/
 
+//#define NORFLASH_ERASE_LIGHT                    ((uint32_t)0x00015000)/*删除网关下所有灯次数*/
 #define NORFLASH_END_LIGHT_ADDR                 ((uint32_t)0x00016000)/*所有末端灯ZIGBEE地址存放处*/
 #define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00017000)/*第一个short类型数据位下载的灯参数量，即控制的灯总量，第二个short类型数据为最大的zigbee地址*/
 #define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00018000)/*Zigbee1 镇流器参数基址*/

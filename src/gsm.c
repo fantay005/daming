@@ -172,8 +172,8 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 			if (xHigherPriorityTaskWoken) {
 				taskYIELD();
 			}
-//		} else {
-//			NVIC_SystemReset();
+		} else {
+			NVIC_SystemReset();
 		}
 		isIPD = 0;
 		bufferIndex = 0;
@@ -301,8 +301,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_NONE, NULL },
 };
 
-extern void WatchdogFeed(void);
-
 //extern void __handleLux(char tim, char lux);
 
 //static char FirstFlag = 0;
@@ -312,7 +310,7 @@ static void __gsmTask(void *parameter) {
 
 	for (;;) {
 //		printf("Gsm: loop again\n");	
-  	WatchdogFeed();
+
 //		if(!FirstFlag){
 //			__handleLux(2, 2);
 //			FirstFlag = 1;
@@ -333,6 +331,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(9600);
-	__Transqueue = xQueueCreate(20, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

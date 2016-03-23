@@ -162,6 +162,7 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 }
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+extern void WatchdogFeed(void);
 
 static void __TimeTask(void *nouse) {
 	DateTime dateTime;
@@ -180,6 +181,8 @@ static void __TimeTask(void *nouse) {
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }	 
+		 
+		 WatchdogFeed();
 		 
 		 if(Anti == 0){                         /*网关是否已有经纬度数据*/
 			 NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
@@ -261,7 +264,7 @@ static void __TimeTask(void *nouse) {
 			
 			FLAG = 0;
 			vTaskDelay(configTICK_RATE_HZ);		
-		} else if(((dateTime.hour == 0x00) || (dateTime.hour == 0x0C) || (dateTime.hour == 0x07) || (dateTime.hour== 0x12))&& (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
+		} else if((dateTime.hour == 0x0C) && (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			vTaskDelay(configTICK_RATE_HZ);
 			NVIC_SystemReset();			
 		}		

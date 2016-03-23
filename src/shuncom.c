@@ -17,7 +17,7 @@
 #include "norflash.h"
 #include "gsm.h"
 
-#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 10)
+#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
 
 extern void *DataFalgQueryAndChange(char Obj, char Alter, char Query);
 
@@ -225,19 +225,20 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		return RTOS_ERROR;
 	}
 	
-//	message.type = TYPE_IOT_SEND_DATA;
-//	message.length = len;
-//	memcpy(message.infor, dat, len);
+	message.type = TYPE_IOT_SEND_DATA;
+	message.length = len;
+	memcpy(message.infor, dat, len);
 	
 	for(i = 0; i < 3; i++){	
 		ret = (unsigned char *)dat;
 		
-		for(j = 0; j < len; j++){
-			SZ05SendChar(*ret++);
-		}
-//		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ *5)) {
-//			return RTOS_ERROR;
+//		for(j = 0; j < len; j++){
+//			SZ05SendChar(*ret++);
 //		}
+		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ)) {
+			NVIC_SystemReset();
+			return RTOS_ERROR;
+		}
 //		TIM_Cmd(TIMx, ENABLE); 
 
 		for(j = 0; j < 500; j++){
@@ -346,7 +347,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			fitflag = 1;
 			break;
 		}
-		ret++;	
+		ret++;
 	}
 	
 	sscanf(p, "%*1s%4s", addr);		
@@ -379,19 +380,21 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 				}	
 			}
 		
-			if(i != StateFlag){	
+			if((i != StateFlag) && (*LightZigbAddr() != 0)){	
 				if(StateFlag == 0x01){
 					CloseBuf[0] = (hexAddr >> 8) & 0xFF;
 					CloseBuf[1] = hexAddr & 0xFF;
 					for(i = 0; i < 19; i++){
 						SZ05SendChar(CloseBuf[i]);
 					}
+					vTaskDelay(configTICK_RATE_HZ / 5);
 				} else if(StateFlag == 0x02){
 					OpenBuf[0] = (hexAddr >> 8) & 0xFF;
 					OpenBuf[1] = hexAddr & 0xFF;
 					for(i = 0; i < 19; i++){
 						SZ05SendChar(OpenBuf[i]);
 					}
+					vTaskDelay(configTICK_RATE_HZ / 5);
 				}
 			}
 			
@@ -400,7 +403,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			ZigbTaskFreeMemory(msg);
 			DataFalgQueryAndChange(1, fitcount - 1, 0);
 			
-			*ret |= 0x4000; 
+			*ret = 0x4000 | instd; 
 			
 			sscanf(p, "%*11s%2s", space);
 			i = atoi((const char *)space);
@@ -425,14 +428,13 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 		if((strncmp((const char *)k.TimeOfSYNC, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*灯参数同步标识比较*/	
 			msg = DataFalgQueryAndChange(5, 0, 1);
-			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 50);
-			}
-			DataFalgQueryAndChange(2, 5, 0);
+			if(*msg != 1){
+				DataFalgQueryAndChange(2, 5, 0);
 			DataFalgQueryAndChange(3, 1, 0);
 			DataFalgQueryAndChange(5, 1, 0);
 			
 			NumbOfRank = instd;
+			}	
 		}
 		
 		ret = (unsigned short*)LightZigbAddr();
@@ -445,40 +447,26 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 		sscanf(p, "%*11s%2s", space);
 		i = atoi((const char *)space);  /*运行状态*/
-//		if(i == 0x01){
-//			OpenBuf[0] = (hexAddr >> 8) & 0xFF;
-//			OpenBuf[1] = hexAddr & 0xFF;
-//			for(i = 0; i < 19; i++){
-//				SZ05SendChar(OpenBuf[i]);
-//			}
-//		} 
-//		if(i == 0x02){
-//			
-//			CloseBuf[0] = (hexAddr >> 8) & 0xFF;
-//			CloseBuf[1] = hexAddr & 0xFF;
-//			for(i = 0; i < 19; i++){
-//				SZ05SendChar(CloseBuf[i]);
-//			}
-//		}
-		if(i != StateFlag){	
+
+		if((i != StateFlag) && (*LightZigbAddr() != 0)){	
 			if(StateFlag == 0x01){
 				CloseBuf[0] = (hexAddr >> 8) & 0xFF;
 				CloseBuf[1] = hexAddr & 0xFF;
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(CloseBuf[i]);
 				}
-				vTaskDelay(configTICK_RATE_HZ / 2);
+				vTaskDelay(configTICK_RATE_HZ / 5);
 			} else if(StateFlag == 0x02){
 				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
 				OpenBuf[1] = hexAddr & 0xFF;
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(OpenBuf[i]);
 				}
-				vTaskDelay(configTICK_RATE_HZ / 2);
+				vTaskDelay(configTICK_RATE_HZ / 5);
 			}
 		}
 
-//		Have_Param_Flag = 0;
+		Have_Param_Flag = 0;
 		sscanf(p, "%*55s%12s", SyncFlag);
 		NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
 		
@@ -488,14 +476,14 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 
 		if((strncmp((const char *)s.SYNCTINE, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
 			msg = DataFalgQueryAndChange(5, 0, 1);
-			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 500);
+			if(*msg == 1){
+				DataFalgQueryAndChange(2, 6, 0);
+				DataFalgQueryAndChange(3, 1, 0);
+				DataFalgQueryAndChange(5, 1, 0);
+				
+				NumbOfRank = instd;		
 			}
-			DataFalgQueryAndChange(2, 6, 0);
-			DataFalgQueryAndChange(3, 1, 0);
-			DataFalgQueryAndChange(5, 1, 0);
-			
-			NumbOfRank = instd;			
+				
 		}
 		
 		sscanf(p, "%*67s%2s", SyncFlag);
@@ -511,13 +499,13 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		SecondToDateTime(&dateTime, second);
 		if((dateTime.month != time_m) || (dateTime.date != time_d) || (dateTime.week != time_w)){    /*镇流器时间对照*/
 			msg = DataFalgQueryAndChange(5, 0, 1);
-			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 500);
+			if(*msg == 1){
+				DataFalgQueryAndChange(2, 7, 0);
+				DataFalgQueryAndChange(3, 1, 0);
+				DataFalgQueryAndChange(5, 1, 0);	
+				NumbOfRank = instd;		
 			}
-			DataFalgQueryAndChange(2, 7, 0);
-			DataFalgQueryAndChange(3, 1, 0);
-			DataFalgQueryAndChange(5, 1, 0);	
-			NumbOfRank = instd;					
+						
 		}
 		
 		sscanf(p, "%*11s%2s", space);
@@ -530,7 +518,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			compare = atoi((const char *)SyncFlag);
 		}
 		
-		if((k.CommState != i) || (k.InputPower > (compare + 25)) || ((k.InputPower + 25) < compare)){   /*当前输入功率与上次功率的比较*/  /*当前工作状态与上次的状态比较*/
+		if((k.CommState != i) || (k.InputPower > (compare + 15)) || ((k.InputPower + 15) < compare)){   /*当前输入功率与上次功率的比较*/  /*当前工作状态与上次的状态比较*/
 //			msg = DataFalgQueryAndChange(5, 0, 1);
 //			while(*msg == 1){
 //				vTaskDelay(configTICK_RATE_HZ / 500);
@@ -544,7 +532,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 //			strcpy(Shift, p);
 
 //			NumbOfRank = instd;
-			msg = pvPortMalloc(34 + 9);
+			msg = ZigbtaskApplyMemory(34 + 9);
 			memcpy(msg, "B000", 4);
 			memcpy((msg + 4), header->AD, 4);
 			memcpy((msg + 4 + 4), (p + 9), 34);
@@ -553,6 +541,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
 			
+			ZigbTaskFreeMemory(msg);
 			
 			k.CommState = i;
 			k.InputPower = compare;
@@ -567,22 +556,29 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 				return;
 			}
 			Number = 0;
-			msg = DataFalgQueryAndChange(5, 0, 1);
-			while(*msg == 1){
-				vTaskDelay(configTICK_RATE_HZ / 50);
-			}
-			DataFalgQueryAndChange(2, 8, 0);
-			DataFalgQueryAndChange(3, 1, 0);
-			DataFalgQueryAndChange(5, 1, 0);
-			
-			Shift = ZigbtaskApplyMemory(77);
+//			msg = DataFalgQueryAndChange(5, 0, 1);
+//			while(*msg == 1){
+//				vTaskDelay(configTICK_RATE_HZ / 50);
+//			}
+//			DataFalgQueryAndChange(2, 8, 0);
+//			DataFalgQueryAndChange(3, 1, 0);
+//			DataFalgQueryAndChange(5, 1, 0);
+//			
+//			Shift = ZigbtaskApplyMemory(77);
 
-			strcpy(Shift, p);
-
-			NumbOfRank = instd;
+//			strcpy(Shift, p);
+			msg = ZigbtaskApplyMemory(34 + 9);
+			memcpy(msg, "B000", 4);
+			memcpy((msg + 4), header->AD, 4);
+			memcpy((msg + 4 + 4), (p + 9), 34);
+			msg[38 + 4] = 0;
+		
+			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
+			GsmTaskSendTcpData((const char *)buf, size);
 			
-			k.InputPower = compare;
-			
+			ZigbTaskFreeMemory(msg);
+			NumbOfRank = instd;			
+			k.InputPower = compare;		
 			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	 			 
 		}
 
@@ -694,6 +690,6 @@ void SHUNCOMInit(void) {
 	SZ05_ADV_Init();
 	Zibee_Baud_CFG(9600);
 	ProtocolInit();
-	__ZigbeeQueue = xQueueCreate(20, sizeof(ZigbTaskMsg));
+	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

@@ -58,6 +58,7 @@ typedef struct{
 	unsigned char Attribute[2];      /*主/辅/投属性*/ 
 	unsigned char TimeOfSYNC[12];    /*灯参数同步时间*/
 	unsigned char Empty;
+	unsigned char Erasetimes;        /*灯参全部擦除次数*/
 	unsigned char CommState;         /*通信状态*/
 	unsigned short InputPower;       /*输入功率*/
 	unsigned int UpdataTime;         /*上传数据时间*/
