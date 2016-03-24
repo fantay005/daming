@@ -9,15 +9,16 @@
 * NOR_FLASH地址映射表
 ********************************************************************************************************/
 //NOR_FLASH
-#define NORFLASH_SECTOR_SIZE   				          ((uint32_t)0x00001000)  
+#define NORFLASH_SECTOR_SIZE   				          ((uint32_t)0x00001000)/*一个扇区的大小*/  
+#define NORFLASH_BLOCK_SIZE                     ((uint32_t)0x00010000)/*一块的大小*/
 #define NORFLASH_MANAGEM_BASE  				          ((uint32_t)0x00001000)/*网关参数-网关身份标识、经纬度、ZIGBEE频点、自动上传数据时间间隔*/
 #define NORFLASH_BALLAST_NUM   				          ((uint32_t)0x00002000)/*镇流器数目*/
 #define NORFLASH_CHIP_ERASE                     ((uint32_t)0x00005000)/*D*/ 
 #define NORFLASH_STRATEGY_ADDR                  ((uint32_t)0x00006000)/*隧道网关下镇流器统一策略放置地址*/
 
-//#define NORFLASH_ERASE_LIGHT                    ((uint32_t)0x00015000)/*删除网关下所有灯次数*/
-#define NORFLASH_END_LIGHT_ADDR                 ((uint32_t)0x00016000)/*所有末端灯ZIGBEE地址存放处*/
-#define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00017000)/*第一个short类型数据位下载的灯参数量，即控制的灯总量，第二个short类型数据为最大的zigbee地址*/
+
+#define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00009000)/*第一个short类型数据位下载的灯参数量，即控制的灯总量，第二个short类型数据为最大的zigbee地址*/
+#define NORFLAH_ERASE_BLOCK_BASE                ((uint32_t)0x00010000)/*擦除块起始地址*/
 #define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00018000)/*Zigbee1 镇流器参数基址*/
 #define NORFLASH_BSN_PARAM_BASE                 ((uint32_t)0x00218000)/*Zigbee2 镇流器参数基址*/
 #define NORFLASH_MANAGEM_ADDR                   ((uint32_t)0x00400000)/*网关地址、服务器IP地址、端口号*/
@@ -151,6 +152,7 @@ void NorFlashWrite(uint32_t flash, const short *ram, int len);
 void NorFlashEraseParam(uint32_t flash);
 void NorFlashRead(uint32_t flash, short *ram, int len);
 void NorFlashEraseChip(void);
+void NorFlashEraseBlock(uint32_t block) ;
 
 bool NorFlashMutexLock(uint32_t time);
 void NorFlashMutexUnlock(void);

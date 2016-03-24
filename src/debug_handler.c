@@ -33,6 +33,19 @@ static void __QueryParamInfor(const char *p){
 	
 }
 
+static void __setNumbAndMax(const char *p){
+	char buf[5] = {0};
+	short temp[3] = {0};
+	
+	sscanf(p, "%*[^,]%*c%[^,]", buf);
+	temp[0] = atoi(buf);
+	sscanf(p, "%*[^,]%*c%*[^,]%*c%s", buf);
+	temp[1] = atoi(buf);
+	
+	NorFlashWrite(NORFLASH_LIGHT_NUMBER, (const short *)&temp, 2);
+	
+}
+
 static void __erasureFlashChip(const char *p){
 	NorFlashEraseChip();
 }
@@ -49,6 +62,14 @@ static void __writeStrategyToFlash(const char *p){
 	NorFlashWrite(NORFLASH_STRATEGY_ADDR, (const short *)&g, (sizeof(StrategyParam) + 1) / 2);
 }
 
+static void __eraseZigbeeAddr(const char *p){
+	char j;
+	
+	for(j = 0; j < 60; j++){
+		NorFlashEraseBlock(NORFLAH_ERASE_BLOCK_BASE + j * NORFLASH_BLOCK_SIZE);
+	}
+}
+
 typedef struct {
 	const char *prefix;
 	void (*func)(const char *);
@@ -59,6 +80,8 @@ static const DebugHandlerMap __handlerMaps[] = {
 	{ "ST", __writeStrategyToFlash},
   { "WG", __setGatewayParam },
   { "ER", __erasureFlashChip},
+	{ "SET",__setNumbAndMax},
+	{ "ZG", __eraseZigbeeAddr},
 	{ "E",  __QueryParamInfor},
 	{ NULL, NULL },
 };

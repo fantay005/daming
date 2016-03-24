@@ -22,22 +22,6 @@ extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char addr
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
 extern unsigned short PowerStatus(void);
 
-static bool JudgeParam(unsigned char param){
-	if(param < '0'){
-		return true;
-	}
-	
-	if(param > 'F'){
-		return true;
-	}
-	
-	if((param > '9') && (param < 'A')){
-		return true;
-	}
-	
-	return false;
-}
-
 extern char SendStatus(void);
 
 extern unsigned char *__datamessage(void);
@@ -53,6 +37,8 @@ extern bool GSMTaskSendErrorTcpData(void);
 extern unsigned char *DayToSunshine(void);
 
 extern unsigned char *DayToNight(void);
+
+extern void WatchdogFeed(void);
 
 static void ShortToStr(unsigned short *s, char *r){
 	sprintf(r, "%04d", *s);							
@@ -88,7 +74,9 @@ static void POLLTask(void *parameter) {
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
 	while(1){	
-		vTaskDelay(configTICK_RATE_HZ / 5);	
+		WatchdogFeed();
+		
+		vTaskDelay(configTICK_RATE_HZ / 100);	
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){
@@ -284,14 +272,14 @@ static void POLLTask(void *parameter) {
 			if(tmp[0] == 0)
 				continue;
 			
-			if(NumOfAddr > tmp[1]){
+			if(NumOfAddr > (tmp[1])){
 				NumOfAddr = 0;
 			}		
 
 			NorFlashRead((NORFLASH_BALLAST_BASE + NumOfAddr * NORFLASH_SECTOR_SIZE), (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			
 			NumOfAddr++;
-			if(JudgeParam(k.Loop)){
+			if(k.Loop == 0xFF){
 				continue;
 			} else {			
 				GatewayParam1 param;				
@@ -304,12 +292,6 @@ static void POLLTask(void *parameter) {
 				
 				if(MarkRead == 0){			
 					MarkRead = 1;
-				}
-				if(JudgeParam(param.IntervalTime[0])){
-					continue;
-				}
-				if(JudgeParam(param.IntervalTime[1])){
-					continue;
 				}
 				
 				if(MarkRead == 1){
@@ -334,7 +316,7 @@ static void POLLTask(void *parameter) {
 					MarkRead = 3;
 				}
 						
-				if((MarkRead == 2) || ((dateTime.minute < 8) && (OverTurn == 0))){
+				if((MarkRead == 2) || ((dateTime.minute < 2) && (OverTurn == 0))){
 					
 					if(Max_Loop == 0){
 						continue;
@@ -366,6 +348,7 @@ static void POLLTask(void *parameter) {
 				if(dateTime.minute >= 8) {
 					OverTurn = 0;
 				}			
+				vTaskDelay(configTICK_RATE_HZ / 10);
 				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 				h.CT[0] = '0';

@@ -394,11 +394,15 @@ static void __ParamWriteToFlash(const char *p){
 			MaxZigbeeAdress = len;		
 		}
 		
+		NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&g, (sizeof(Lightparam) + 1) / 2);	
+		if(g.AddrOfZigbee[0] == 0xFF)
+			MaxZigBeeNumb++;
+					
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
 }
 
 static void HandleLightParam(ProtocolHead *head, const char *p) {
-	unsigned short len, i = 0, j, lenth, e;
+	unsigned short len, i = 0, j, lenth;
 	unsigned char size;
 	unsigned char *buf, msg[48], tmp[5];
 	unsigned short temp[3] = {0};
@@ -411,10 +415,6 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		temp[1] = 0;
 	MaxZigBeeNumb = temp[0];
 	MaxZigbeeAdress = temp[1];
-	
-//	NorFlashRead(NORFLASH_ERASE_LIGHT, (short *)&e, 1);
-//	if(e == 0xFFFF)
-//			e = 0;
 
 	if(p[0] == '1'){          /*增加一盏灯*/
 		
@@ -423,9 +423,6 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		for(i = 0; i < len; i++) {
 			__ParamWriteToFlash(&p[1 + i * 17]);
 			sscanf(&p[1 + i * 17], "%4s", &(msg[i * 4])); 
-			
-			
-			MaxZigBeeNumb++;
 		}
 		msg[i * 4] = p[0];
 		
@@ -461,14 +458,9 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		}
 		msg[i * 4] = p[0];
 		
-	} else if (p[0] == '4'){
-		
-		
+	} else if (p[0] == '4'){			
 		MaxZigBeeNumb = 0;
 		MaxZigbeeAdress = 0;
-		e++;
-		
-//		NorFlashWrite(NORFLASH_ERASE_LIGHT, (const short *)&e, 1);	
 		
 		msg[0] = '0';
 		msg[1] = '0';
@@ -909,7 +901,7 @@ static short AfterCloseOffset = 30 * 60;            /*关灯后偏移*/
 static short BeforOpenOffset = 30 * 60;             /*开灯前偏移*/  
 static short AfterOpenOffset = 30 * 60;             /*开灯后偏移*/  
 static int DeepNightStart = (22 * 60 * 60);   /*深夜开始时间*/  
-static int DeepNightEnd = (6 * 60 * 60);      /*深夜结束时间*/  
+static int DeepNightEnd = (5 * 60 * 60);      /*深夜结束时间*/  
 
 static void HandleSetParamDog(ProtocolHead *head, const char *p){         /*设置光强度区域和时间区域划分点*/
 	unsigned char *buf, size, tmp[8];
@@ -1357,6 +1349,8 @@ void BegAverage(int *p){
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
 	
+		if((dateTime.hour > 11) && (dateTime.hour < 16))
+		
 		DivideTimeArea(dateTime);
 		
 		BegAverage(__Luxparam.ArrayOfLuxValue);

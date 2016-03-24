@@ -222,6 +222,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	
 	if((k.Loop > '8') || (k.Loop < '0')){
 		printf("This loop = %d, have error.\r\n", (k.Loop - '0'));
+		printf("This addr = %04d.\r\n", addr);
 		return RTOS_ERROR;
 	}
 	
@@ -387,14 +388,14 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 					for(i = 0; i < 19; i++){
 						SZ05SendChar(CloseBuf[i]);
 					}
-					vTaskDelay(configTICK_RATE_HZ / 5);
+					vTaskDelay(configTICK_RATE_HZ / 10);
 				} else if(StateFlag == 0x02){
 					OpenBuf[0] = (hexAddr >> 8) & 0xFF;
 					OpenBuf[1] = hexAddr & 0xFF;
 					for(i = 0; i < 19; i++){
 						SZ05SendChar(OpenBuf[i]);
 					}
-					vTaskDelay(configTICK_RATE_HZ / 5);
+					vTaskDelay(configTICK_RATE_HZ / 10);
 				}
 			}
 			
@@ -430,10 +431,9 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			if(*msg != 1){
 				DataFalgQueryAndChange(2, 5, 0);
-			DataFalgQueryAndChange(3, 1, 0);
-			DataFalgQueryAndChange(5, 1, 0);
-			
-			NumbOfRank = instd;
+				DataFalgQueryAndChange(3, 1, 0);
+				DataFalgQueryAndChange(5, 1, 0);	
+				NumbOfRank = instd;
 			}	
 		}
 		
@@ -455,14 +455,14 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(CloseBuf[i]);
 				}
-				vTaskDelay(configTICK_RATE_HZ / 5);
+				vTaskDelay(configTICK_RATE_HZ / 10);
 			} else if(StateFlag == 0x02){
 				OpenBuf[0] = (hexAddr >> 8) & 0xFF;
 				OpenBuf[1] = hexAddr & 0xFF;
 				for(i = 0; i < 19; i++){
 					SZ05SendChar(OpenBuf[i]);
 				}
-				vTaskDelay(configTICK_RATE_HZ / 5);
+				vTaskDelay(configTICK_RATE_HZ / 10);
 			}
 		}
 
@@ -479,8 +479,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			if(*msg == 1){
 				DataFalgQueryAndChange(2, 6, 0);
 				DataFalgQueryAndChange(3, 1, 0);
-				DataFalgQueryAndChange(5, 1, 0);
-				
+				DataFalgQueryAndChange(5, 1, 0);	
 				NumbOfRank = instd;		
 			}
 				
@@ -546,7 +545,8 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			k.CommState = i;
 			k.InputPower = compare;
 			
-			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);		
+			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	
+			return;
 		}
 		
 		if(((k.InputPower > (compare + 3)) && (k.InputPower < (compare + 15))) ||
@@ -677,7 +677,7 @@ static void ZIGBEETask(void *parameter) {
 	ZigbTaskMsg message;
 	for (;;) {
 	//	printf("ZIGBEE: loop again\n");
-		rc = xQueueReceive(__ZigbeeQueue, &message, portMAX_DELAY);
+		rc = xQueueReceive(__ZigbeeQueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			ZigbeeHandler(&message);
 		}

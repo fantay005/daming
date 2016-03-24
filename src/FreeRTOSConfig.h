@@ -78,7 +78,7 @@
  *----------------------------------------------------------*/
 
 #define configUSE_PREEMPTION		0
-#define configUSE_IDLE_HOOK			1
+#define configUSE_IDLE_HOOK			0
 #define configUSE_TICK_HOOK			0
 #define configCPU_CLOCK_HZ			( ( unsigned long ) 72000000 )
 #define configTICK_RATE_HZ			( ( portTickType ) 500 )
@@ -93,7 +93,7 @@
 
 /* Co-routine definitions. */
 #define configUSE_CO_ROUTINES 		0
-#define configMAX_CO_ROUTINE_PRIORITIES ( 2 )
+#define configMAX_CO_ROUTINE_PRIORITIES ( 1 )
 
 /* Set the following definitions to 1 to include the API function, or zero
 to exclude the API function. */
@@ -113,7 +113,7 @@ to exclude the API function. */
 #define configKERNEL_INTERRUPT_PRIORITY 		255
 /* !!!! configMAX_SYSCALL_INTERRUPT_PRIORITY must not be set to zero !!!!
 See http://www.FreeRTOS.org/RTOS-Cortex-M3-M4.html. */
-#define configMAX_SYSCALL_INTERRUPT_PRIORITY 	191 /* equivalent to 0xb0, or priority 11. */
+#define configMAX_SYSCALL_INTERRUPT_PRIORITY 	11 /* equivalent to 0xb0, or priority 11. */
 
 
 /* This is the value being used as per the ST library which permits 16
