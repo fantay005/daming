@@ -837,18 +837,23 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 }
 
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
-	char *buf;
+	unsigned char *buf,size, loop;
 	
-	buf = DataFalgQueryAndChange(5, 0, 1);
-	while(*buf != 0){
-		return;
-	}
-	
-	DataFalgQueryAndChange(2, 4, 0);
-	DataFalgQueryAndChange(6, p[0], 0);
- // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
+//	buf = DataFalgQueryAndChange(5, 0, 1);
+//	while(*buf != 0){
+//		return;
+//	}
+//	
+//	DataFalgQueryAndChange(2, 4, 0);
+//	DataFalgQueryAndChange(6, p[0], 0);
+// // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
 
-	DataFalgQueryAndChange(5, 1, 0);
+//	DataFalgQueryAndChange(5, 1, 0);
+	loop = p[0];
+
+	buf = ProtocolToElec(head->addr, (unsigned char *)"08", (const char *)&loop, &size);
+	ElecTaskSendData((const char *)buf, size);	
+	vPortFree(buf);	
 }
 
 static void HandleLightAuto(ProtocolHead *head, const char *p) {
