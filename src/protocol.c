@@ -324,6 +324,8 @@ char StopLuxDataSend(void){
 	return LuxDataStop;
 }
 
+extern void TransCmdSendStr(char *s, int len);
+
 static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 	unsigned char section, buf[16], temp[1024], i;
 	short size;
@@ -344,9 +346,9 @@ static void HandleUpdataPacket(ProtocolHead *head, const char *p) {
 		
 	for(i = 0; i < section; i++){
 		if(i != (section - 1))
-			TransTaskSendData((const char *)&temp[i * 200], 200);
+			TransCmdSendStr((char *)&temp[i * 200], 200);
 		else
-			TransTaskSendData((const char *)&temp[i * 200], size % 200);
+			TransCmdSendStr((char *)&temp[i * 200], size % 200);
 	}
 }
 

@@ -568,6 +568,7 @@ void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 }
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+extern char StopLuxDataSend(void);
 
 void __handleSIM900RTC(GsmTaskMessage *msg) {
 	DateTime dateTime;
@@ -629,6 +630,9 @@ void __handleSIM900RTC(GsmTaskMessage *msg) {
   
 	RtcSetTime(DateTimeToSecond(&dateTime));
 
+	if(StopLuxDataSend())
+		return;
+	
 	sprintf((char *)tmp, "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
 	buf = ProtocolMessage("9999999999", "42", (const char *)tmp, &size);
 	TransTaskSendData((const char *)buf, size);

@@ -34,7 +34,7 @@ void TransCmdSendChar(char c) {
 	while (USART_GetFlagStatus(ComX, USART_FLAG_TXE) == RESET);
 }
 
-static void TransCmdSendStr(char *s, int len){
+void TransCmdSendStr(char *s, int len) {
 	int i;
 	
 	for(i = 0; i < len; i++){
