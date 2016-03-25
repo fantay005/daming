@@ -353,7 +353,7 @@ static void __ParamWriteToFlash(const char *p){
 	unsigned short len;
 	DateTime dateTime;
 	uint32_t second;	
-	Lightparam g;
+	Lightparam g, s;
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
@@ -387,15 +387,17 @@ static void __ParamWriteToFlash(const char *p){
 	
 	  len = atoi((const char *)msg);	
 		
-		if(len > 1000)
+		if(len > 1000){
+			MaxZigBeeNumb++;
 			return;
+		}
 		
 		if(MaxZigbeeAdress < len){
 			MaxZigbeeAdress = len;		
 		}
 		
-		NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&g, (sizeof(Lightparam) + 1) / 2);	
-		if(g.AddrOfZigbee[0] == 0xFF)
+		NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&s, (sizeof(Lightparam) + 1) / 2);	
+		if(s.AddrOfZigbee[0] == 0xFF)
 			MaxZigBeeNumb++;
 					
 		NorFlashWrite(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const short *)&g, (sizeof(Lightparam) + 1) / 2);	
@@ -1036,6 +1038,8 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //F
 	if (mark == NULL) {
 		return;
 	}
+	
+	
 	
 	if (FirmwareUpdateSetMark(mark, len, type)) {
 		NVIC_SystemReset();

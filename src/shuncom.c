@@ -190,7 +190,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 
   ret = DataFalgQueryAndChange(3, 0, 1);         /*发送指令是否需要回应*/
 
-	if(*ret == 1){
+	if(*ret == 1){                                 /*发出指令后不需要回应*/
 		
 	  message.type = TYPE_IOT_SEND_DATA;
 		message.length = len;
@@ -431,7 +431,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			msg = DataFalgQueryAndChange(5, 0, 1);
 			if(*msg != 1){
 				DataFalgQueryAndChange(2, 5, 0);
-				DataFalgQueryAndChange(3, 1, 0);
+				DataFalgQueryAndChange(3, 0, 0);
 				DataFalgQueryAndChange(5, 1, 0);	
 				NumbOfRank = instd;
 			}	

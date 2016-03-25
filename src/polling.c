@@ -130,23 +130,23 @@ static void POLLTask(void *parameter) {
 					}						
 					break;
 				
-				case 4:
-					bum = DataFalgQueryAndChange(6, 0, 1);
-					ID[0] = *bum;
-					ID[1] = 0;
-				
-					if(ID[0] != '0'){
-						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
-						ElecTaskSendData((const char *)buf, size);	
-						vPortFree(buf);	
-					} else {
-						sprintf((char *)ID, "%02d", 0);
-						
-						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
-						ElecTaskSendData((const char *)buf, size); 
-						
-					}				
-					break;
+//				case 4:
+//					bum = DataFalgQueryAndChange(6, 0, 1);
+//					ID[0] = *bum;
+//					ID[1] = 0;
+//				
+//					if(ID[0] != '0'){
+//						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
+//						ElecTaskSendData((const char *)buf, size);	
+//						vPortFree(buf);	
+//					} else {
+//						sprintf((char *)ID, "%02d", 0);
+//						
+//						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
+//						ElecTaskSendData((const char *)buf, size); 
+//						
+//					}				
+//					break;
 				
 				case 5:
 					Numb = CallTransfer();
@@ -169,8 +169,7 @@ static void POLLTask(void *parameter) {
 					#endif	
 				
 					buf = DataSendToBSN((unsigned char *)"02", h.AD, (const char *)msg, &size);
-					ZigbTaskSendData((const char *)buf, size);	
-					vTaskDelay(configTICK_RATE_HZ * 3);				
+					ZigbTaskSendData((const char *)buf, size);				
 					break;
 					
 				case 6:                               /*网关下发策略*/
@@ -218,7 +217,6 @@ static void POLLTask(void *parameter) {
 					
 					buf = DataSendToBSN((unsigned char *)"03", "FFFF", (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);					
-					vTaskDelay(configTICK_RATE_HZ * 3);
 					break;
 					
 				case 7:	                                   /*网关下发当前时间和开关灯时间*/

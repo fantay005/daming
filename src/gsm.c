@@ -304,6 +304,7 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 //extern void __handleLux(char tim, char lux);
 
 //static char FirstFlag = 0;
+
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
@@ -312,7 +313,7 @@ static void __gsmTask(void *parameter) {
 //		printf("Gsm: loop again\n");	
 
 //		if(!FirstFlag){
-//			__handleLux(2, 2);
+//			__handleLux(4, 2);
 //			FirstFlag = 1;
 //		}
 		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
