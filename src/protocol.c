@@ -460,10 +460,16 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 		}
 		msg[i * 4] = p[0];
 		
-	} else if (p[0] == '4'){			
+	} else if (p[0] == '4'){	
+		char j;
+		
 		MaxZigBeeNumb = 0;
 		MaxZigbeeAdress = 0;
 		
+		for(j = 0; j < 60; j++){
+			NorFlashEraseBlock(NORFLAH_ERASE_BLOCK_BASE + j * NORFLASH_BLOCK_SIZE);
+		}
+	
 		msg[0] = '0';
 		msg[1] = '0';
 		msg[2] = '0';
@@ -482,6 +488,8 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
   GsmTaskSendTcpData((const char *)buf, size);
 }
 
+static unsigned short SeekAddr[600];              /*´æ´¢ÐèÒª²éÑ¯ZigBeeµØÖ·Êý×é*/
+
 typedef struct{	
 	unsigned short ArrayAddr[600];
 	unsigned char SendFlag;
@@ -497,6 +505,8 @@ typedef struct{
 static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
+	memset(SeekAddr, 0, 600);
+	
 	memset(__msg.ArrayAddr, 0, 600);
 	if (__ProSemaphore == NULL) {
 		vSemaphoreCreateBinary(__ProSemaphore);
@@ -573,52 +583,9 @@ typedef enum{
 
 #define NoChoice     0           /*ÊôÐÔÃ»ÓÐÑ¡Ôñ*/
 
-void SeekAddress(PartType loop, unsigned short pole, char main, char aux){     /*¸ù¾ÝµÆ²Î²éÕÒzigbeeµØÖ·*/
-	int i = 0, j, len = 0, m, n;
-	unsigned char tmp[5], *ret, *msg;
-	Lightparam k;
-	
-	msg = DataFalgQueryAndChange(2, 0, 1);
-
-	memset(__msg.ArrayAddr, 0, 600);
-	for(len = 0; len < 599; len++) {
-		NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
-		
-		if(k.Loop != (loop + '0')){            /*»ØÂ·ÒªÒ»ÖÂ*/
-			continue;
-		}
-		
-		sscanf((const char *)k.LightPole, "%4s", tmp);
-		m = atoi((const char *)tmp);           /*µÆ¸ËºÅ*/
-		
-		if((pole != NoChoice) && (m != pole)){
-			continue;
-		}
-		
-		sscanf((const char *)k.Attribute, "%2s", tmp);
-		m = atoi((const char *)tmp);           /*Ö÷¸¨µÀÊôÐÔ*/
-		
-		if(m < 0x10){                          /*Ö÷µÀµÆ*/
-			
-			if((main != NoChoice) && (main != (m & 0x0F)))
-				continue;
-		} else if((m > 0x10) && (m < 0x20)){   /*¸¨µÀµÆ*/
-			
-			if((aux != NoChoice) && (aux != (m & 0x0F)))
-				continue;
-		} else if(m > 0x30){                   /*Í¶¹âµÆ*/
-			continue;
-		}
-		
-		sprintf((char *)k.AddrOfZigbee, "%4s", tmp);
-		__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
-	}
-	
-	__msg.ArrayAddr[i] = 0;
-	__msg.Lenth = i;
-} 
-
-
+unsigned short *RespondAddr(void){
+	return SeekAddr;
+}
 
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
@@ -756,6 +723,12 @@ void __DataFlagJudge(const char *p){
 	}
 	__msg.ArrayAddr[i] = 0;
 	__msg.Lenth = i;
+	
+	for(i = 0; i < 1000; i++){
+		SeekAddr[i] = __msg.ArrayAddr[i];
+		if(__msg.ArrayAddr[i] == 0)
+			break;
+	}
 } 
 
 static unsigned char DataMessage[32];
@@ -822,13 +795,13 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	unsigned char *buf, msg[8], size;	
 	
-	buf = DataFalgQueryAndChange(5, 0, 1);
-	while(*buf != 0){
-		return;
-	}
-	
+//	buf = DataFalgQueryAndChange(5, 0, 1);
+//	while(*buf != 0){
+//		return;
+//	}
+//	
 	DataFalgQueryAndChange(5, 1, 0);
-	
+//	
 	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
@@ -855,7 +828,6 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 
 	buf = ProtocolToElec(head->addr, (unsigned char *)"08", (const char *)&loop, &size);
 	ElecTaskSendData((const char *)buf, size);	
-	vPortFree(buf);	
 }
 
 static void HandleLightAuto(ProtocolHead *head, const char *p) {
@@ -957,7 +929,11 @@ uint32_t FragOffset(char sec, char tim, char lux){                        /*¸ù¾Ý
 	return RealAddr;
 }
 
-static char StrategeFlag = 0;
+static char StrategeFlag = 0;              /*²ßÂÔÏÂÔØ»òÕß¸Ä±ä±êÖ¾·û*/
+
+char StrategeChange(void){
+	return StrategeFlag;
+}
 
 static void HandleStrategy(ProtocolHead *head, const char *p){          /*²ßÂÔÏÂÔØ*/
 	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
@@ -1365,7 +1341,11 @@ void BegAverage(int *p){
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
 		
-		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea) || (StrategeFlag == 1)){
+		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea))
+			StrategeFlag = 1;
+			
+		if(StrategeFlag == 1){
+			StrategeFlag = 0;
 			LightCount = 0;
 			memset(LightAddr, 0, 600);
 			__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	

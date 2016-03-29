@@ -11,6 +11,7 @@
 #include "norflash.h"
 #include "protocol.h"
 #include "gsm.h"
+#include "shuncom.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
 
@@ -177,7 +178,7 @@ static void __TimeTask(void *nouse) {
 //	int NowTime, DayTime, DarkTime;
 		 
 	while (1) {
-		 vTaskDelay(configTICK_RATE_HZ / 100);	
+		 vTaskDelay(configTICK_RATE_HZ / 50);	
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }	 
@@ -203,12 +204,12 @@ static void __TimeTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 		 
-		 if((dateTime.year < 0x10) || (dateTime.month > 0x0C) || (dateTime.date > 0x1F) || (dateTime.hour > 0x3D)) {  /*时间数据异常*/
+		 if(((dateTime.year < 0x10) || (dateTime.month < 0x03) || (dateTime.hour / 2)) && (dateTime.minute < 1) && (dateTime.second < 5)) {  /*时间数据异常，每两小时校验一次*/
 			 unsigned char *buf, size;
 			 
 			 curT = xTaskGetTickCount();
 			 
-			 if((curT - lastT) > configTICK_RATE_HZ * 60){
+			 if((curT - lastT) > configTICK_RATE_HZ * 120){
 				 buf = ProtocolMessage("9999999999", "45", NULL, &size);   /*请求时间*/
 				 GsmTaskSendTcpData((const char *)buf, size);
 				 vPortFree(buf);
@@ -265,7 +266,7 @@ static void __TimeTask(void *nouse) {
 		} else if((dateTime.hour == 0x00) && (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
 			vTaskDelay(configTICK_RATE_HZ);
 			NVIC_SystemReset();			
-		}		
+		} 
 	}
 }
 

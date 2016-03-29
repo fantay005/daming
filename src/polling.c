@@ -17,8 +17,6 @@
 
 #define GSM_GPRS_HEART_BEAT_TIME        (configTICK_RATE_HZ * 60)
 
-extern unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
-extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size);
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
 extern unsigned short PowerStatus(void);
 
@@ -58,6 +56,8 @@ typedef enum {
 	TYPE_SETIP,
 } PollTaskMessageType;    /*轮询任务类型*/
 
+extern char StopPoll(void);
+
 static void POLLTask(void *parameter) {
 	static char MarkRead, OverTurn;
 	int len = 0, NumOfAddr= 0;
@@ -76,7 +76,10 @@ static void POLLTask(void *parameter) {
 	while(1){	
 		WatchdogFeed();
 		
-		vTaskDelay(configTICK_RATE_HZ / 100);	
+		vTaskDelay(configTICK_RATE_HZ / 50);	
+		
+		if(StopPoll())
+			continue;
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){
@@ -87,15 +90,15 @@ static void POLLTask(void *parameter) {
 			
 			switch(*command){
 				case 1:
-					ret = DataFalgQueryAndChange(1, 0, 1);
-					while(*ret){
-						ShortToStr(ret, (char *)ID);
-						alter = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);
-						DataFalgQueryAndChange(4, 1, 0);
-						ZigbTaskSendData((const char *)alter, size);
-						
-						ret++;
-					}	
+//					ret = DataFalgQueryAndChange(1, 0, 1);
+//					while(*ret){
+//						ShortToStr(ret, (char *)ID);
+//						alter = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);
+//						DataFalgQueryAndChange(4, 1, 0);
+//						ZigbTaskSendData((const char *)alter, size);
+//						
+//						ret++;
+//					}	
 					break;
 					
 				case 2:		
@@ -267,10 +270,10 @@ static void POLLTask(void *parameter) {
 		} else {
 			NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
 			
-			if(tmp[0] == 0)
+			if(tmp[0] == 0)              /*灯参个数*/
 				continue;
 			
-			if(NumOfAddr > (tmp[1])){
+			if(NumOfAddr > (tmp[1])){    /*最大ZigBee地址*/
 				NumOfAddr = 0;
 			}		
 
@@ -282,70 +285,66 @@ static void POLLTask(void *parameter) {
 			} else {			
 				GatewayParam1 param;				
 				
-				if((k.Loop - '0') > Max_Loop){
-					Max_Loop = k.Loop - '0';
-				}
-					
-				NorFlashRead(NORFLASH_MANAGEM_BASE, (short *)&param, (sizeof(GatewayParam1) + 1) / 2);
+//				if((k.Loop - '0') > Max_Loop){
+//					Max_Loop = k.Loop - '0';
+//				}
+//					
+//				NorFlashRead(NORFLASH_MANAGEM_BASE, (short *)&param, (sizeof(GatewayParam1) + 1) / 2);
+//				
+//				if(MarkRead == 0){			
+//					MarkRead = 1;
+//				}
+//				
+//				if(MarkRead == 1){
+//					if((param.IntervalTime[0] >= '0') && (param.IntervalTime[0] <= '9')){
+//						len = ((param.IntervalTime[0] << 4) & 0xF0);
+//					} else {
+//						len = (((param.IntervalTime[0] - '7') << 4) & 0xF0);
+//					}
+//					
+//					if((param.IntervalTime[1] >= '0') && (param.IntervalTime[1] <= '9')){
+//						len |= ((param.IntervalTime[1]) & 0x0F);
+//					} else {
+//						len |= ((param.IntervalTime[1] - '7') & 0x0F);
+//					}
+//					MarkRead = 2;
+//				}		
+//				
+//				if(dateTime.minute > 5){
+//					MarkRead = 3;
+//				}
+//						
+//				if((MarkRead == 2) || ((dateTime.minute < 2) && (OverTurn == 0))){
+//					
+//					if(Max_Loop == 0){
+//						continue;
+//					}
+//				
+//					NorFlashRead(NORFLASH_ELEC_UPDATA_TIME, (short *)tmp, 2);
+//					ResetTime = (tmp[0] << 16) | tmp[1];
+//					
+//					sprintf((char *)ID, "%02d", 0);
+//					
+//					if((second - ResetTime) > 60){
+//						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
+//						ElecTaskSendData((const char *)buf, size); 
+//					}
+//					
+////					if(MarkRead == 2){
+////						tmp[0] = second >> 16;
+////						tmp[1] = second & 0xFFFF;
+////						tmp[2] = 0;
+////						NorFlashWrite(NORFLASH_RESET_TIME, (short *)tmp, 2);
+////					}
+//					
+//					OverTurn = 1;
+//					MarkRead = 4;
+//		
+//				} 
 				
-				if(MarkRead == 0){			
-					MarkRead = 1;
-				}
-				
-				if(MarkRead == 1){
-					if((param.IntervalTime[0] >= '0') && (param.IntervalTime[0] <= '9')){
-						len = ((param.IntervalTime[0] << 4) & 0xF0);
-					} else {
-						len = (((param.IntervalTime[0] - '7') << 4) & 0xF0);
-					}
-					
-					if((param.IntervalTime[1] >= '0') && (param.IntervalTime[1] <= '9')){
-						len |= ((param.IntervalTime[1]) & 0x0F);
-					} else {
-						len |= ((param.IntervalTime[1] - '7') & 0x0F);
-					}
-					MarkRead = 2;
-				}		
-				
-				second = RtcGetTime();
-				SecondToDateTime(&dateTime, second);
-				
-				if(dateTime.minute > 5){
-					MarkRead = 3;
-				}
-						
-				if((MarkRead == 2) || ((dateTime.minute < 2) && (OverTurn == 0))){
-					
-					if(Max_Loop == 0){
-						continue;
-					}
-				
-					NorFlashRead(NORFLASH_ELEC_UPDATA_TIME, (short *)tmp, 2);
-					ResetTime = (tmp[0] << 16) | tmp[1];
-					
-					sprintf((char *)ID, "%02d", 0);
-					
-					if((second - ResetTime) > 60){
-						buf = ProtocolToElec(a.GWAddr, (unsigned char *)"08", (const char *)ID, &size);
-						ElecTaskSendData((const char *)buf, size); 
-						vPortFree(buf);
-					}
-					
-					if(MarkRead == 2){
-						tmp[0] = second >> 16;
-						tmp[1] = second & 0xFFFF;
-						tmp[2] = 0;
-						NorFlashWrite(NORFLASH_RESET_TIME, (short *)tmp, 2);
-					}
-					
-					OverTurn = 1;
-					MarkRead = 4;
-		
-				} 
-				
-				if(dateTime.minute >= 8) {
-					OverTurn = 0;
-				}			
+//				if(dateTime.minute > 5) {
+//					OverTurn = 0;
+//				}			
 				vTaskDelay(configTICK_RATE_HZ / 10);
 				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);

@@ -21,7 +21,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 25)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 30)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.
@@ -79,7 +79,7 @@ bool GsmTaskSendTcpData(const char *dat, unsigned char len) {
 	message.length = len;
 	memcpy(message.infor, dat, len);	
 	
-	if (pdTRUE != xQueueSend(__Transqueue, &message, configTICK_RATE_HZ * 15)) {
+	if (pdTRUE != xQueueSend(__Transqueue, &message, configTICK_RATE_HZ * 5)) {
 		return true;
 	}
 	return false;
@@ -316,7 +316,7 @@ static void __gsmTask(void *parameter) {
 //			__handleLux(4, 2);
 //			FirstFlag = 1;
 //		}
-		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 50);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -332,6 +332,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(9600);
-	__Transqueue = xQueueCreate(10, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(20, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

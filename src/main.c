@@ -77,7 +77,7 @@ extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
 extern void ElectricInit(void);
 extern void POLLSTART(void);
-
+extern void TIMINGUPLOAD(void);
 
 int main(void) {
 	PreSetupHardware();
@@ -90,7 +90,8 @@ int main(void) {
 	TimePlanInit();	
 	ElectricInit();
 	POLLSTART();
-
+	TIMINGUPLOAD();
+	
 	printf("\n==============================\n");
 	printf("%s", Version());
 	printf("\n==============================\n");

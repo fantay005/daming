@@ -17,7 +17,7 @@
 #include "norflash.h"
 #include "gsm.h"
 
-#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
+#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 40)
 
 extern void *DataFalgQueryAndChange(char Obj, char Alter, char Query);
 
@@ -178,6 +178,8 @@ void SZ05SendString(char *str){
 
 extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
+char BSNinfor[600][40];           /*保存所有镇流器当前数据*/
+
 SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	int i, j;
 	unsigned short addr;
@@ -242,10 +244,10 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		}
 //		TIM_Cmd(TIMx, ENABLE); 
 
-		for(j = 0; j < 500; j++){
+		for(j = 0; j < 50; j++){
 			if(WAITFLAG == 0){
-				vTaskDelay(configTICK_RATE_HZ / 500);
-				if(j >= 499){
+				vTaskDelay(configTICK_RATE_HZ / 50);
+				if(j >= 49){
 					WAITFLAG = 2;
 				}
 			} else {
@@ -266,7 +268,12 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		if((WAITFLAG == 2) && (i == 2)){		
 			
 			ret = DataFalgQueryAndChange(2, 0, 1);
-			if((*ret == 0) && (k.CommState == 0x18) ){			
+			if((*ret == 0) && (k.CommState == 0x18) ){		
+				char temp[32] = {0};
+			
+				memset(temp, '0', 30);
+				sprintf(BSNinfor[addr], "%04d%04d%s", addr, 18, temp);
+				
 				WAITFLAG = 0;				
 				return STATUS_FIT;
 			}		
@@ -274,26 +281,30 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 			k.CommState = 0x18;
 			k.InputPower = 0;
 			NorFlashWrite(NORFLASH_BALLAST_BASE + addr * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);
+			
 			tmp[0] = hextable[k.CommState >> 4];
 			tmp[1] = hextable[k.CommState & 0x0F];
-			ret = ZigbtaskApplyMemory(38 + 5);
+			
+			ret = ZigbtaskApplyMemory(38);
+			
+			memset(ret, '0', 30);
+			sprintf(BSNinfor[addr], "%04d%04d%s", addr, 18, ret);
+			
 			memset(ret, '0', 43);
 			memcpy(ret, build, 4);
 			memcpy((ret + 4), (dat + 3), 4);
 			memcpy((ret + 4 + 4 + 2), tmp, 2);
-			ret[38 + 4] = 0;
+			ret[38 + 4] = 0;	
 			
 			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
-			ZigbTaskFreeMemory(ret);
+
 			WAITFLAG = 0;
 			return COM_FAIL;
 		}
 	}
 	return HANDLE_ERROR;
 }
-
-extern unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, int *size);
 
 static void ZigbeeHandleLightParam(FrameHeader *header, unsigned char CheckByte, const char *p){
 }
@@ -340,6 +351,14 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 											0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03};
 
  // buf = DataFalgQueryAndChange(4, 0, 1);    /*查看是否是服务器发来查询指令*/
+			
+  msg = ZigbtaskApplyMemory(35);											
+	sscanf((const char *)header, "%*1s%4s", addr);
+	i = atoi((const char *)addr);
+	sscanf(p, "%*9s%34s", msg);
+	sprintf(BSNinfor[i], "%s%s", addr, msg);
+	ZigbTaskFreeMemory(msg);                 /*保存接收到的镇流器数据*/										
+											
 	ret = DataFalgQueryAndChange(1, 0, 1);
 	while(*ret){
 		fitcount++;
@@ -365,6 +384,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			char build[4] = {'B', '0' , '0' , '0'};	
 			
 			msg = ZigbtaskApplyMemory(34 + 9);
+			
 			memcpy(msg, build, 4);
 			memcpy((msg + 4), header->AD, 4);
 			memcpy((msg + 4 + 4), (p + sizeof(FrameHeader)), 34);
@@ -677,10 +697,10 @@ static void ZIGBEETask(void *parameter) {
 	ZigbTaskMsg message;
 	for (;;) {
 	//	printf("ZIGBEE: loop again\n");
-		rc = xQueueReceive(__ZigbeeQueue, &message, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__ZigbeeQueue, &message, configTICK_RATE_HZ / 50);
 		if (rc == pdTRUE) {
 			ZigbeeHandler(&message);
-		}
+		} 
 	}
 }
 
@@ -690,6 +710,7 @@ void SHUNCOMInit(void) {
 	SZ05_ADV_Init();
 	Zibee_Baud_CFG(9600);
 	ProtocolInit();
-	__ZigbeeQueue = xQueueCreate(10, sizeof(ZigbTaskMsg));
+	memset(BSNinfor, 0, 24000);
+	__ZigbeeQueue = xQueueCreate(20, sizeof(ZigbTaskMsg));
 	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
 }

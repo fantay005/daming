@@ -483,7 +483,7 @@ static void EleGathTask(void *parameter) {
 	ElecTaskMsg msg;
 	
 	for (;;) {
-		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 50);
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
