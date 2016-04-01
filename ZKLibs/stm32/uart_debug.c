@@ -85,7 +85,7 @@ static void __uartDebugTask(void *nouse) {
 }
 
 static inline void __uartDebugCreateTask(void) {
-	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5, NULL);
+	xTaskCreate(__uartDebugTask, (signed portCHAR *) "DBG", DEBUG_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }
 
 void UartDebugInit() {

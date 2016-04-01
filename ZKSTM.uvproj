@@ -677,6 +677,11 @@
               <FileType>1</FileType>
               <FilePath>.\src\inside_flash.c</FilePath>
             </File>
+            <File>
+              <FileName>timupload.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\timupload.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1409,6 +1414,11 @@
               <FileName>inside_flash.c</FileName>
               <FileType>1</FileType>
               <FilePath>.\src\inside_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>timupload.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\timupload.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -2798,6 +2808,11 @@
                   </Cads>
                 </FileArmAds>
               </FileOption>
+            </File>
+            <File>
+              <FileName>timupload.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>.\src\timupload.c</FilePath>
             </File>
           </Files>
         </Group>

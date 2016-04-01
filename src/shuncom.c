@@ -265,7 +265,8 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 			WAITFLAG = 0;
 			continue;
 		}
-		if((WAITFLAG == 2) && (i == 2)){		
+		if((WAITFLAG == 2) && (i == 2)){	
+			char mess[45] = {0};
 			
 			ret = DataFalgQueryAndChange(2, 0, 1);
 			if((*ret == 0) && (k.CommState == 0x18) ){		
@@ -285,20 +286,18 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 			tmp[0] = hextable[k.CommState >> 4];
 			tmp[1] = hextable[k.CommState & 0x0F];
 			
-			ret = ZigbtaskApplyMemory(38);
+			memset(mess, '0', 30);
+			sprintf(BSNinfor[addr], "%04d%04d%s", addr, 18, mess);
 			
-			memset(ret, '0', 30);
-			sprintf(BSNinfor[addr], "%04d%04d%s", addr, 18, ret);
+			memset(mess, '0', 43);
+			memcpy(mess, build, 4);
+			memcpy((mess + 4), (dat + 3), 4);
+			memcpy((mess + 4 + 4 + 2), tmp, 2);
+			mess[38 + 4] = 0;	
 			
-			memset(ret, '0', 43);
-			memcpy(ret, build, 4);
-			memcpy((ret + 4), (dat + 3), 4);
-			memcpy((ret + 4 + 4 + 2), tmp, 2);
-			ret[38 + 4] = 0;	
-			
-			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)ret, &size);
+			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)mess, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
-
+			
 			WAITFLAG = 0;
 			return COM_FAIL;
 		}
@@ -658,10 +657,6 @@ void __handleIOTRecieve(ZigbTaskMsg *p) {
 	}
 }
 
-char SendStatus(void){
-	return WAITFLAG;
-}
-
 void __handleIOTSend(ZigbTaskMsg *p){
 	int i;
 	char *dat = __ZigbGetMsgData(p);
@@ -712,5 +707,5 @@ void SHUNCOMInit(void) {
 	ProtocolInit();
 	memset(BSNinfor, 0, 24000);
 	__ZigbeeQueue = xQueueCreate(20, sizeof(ZigbTaskMsg));
-	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 4, NULL);
+	xTaskCreate(ZIGBEETask, (signed portCHAR *) "ZIGBEE", ZIGBEE_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 1, NULL);
 }

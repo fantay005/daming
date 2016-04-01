@@ -18,9 +18,6 @@
 #define GSM_GPRS_HEART_BEAT_TIME        (configTICK_RATE_HZ * 60)
 
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
-extern unsigned short PowerStatus(void);
-
-extern char SendStatus(void);
 
 extern unsigned char *__datamessage(void);
 
@@ -28,15 +25,9 @@ extern short CallTransfer(void);
 
 extern char *SpaceShift(void);
 
-extern char Conect_server_start(void);
-
-extern bool GSMTaskSendErrorTcpData(void);
-
 extern unsigned char *DayToSunshine(void);
 
 extern unsigned char *DayToNight(void);
-
-extern void WatchdogFeed(void);
 
 static void ShortToStr(unsigned short *s, char *r){
 	sprintf(r, "%04d", *s);							
@@ -73,13 +64,9 @@ static void POLLTask(void *parameter) {
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&a, (sizeof(GMSParameter)  + 1)/ 2);
 	
-	while(1){	
-		WatchdogFeed();
-		
+	while(1){		
 		vTaskDelay(configTICK_RATE_HZ / 50);	
-		
-		if(StopPoll())
-			continue;
+
 		bum = DataFalgQueryAndChange(5, 0, 1);
 	//	printf("Hello");
 		if(*bum){

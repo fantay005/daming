@@ -173,11 +173,9 @@ char HexToAscii(char hex){
 
 static unsigned short Total_Power = 0;
 
-unsigned short PowerStatus(void){
-	return Total_Power;
-}
-
 extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
+
+static char PhaseLossNumb = 0;                       /*电缆缺相个数*/
 
 static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 	Lightparam k;
@@ -207,28 +205,16 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 	
 	
 	NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)&gath, 1);
-	if(gath == 0xFFFF){
+	if(gath > 1000){
 		gath = 0;
-		sprintf((char *)&msg[125], "%4d", gath);
+		sprintf((char *)&msg[125], "%04d", gath);
 	} else
-		sprintf((char *)&msg[125], "%4d", gath);
-
-	for(i = 0; i < 4; i++){
-		if(msg[125 + i] == 0x20){
-			msg[125 + i] = '0';
-		}
-	}
+		sprintf((char *)&msg[125], "%04d", gath);
 	
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
 	
-	sprintf((char *)&msg[129], "%2d%2d%2d%2d%2d%2d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
-
-	for(i = 0; i < 12; i++){
-		if(msg[129 + i] == 0x20){
-			msg[129 + i] = '0';
-		}
-	}
+	sprintf((char *)&msg[129], "%02d%02d%02d%02d%02d%02d", dateTime.year, dateTime.month, dateTime.date, dateTime.hour, dateTime.minute, dateTime.second);
 	
 	msg[strlen(p) - 3] = 0;
 	
@@ -236,7 +222,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
-		vPortFree(buf);
+
 		return;
 	}
 	
@@ -283,7 +269,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
-		vPortFree(buf);
+
 	} else {
 	
 		sscanf(p, "%*7s%4s", tmp);
@@ -295,9 +281,11 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if(gath < Lset){
+		} else if((gath < Lset) && (gath > 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
+		} else {
+			PhaseLossNumb++;
 		}
 		
 		sscanf(p, "%*11s%4s", tmp);
@@ -309,9 +297,11 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if(gath < Lset){
+		} else if((gath < Lset) && (gath > 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
+		} else {
+			PhaseLossNumb++;
 		}
 		
 		sscanf(p, "%*15s%4s", tmp);
@@ -323,10 +313,20 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if(gath < Lset){
+		} else if((gath < Lset) && (gath > 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
+		} else {
+			PhaseLossNumb++;
 		}
+		
+		if(PhaseLossNumb == 3) {
+			state |= (1 << 10);
+		} else if((PhaseLossNumb == 1) || (PhaseLossNumb == 2)){
+			state |= (1 << 12);
+		}
+		
+		PhaseLossNumb = 0;
 		
 		sscanf(p, "%*19s%4s", tmp);
 		gath = atoi((const char *)tmp);
@@ -370,6 +370,9 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		}
 		
 		
+		if(state != 0) {
+			state |= (1 << 15);
+		}
 		msg[1] = HexToAscii(state >> 12);
 		msg[2] = HexToAscii((state >> 8) & 0x0F);
 		msg[3] = HexToAscii((state >> 4) & 0x0F);
@@ -380,7 +383,6 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
-		vPortFree(buf);
 	}	
 	
 	if(p[0] == '0'){		
@@ -404,8 +406,6 @@ static void ElecHandleEGVersQuery(ProtocolHead *header, const char *p){
 	
 	buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 	GsmTaskSendTcpData((const char *)buf, size);
-	
-	vPortFree(buf);
 }
 
 static void ElecHandleEGUpgrade(ProtocolHead *header, const char *p){
@@ -478,12 +478,15 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 	{ TYPE_NONE, NULL },
 };
 
+static char UpFalg = 1;          /*定时上传电量数据标识*/
+
 static void EleGathTask(void *parameter) {
 	portBASE_TYPE rc;
 	ElecTaskMsg msg;
 	
 	for (;;) {
 		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 50);
+		
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -492,7 +495,28 @@ static void EleGathTask(void *parameter) {
 					break;
 				}
 			}		
+		} else {
+			DateTime dateTime;
+			uint32_t second;
+			unsigned char *buf, size;
+			GMSParameter g;
+			
+			second = RtcGetTime();
+			SecondToDateTime(&dateTime, second);	
+				
+			NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);
+			
+			if((dateTime.minute > 5)  && (dateTime.minute < 57)){
+				UpFalg = 1;
+			}
+			
+			if((UpFalg) && (dateTime.minute == 59)){          /*定点上传镇流器数据*/
+				buf = ProtocolToElec(g.GWAddr, (unsigned char *)"08", (const char *)"0", &size);
+				ElecTaskSendData((const char *)buf, size); 
+				UpFalg = 0;
+			}
 		}
+		
 	}
 }
 

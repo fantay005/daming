@@ -587,18 +587,30 @@ unsigned short *RespondAddr(void){
 	return SeekAddr;
 }
 
+static char CommandFlag = 0;
+
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
 	unsigned char tmp[5], *ret, *msg;
 	Lightparam k;
 	
-	msg = DataFalgQueryAndChange(2, 0, 1);
-	if(*msg == 1){
+//	msg = DataFalgQueryAndChange(2, 0, 1);
+//	if(*msg == 1){
+//		ret = (unsigned char *)p + 4;
+//	} else if(*msg == 3) {
+//		ret = (unsigned char *)p + 5;
+//	} else if(*msg == 2) {
+//		ret = (unsigned char *)p + 6;
+//	}
+	
+	if(CommandFlag == 1){
 		ret = (unsigned char *)p + 4;
-	} else if(*msg == 3) {
+	} else if(CommandFlag == 3) {
 		ret = (unsigned char *)p + 5;
-	} else if(*msg == 2) {
+	} else if(CommandFlag == 2) {
 		ret = (unsigned char *)p + 6;
+	} else {
+		return;
 	}
 
 	if(p[0] == 'A'){
@@ -729,6 +741,8 @@ void __DataFlagJudge(const char *p){
 		if(__msg.ArrayAddr[i] == 0)
 			break;
 	}
+	
+	CommandFlag = 0;
 } 
 
 static unsigned char DataMessage[32];
@@ -736,6 +750,8 @@ static unsigned char DataMessage[32];
 unsigned char *__datamessage(void){
 	return DataMessage;
 }
+
+
 
 static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	unsigned char *buf, msg[8], *ret, size;
@@ -747,7 +763,8 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	DataFalgQueryAndChange(5, 1, 0);
 	
-	DataFalgQueryAndChange(2, 2, 0);
+	CommandFlag = 2;
+//	DataFalgQueryAndChange(2, 2, 0);
 	sscanf(p, "%6s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -775,7 +792,8 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 	DataFalgQueryAndChange(5, 1, 0);
 	
-	DataFalgQueryAndChange(2, 3, 0);
+	CommandFlag = 3;
+//	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -802,7 +820,8 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 //	
 	DataFalgQueryAndChange(5, 1, 0);
 //	
-	DataFalgQueryAndChange(2, 1, 0);
+	CommandFlag = 1;
+//	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -850,8 +869,8 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*校时*/
 	
 	RtcSetTime(DateTimeToSecond(&ServTime));
 	
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
+//	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
+//  GsmTaskSendTcpData((const char *)buf, size);
 }
 
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关软件版本号*/
@@ -935,6 +954,10 @@ char StrategeChange(void){
 	return StrategeFlag;
 }
 
+void SetFlagBit(void){
+	StrategeFlag = 0;
+}
+
 static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下载*/
 	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
 	uint32_t StoreSpace = 0;
@@ -1014,8 +1037,6 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //F
 	if (mark == NULL) {
 		return;
 	}
-	
-	
 	
 	if (FirmwareUpdateSetMark(mark, len, type)) {
 		NVIC_SystemReset();
@@ -1318,6 +1339,13 @@ void BegAverage(int *p){
 	__Luxparam.NowLux = sum / 6;
 }
 
+void CalulateLightAddr(void){
+
+	memset(LightAddr, 0, 600);
+	__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
+	
+}
+
  void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
 	unsigned char *buf, size;
@@ -1333,24 +1361,20 @@ void BegAverage(int *p){
 	if(__Luxparam.count > 7){
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
-	
-		if((dateTime.hour > 11) && (dateTime.hour < 16))
 		
 		DivideTimeArea(dateTime);
 		
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
 		
-		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea))
-			StrategeFlag = 1;
-			
-		if(StrategeFlag == 1){
-			StrategeFlag = 0;
+		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea)){
 			LightCount = 0;
 			memset(LightAddr, 0, 600);
 			__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
-			StrategeFlag = 0;
+			
+			StrategeFlag = 1;
 		}
+		
 		__Luxparam.count = 0;
 		
 		LastTimArea = __Luxparam.TimeArea;
