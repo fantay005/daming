@@ -4,6 +4,7 @@
 #include "FreeRTOS.h"
 #include "queue.h"
 #include "task.h"
+#include "stm32f10x_gpio.h"
 #include "rtc.h"
 #include "second_datetime.h"
 #include "math.h"
@@ -271,7 +272,32 @@ static void __TimeTask(void *nouse) {
 			vTaskDelay(configTICK_RATE_HZ);
 			NVIC_SystemReset();			
 			
-		} 
+		} else if(dateTime.hour > 11){
+			if(GPIO_ReadOutputDataBit(GPIO_CTRL_1, PIN_CTRL_1) != 1){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				GPIO_SetBits(GPIO_CTRL_1, PIN_CTRL_1);
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			}
+			
+			if(GPIO_ReadOutputDataBit(GPIO_CTRL_5, PIN_CTRL_5) == 1){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			}
+			
+		} else if(dateTime.hour < 12){
+			if(GPIO_ReadOutputDataBit(GPIO_CTRL_5, PIN_CTRL_5) != 1){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				GPIO_SetBits(GPIO_CTRL_5, PIN_CTRL_5);
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			}
+			
+			if(GPIO_ReadOutputDataBit(GPIO_CTRL_1, PIN_CTRL_1) == 1){
+				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+				GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
+				GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+			}
+		}
 	}
 }
 

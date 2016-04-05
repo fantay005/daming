@@ -330,7 +330,7 @@ static void POLLTask(void *parameter) {
 //				if(dateTime.minute > 5) {
 //					OverTurn = 0;
 //				}			
-				vTaskDelay(configTICK_RATE_HZ / 5);
+				vTaskDelay(configTICK_RATE_HZ / 4);
 				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 				h.CT[0] = '0';

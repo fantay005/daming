@@ -97,6 +97,65 @@ typedef struct {
 	unsigned char x03;
 } ProtocolTail;
 
+void CurcuitContrInit(void){
+	GPIO_InitTypeDef GPIO_InitStructure;
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CRTL_EN;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_EN, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_1;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_1, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_1, PIN_CTRL_1);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_2;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_2, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_2, PIN_CTRL_2);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_3;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_3, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_3, PIN_CTRL_3);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_4;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_4, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_4, PIN_CTRL_4);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_5;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_5, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_5, PIN_CTRL_5);
+
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_6;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_6, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_6, PIN_CTRL_6);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_7;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_7, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_7, PIN_CTRL_7);
+	
+	GPIO_InitStructure.GPIO_Pin =  PIN_CTRL_8;
+	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_Out_PP;
+	GPIO_InitStructure.GPIO_Speed = GPIO_Speed_50MHz;
+	GPIO_Init(GPIO_CTRL_8, &GPIO_InitStructure);
+	GPIO_ResetBits(GPIO_CTRL_8, PIN_CTRL_8);	
+
+	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
+}
 
 unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	unsigned char i;
@@ -505,6 +564,7 @@ typedef struct{
 static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
+	CurcuitContrInit();
 	memset(SeekAddr, 0, 600);
 	
 	memset(__msg.ArrayAddr, 0, 600);
@@ -1340,7 +1400,7 @@ void BegAverage(int *p){
 	int sum = 0;
 	
 	bubble(p, 12);
-	for(i = 1; i < 11; i++){
+	for(i = 2; i < 10; i++){
 		sum += p[i];
 	}
 	
