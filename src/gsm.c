@@ -50,7 +50,7 @@ typedef enum {
 typedef struct {
 	GsmTaskMessageType type;
 	unsigned char length;
-	char infor[220];
+	char infor[240];
 } GsmTaskMessage;
 
 static inline void *__gsmGetMessageData(GsmTaskMessage *message) {
@@ -134,7 +134,7 @@ static const GSMAutoReportMap __gsmAutoReportMaps[] = {
 
 
 
-static char buffer[200];
+static char buffer[240];
 static char bufferIndex = 0;
 static char isIPD = 0;
 static unsigned char lenIPD = 0;
@@ -316,7 +316,7 @@ static void __gsmTask(void *parameter) {
 //			__handleLux(2, 2);
 //			FirstFlag = 1;
 //		}
-		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 50);
+		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {
@@ -332,6 +332,6 @@ static void __gsmTask(void *parameter) {
 void GSMInit(void) {
 	__gsmInitHardware();
 	__gsmInitUsart(9600);
-	__Transqueue = xQueueCreate(20, sizeof( GsmTaskMessage));
+	__Transqueue = xQueueCreate(30, sizeof( GsmTaskMessage));
 	xTaskCreate(__gsmTask, (signed portCHAR *) "GSM", GSM_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 2, NULL);
 }

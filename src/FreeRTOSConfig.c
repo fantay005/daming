@@ -5,7 +5,6 @@
 
 
 extern void WatchdogResetSystem(void);
-extern void WatchdogFeed(void);
 
 /// Malloc failed hook for FreeRTOS.
 void vApplicationMallocFailedHook(void) {
@@ -32,6 +31,6 @@ void vApplicationIdleHook(void){
 #if defined (__MODEL_DEBUG__)
 	
 #else	
- 	WatchdogFeed();
+ 	
 #endif	
 }

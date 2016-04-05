@@ -958,6 +958,10 @@ void SetFlagBit(void){
 	StrategeFlag = 0;
 }
 
+static char UpdataTimes = 0;
+
+static char DownEnd = 0;
+
 static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下载*/
 	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
 	uint32_t StoreSpace = 0;
@@ -1013,7 +1017,11 @@ static void HandleStrategy(ProtocolHead *head, const char *p){          /*策略下
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
 	
-	StrategeFlag = 1;
+	UpdataTimes++;
+	if(UpdataTimes == 6){
+		DownEnd= 1;
+		UpdataTimes = 0;
+	}
 }
 
 static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
@@ -1111,7 +1119,7 @@ void ActionControl(short addr, short pole, char act, char num){                 
 	second = RtcGetTime();
 	SecondToDateTime(&dateTime, second);
 	
-	if((__OffsetNumbOfDay(&dateTime)) % 2)
+	if(dateTime.hour < 12)
 		pole += 1; 
 	if(act == 1){		
 		lightFlag = 1;
@@ -1192,7 +1200,7 @@ typedef struct{
 	char LuxArea;             /*当前所在的光强域*/
 	int LastLux;              /*上次改变光强域时收到12次光照度值的平均值*/
 	int NowLux;               /*当前1分钟内光照度的平均值*/
-	int ArrayOfLuxValue[8];   /*记载最近12次光照度的数组*/	
+	int ArrayOfLuxValue[12];   /*记载最近12次光照度的数组*/	
 }StoreParam;                                     
 
 static char LastTimArea = 4;  /*前一分钟时间区域*/
@@ -1331,12 +1339,12 @@ void BegAverage(int *p){
 	char i;
 	int sum = 0;
 	
-	bubble(p, 8);
-	for(i = 1; i < 7; i++){
+	bubble(p, 12);
+	for(i = 1; i < 11; i++){
 		sum += p[i];
 	}
 	
-	__Luxparam.NowLux = sum / 6;
+	__Luxparam.NowLux = sum / 10;
 }
 
 void CalulateLightAddr(void){
@@ -1358,7 +1366,7 @@ void CalulateLightAddr(void){
 	__Luxparam.ArrayOfLuxValue[__Luxparam.count] = LuxValue;
 	__Luxparam.count++;
 	
-	if(__Luxparam.count > 7){
+	if(__Luxparam.count > 11){
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
 		
@@ -1367,12 +1375,13 @@ void CalulateLightAddr(void){
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
 		
-		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea)){
+		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea) || (DownEnd == 1)){
 			LightCount = 0;
 			memset(LightAddr, 0, 600);
 			__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
 			
 			StrategeFlag = 1;
+			DownEnd = 0;
 		}
 		
 		__Luxparam.count = 0;

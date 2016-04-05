@@ -164,6 +164,8 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
+extern void WatchdogFeed(void);
+
 static void __TimeTask(void *nouse) {
 	DateTime dateTime;
 	uint32_t second;
@@ -179,6 +181,8 @@ static void __TimeTask(void *nouse) {
 		 
 	while (1) {
 		 vTaskDelay(configTICK_RATE_HZ / 50);	
+		
+		WatchdogFeed();
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }	 
@@ -256,16 +260,17 @@ static void __TimeTask(void *nouse) {
 				doubleToTime(dawnTime, daybreak);
 				doubleToTime(midDayTime + midDayTime - dawnTime, daydark);	
 				
-				FLAG = 1;
-			
+				FLAG = 1;			
 				
-		}	else if ((dateTime.hour == 0x00) && (dateTime.minute == 0x01) && (dateTime.second == 0x00)) {
+		}	else if ((dateTime.hour == 0) && (dateTime.minute == 0x01) && (dateTime.second == 0)) {
 			
 			FLAG = 0;
 			vTaskDelay(configTICK_RATE_HZ);		
-		} else if((dateTime.hour == 0x00) && (dateTime.minute == 0x0F) && (dateTime.second == 0x00)){
+			
+		} else if(((dateTime.hour == 0) || (dateTime.hour == 12)) && (dateTime.minute == 15) && (dateTime.second == 0)){
 			vTaskDelay(configTICK_RATE_HZ);
 			NVIC_SystemReset();			
+			
 		} 
 	}
 }

@@ -485,7 +485,7 @@ static void EleGathTask(void *parameter) {
 	ElecTaskMsg msg;
 	
 	for (;;) {
-		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ / 50);
+		rc = xQueueReceive(__ElectQueue, &msg, configTICK_RATE_HZ);
 		
 		if (rc == pdTRUE) {		
 			const MessageHandlerMap *map = __messageHandlerMaps;

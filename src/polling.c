@@ -47,8 +47,6 @@ typedef enum {
 	TYPE_SETIP,
 } PollTaskMessageType;    /*轮询任务类型*/
 
-extern char StopPoll(void);
-
 static void POLLTask(void *parameter) {
 	static char MarkRead, OverTurn;
 	int len = 0, NumOfAddr= 0;
@@ -222,7 +220,7 @@ static void POLLTask(void *parameter) {
 					
 					buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
 					ZigbTaskSendData((const char *)buf, size);
-					vPortFree(msg);
+
 					break;
 				
 //				case 8:			                                  /*输入功率变化25W时，发送信息*/
@@ -332,7 +330,7 @@ static void POLLTask(void *parameter) {
 //				if(dateTime.minute > 5) {
 //					OverTurn = 0;
 //				}			
-				vTaskDelay(configTICK_RATE_HZ / 10);
+				vTaskDelay(configTICK_RATE_HZ / 5);
 				
 				sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 				h.CT[0] = '0';
