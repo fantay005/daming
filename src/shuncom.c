@@ -70,9 +70,14 @@ static void Zibee_Baud_CFG(int baud){
 }
 
 typedef enum{
-	TYPE_IOT_RECIEVE_DATA,
-	TYPE_IOT_SEND_DATA,
-	TYPE_IOT_NONE,
+	TYPE_IOT_LAMPPARAM_DOWNLOAD, /*0x02，镇流器灯参下载*/
+	TYPE_IOT_STRATEGU_DOWNLOAD,  /*0x03，镇流器策略下载*/
+	TYPE_IOT_LAMP_DIMMING,       /*0x04，灯调光控制*/
+	TYPE_IOT_LAMP_CONTROL,       /*0x05，灯开关控制*/
+	TYPE_IOT_TIMING,	           /*0x0B，镇流器校时*/
+	TYPE_IOT_RECIEVE_DATA,       /*网关接收到的镇流器数据*/
+	TYPE_IOT_SEND_DATA,          /*网关向镇流器发送数据*/
+	TYPE_IOT_NONE,               /**/
 }ZigbTaskMsgType;
 
 typedef struct {
@@ -110,7 +115,6 @@ void USART1_IRQHandler(void) {
 	USART_SendData(UART5, data);
 	USART_ClearITPendingBit(COMx, USART_IT_RXNE);
 
-	//TIM_Cmd(TIMx,DISABLE);
 	if(isPROTOC){
 		if(((data >= '0') && (data <= 'F')) || (data == 0x03)){
 			buffer[bufferIndex++] = data;
@@ -176,6 +180,13 @@ void SZ05SendString(char *str){
 	}
 }
 
+void ZigBeeSendStrLen(char *str, unsigned char lenth){
+	unsigned char i;
+	
+	for(i = 0; i < lenth; i++)
+		SZ05SendChar(*str++);
+}
+
 extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 char BSNinfor[600][40];           /*保存所有镇流器当前数据*/
@@ -184,26 +195,10 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	int i, j;
 	unsigned short addr;
 	char hextable[] = "0123456789ABCDEF";
-	ZigbTaskMsg message;
 	unsigned char *buf, tmp[5], *ret, size;
 	Lightparam k;
 	char build[4] = {'B', '0' , '0' , '0'};
 	GMSParameter g;
-
-  ret = DataFalgQueryAndChange(3, 0, 1);         /*发送指令是否需要回应*/
-
-	if(*ret == 1){                                 /*发出指令后不需要回应*/
-		
-	  message.type = TYPE_IOT_SEND_DATA;
-		message.length = len;
-		memcpy(message.infor, dat, len);
-		
-		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ * 5)) {
-			return RTOS_ERROR;
-		}
-		DataFalgQueryAndChange(4, 0, 0);
-		return COM_SUCCESS;
-	}
 	
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);		
 	
@@ -223,18 +218,9 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		return RTOS_ERROR;
 	}
 	
-	message.type = TYPE_IOT_SEND_DATA;
-	message.length = len;
-	memcpy(message.infor, dat, len);
-	
-	for(i = 0; i < 3; i++){	
-		ret = (unsigned char *)dat;
-		
-		if (pdTRUE != xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ)) {
-			NVIC_SystemReset();
-			return RTOS_ERROR;
-		}
- 
+	for(i = 0; i < 3; i++){		
+		ZigBeeSendStrLen((char *)dat, len);
+
 		for(j = 0; j < 50; j++){
 			if(WAITFLAG == 0){
 				vTaskDelay(configTICK_RATE_HZ / 50);
@@ -260,8 +246,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 		if((WAITFLAG == 2) && (i == 2)){	
 			char mess[45] = {0};
 			
-			ret = DataFalgQueryAndChange(2, 0, 1);
-			if((*ret == 0) && (k.CommState == 0x18) ){		
+			if(k.CommState == 0x18){		
 				char temp[32] = {0};
 			
 				memset(temp, '0', 30);
@@ -304,36 +289,24 @@ static void ZigbeeHandleStrategy(FrameHeader *header, unsigned char CheckByte, c
 	
 }
 
-static void ZigbeeHandleLightDimmer(FrameHeader *header, unsigned char CheckByte, const char *p){
-	
-}
-
-static void ZigbeeHandleLightOnOff(FrameHeader *header, unsigned char CheckByte, const char *p){
-	
-}
-
 static char Have_Param_Flag = 0;
-static short NumbOfRank = 0;
-static char *Shift;
 static char Number = 0;
-
-short CallTransfer(void){
-	return NumbOfRank;
-}
-
-char *SpaceShift(void){
-	return Shift;
-}
 
 extern const short *LightZigbAddr(void);
 
+extern unsigned char *DayToSunshine(void);
+
+extern unsigned char *DayToNight(void);
+
 static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte, const char *p){
 	int i, instd, hexAddr;
-	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size, fitflag = 0;
+	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size;
 	unsigned short *ret, fitcount = 0, compare, *smt;
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
+	ZigbTaskMsg message;
+	
 	char StateFlag = 0x01;   /*软关闭*/
 	
 	char OpenBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41, 
@@ -349,17 +322,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	sscanf(p, "%*9s%34s", msg);
 	sprintf(BSNinfor[i], "%s%s", addr, msg);
 	ZigbTaskFreeMemory(msg);                 /*保存接收到的镇流器数据*/										
-											
-	ret = DataFalgQueryAndChange(1, 0, 1);
-	while(*ret){
-		fitcount++;
-		sscanf((const char *)header, "%*1s%4s", addr);
-		if(*ret == (unsigned short)atoi((const char *)addr)){	
-			fitflag = 1;
-			break;
-		}
-		ret++;
-	}
+										
 	
 	sscanf(p, "%*1s%4s", addr);		
 	instd = atoi((const char *)addr);
@@ -369,62 +332,9 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 	
 	k.UpdataTime = RtcGetTime();
 
-	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);	
 	
-	if(fitflag) {                             /*服务器发来查询镇流器数据帧*/	
-			char build[4] = {'B', '0' , '0' , '0'};	
-			
-			msg = ZigbtaskApplyMemory(34 + 9);
-			
-			memcpy(msg, build, 4);
-			memcpy((msg + 4), header->AD, 4);
-			memcpy((msg + 4 + 4), (p + sizeof(FrameHeader)), 34);
-			msg[38 + 4] = 0;
-			
-			sscanf((const char *)msg, "%*10s%2s", space);
-			i = atoi((const char *)space);  /*运行状态*/
-			
-			smt = (unsigned short*)LightZigbAddr();
-			while(*smt){
-				if((*smt++) == instd){
-					StateFlag = 0x02;   /*主运行*/
-					break;
-				}	
-			}
-		
-			if((i != StateFlag) && (*LightZigbAddr() != 0)){	
-				if(StateFlag == 0x01){
-					CloseBuf[0] = (hexAddr >> 8) & 0xFF;
-					CloseBuf[1] = hexAddr & 0xFF;
-					for(i = 0; i < 19; i++){
-						SZ05SendChar(CloseBuf[i]);
-					}
-					vTaskDelay(configTICK_RATE_HZ / 10);
-				} else if(StateFlag == 0x02){
-					OpenBuf[0] = (hexAddr >> 8) & 0xFF;
-					OpenBuf[1] = hexAddr & 0xFF;
-					for(i = 0; i < 19; i++){
-						SZ05SendChar(OpenBuf[i]);
-					}
-					vTaskDelay(configTICK_RATE_HZ / 10);
-				}
-			}
-			
-			buf = ProtocolRespond(g.GWAddr, header->CT, (const char *)msg, &size);
-			GsmTaskSendTcpData((const char *)buf, size);
-			ZigbTaskFreeMemory(msg);
-			DataFalgQueryAndChange(1, fitcount - 1, 0);
-			
-			*ret = 0x4000 | instd; 
-			
-			sscanf(p, "%*11s%2s", space);
-			i = atoi((const char *)space);
-			k.InputPower = i;
-			
-			sscanf(p, "%*21s%4s", SyncFlag);
-			compare = atoi((const char *)SyncFlag);
-							
-	} else {                       /*网关轮询镇流器数据*/
+	{                       /*网关轮询镇流器数据*/
 		DateTime dateTime;
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
@@ -439,13 +349,34 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		sscanf(p, "%*43s%12s", SyncFlag);
 		
 		if((strncmp((const char *)k.TimeOfSYNC, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*灯参数同步标识比较*/	
-			msg = DataFalgQueryAndChange(5, 0, 1);
-			if(*msg != 1){
-				DataFalgQueryAndChange(2, 5, 0);
-				DataFalgQueryAndChange(3, 0, 0);
-				DataFalgQueryAndChange(5, 1, 0);	
-				NumbOfRank = instd;
-			}	
+			
+			NorFlashRead(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			msg = ZigbtaskApplyMemory(26 + 1);
+	
+			sscanf((const char *)k.TimeOfSYNC, "%12s", msg);
+			sscanf((const char *)k.NorminalPower, "%4s", msg + 12);
+			msg[16] = k.Loop;
+			sscanf((const char *)k.LightPole, "%4s", msg + 17);
+			msg[21] = k.LightSourceType;
+			msg[22] = k.LoadPhaseLine;
+			sscanf((const char *)k.Attribute, "%2s", msg + 23);
+			msg[25] = 0;
+		
+			#if defined(__HEXADDRESS__)
+					sprintf((char *)addr, "%04X", instd);
+			#else				
+					sprintf((char *)addr, "%04d", instd);
+			#endif	
+		
+			buf = DataSendToBSN((unsigned char *)"02", addr, (const char *)msg, &size);
+			ZigbTaskFreeMemory(msg);
+	
+			message.type = TYPE_IOT_SEND_DATA;
+			message.length = size;
+			memcpy(message.infor, buf, size);
+				
+			xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ); 
+
 		}
 		
 		ret = (unsigned short*)LightZigbAddr();
@@ -486,14 +417,49 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		}
 
 		if((strncmp((const char *)s.SYNCTINE, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
-			msg = DataFalgQueryAndChange(5, 0, 1);
-			if(*msg == 1){
-				DataFalgQueryAndChange(2, 6, 0);
-				DataFalgQueryAndChange(3, 1, 0);
-				DataFalgQueryAndChange(5, 1, 0);	
-				NumbOfRank = instd;		
+			NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
+			msg = ZigbtaskApplyMemory(47 + 1);
+			
+			sscanf((const char *)s.SYNCTINE, "%12s", msg);
+			sscanf((const char *)s.SchemeType, "%2s", msg + 12);
+			msg[14] = s.DimmingNOS;
+		
+			sscanf((const char *)s.FirstDCTime, "%4s", msg + 15);
+			sscanf((const char *)s.FirstDPVal, "%2s", msg + 19);
+			msg[21] = 0;
+		
+			if ((s.DimmingNOS - '0') == 2){
+				sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
+				sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
+				msg[27] = 0;
 			}
+			
+			if ((s.DimmingNOS - '0') == 3){
+				sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
+				sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
+				msg[33] = 0;
+			}
+			
+			if ((s.DimmingNOS - '0') == 4){
+				sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
+				sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
+				msg[39] = 0;
+			}
+					
+			if ((s.DimmingNOS - '0') == 5){
+				sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
+				sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
+				msg[45] = 0;
+			}
+			
+			buf = DataSendToBSN((unsigned char *)"03", "FFFF", (const char *)msg, &size);
+			ZigbTaskFreeMemory(msg);
+	
+			message.type = TYPE_IOT_SEND_DATA;
+			message.length = size;
+			memcpy(message.infor, buf, size);
 				
+			xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ); 			
 		}
 		
 		sscanf(p, "%*67s%2s", SyncFlag);
@@ -508,14 +474,21 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
 		if((dateTime.month != time_m) || (dateTime.date != time_d) || (dateTime.week != time_w)){    /*镇流器时间对照*/
-			msg = DataFalgQueryAndChange(5, 0, 1);
-			if(*msg == 1){
-				DataFalgQueryAndChange(2, 7, 0);
-				DataFalgQueryAndChange(3, 1, 0);
-				DataFalgQueryAndChange(5, 1, 0);	
-				NumbOfRank = instd;		
-			}
-						
+			
+			msg = ZigbtaskApplyMemory(20);
+			sprintf((char *)msg, "%02d%02d%02d%02d%02d%02d%02d%02d%02d", dateTime.month, dateTime.date, dateTime.week, 
+																								dateTime.hour, dateTime.minute, *DayToNight(), *(DayToNight() + 1),
+																								*DayToSunshine(), *(DayToSunshine() + 1));
+
+					
+			buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
+			ZigbTaskFreeMemory(msg);
+
+			message.type = TYPE_IOT_SEND_DATA;
+			message.length = size;
+			memcpy(message.infor, buf, size);
+				
+			xQueueSend(__ZigbeeQueue, &message, configTICK_RATE_HZ); 		
 		}
 		
 		sscanf(p, "%*11s%2s", space);
@@ -548,34 +521,29 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			return;
 		}
 		
-		if(((k.InputPower > (compare + 3)) && (k.InputPower < (compare + 15))) ||
-			 (((k.InputPower + 3) < compare) && ((k.InputPower + 15) > compare))){
-			Number++;	 
-			if(Number < 3){
-				return;
-			}
-			Number = 0;
-			
-			msg = ZigbtaskApplyMemory(34 + 9);
-			memcpy(msg, "B000", 4);
-			memcpy((msg + 4), header->AD, 4);
-			memcpy((msg + 4 + 4), (p + 9), 34);
-			msg[38 + 4] = 0;
-		
-			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
-			GsmTaskSendTcpData((const char *)buf, size);
-			
-			ZigbTaskFreeMemory(msg);
-			NumbOfRank = instd;			
-			k.InputPower = compare;		
-			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	 			 
-		}
+//		if(((k.InputPower > (compare + 3)) && (k.InputPower < (compare + 15))) ||
+//			 (((k.InputPower + 3) < compare) && ((k.InputPower + 15) > compare))){
+//			Number++;	 
+//			if(Number < 3){
+//				return;
+//			}
+//			Number = 0;
+//			
+//			msg = ZigbtaskApplyMemory(34 + 9);
+//			memcpy(msg, "B000", 4);
+//			memcpy((msg + 4), header->AD, 4);
+//			memcpy((msg + 4 + 4), (p + 9), 34);
+//			msg[38 + 4] = 0;
+//		
+//			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
+//			GsmTaskSendTcpData((const char *)buf, size);
+//			
+//			ZigbTaskFreeMemory(msg);	
+//			k.InputPower = compare;		
+//			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	 			 
+//		}
 
 	}
-}
-
-static void ZigbeeHandleLightAuto(FrameHeader *header, unsigned char CheckByte, const char *p){
-	
 }
 
 static void ZigbeeHandleBSNUpgrade(FrameHeader *header, unsigned char CheckByte, const char *p){
@@ -592,8 +560,6 @@ typedef struct {
 
 void __handleIOTRecieve(ZigbTaskMsg *p) {
 	int i;
-//	char *ret;
-//	char verify = 0;
 	char abNormal = 0;
 	FrameHeader h;
 	const char *dat = __ZigbGetMsgData(p);
@@ -601,10 +567,7 @@ void __handleIOTRecieve(ZigbTaskMsg *p) {
 	const static ZigbeeHandleMap map[] = {  
 		{"02",  ZigbeeHandleLightParam},       /*0x02; 灯参数下载*/             /// 
 		{"03",  ZigbeeHandleStrategy},         /*0x03; 策略下载*/               ///
-		{"04",  ZigbeeHandleLightDimmer},      /*0x04; 灯调光控制*/
-		{"05",  ZigbeeHandleLightOnOff},       /*0x05; 灯开关控制*/
 		{"06",  ZigbeeHandleReadBSNData},      /*0x06; 读镇流器数据*/
-		{"0A",  ZigbeeHandleLightAuto},        /*0x0A; 灯自动运行*/
 		{"2A",  ZigbeeHandleBSNUpgrade},       /*0x2A; 镇流器远程升级*/            
 	};
 	
@@ -636,14 +599,39 @@ void __handleIOTSend(ZigbTaskMsg *p){
 	}
 }
 
+static void __handleLampParamDown(ZigbTaskMsg *p){
+	
+}
+
+static void __handleStrategyDown(ZigbTaskMsg *p){
+	
+}
+
+static void __HandleLampDimming(ZigbTaskMsg *p){
+	
+}
+
+static void __handleLampOnAndOff(ZigbTaskMsg *p){
+	
+}
+
+static void __handleBSNTimming(ZigbTaskMsg *p){
+	
+}
+
 typedef struct {
 	ZigbTaskMsgType type;
 	void (*handlerFunc)(ZigbTaskMsg *);
 } HandlerOfMap;
 
 static const HandlerOfMap __HandlerOfMaps[] = {
-	{ TYPE_IOT_RECIEVE_DATA, __handleIOTRecieve},
-	{ TYPE_IOT_SEND_DATA, __handleIOTSend},
+	{ TYPE_IOT_LAMPPARAM_DOWNLOAD, __handleLampParamDown},
+	{ TYPE_IOT_STRATEGU_DOWNLOAD,  __handleStrategyDown},
+	{ TYPE_IOT_LAMP_DIMMING,       __HandleLampDimming},
+	{ TYPE_IOT_LAMP_CONTROL,       __handleLampOnAndOff },
+  { TYPE_IOT_TIMING,             __handleBSNTimming},
+	{ TYPE_IOT_RECIEVE_DATA,       __handleIOTRecieve},
+	{ TYPE_IOT_SEND_DATA,          __handleIOTSend},
 	{ TYPE_IOT_NONE, NULL },
 };
 
@@ -660,12 +648,40 @@ void ZigbeeHandler(ZigbTaskMsg *p) {
 static void ZIGBEETask(void *parameter) {
 	portBASE_TYPE rc;
 	ZigbTaskMsg message;
+	int NumOfAddr = 0;
+	short tmp[3];
+	unsigned char *buf, ID[5], size; 
+	Lightparam k;
+	
 	for (;;) {
 	//	printf("ZIGBEE: loop again\n");
-		rc = xQueueReceive(__ZigbeeQueue, &message, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__ZigbeeQueue, &message, configTICK_RATE_HZ / 20);
 		if (rc == pdTRUE) {
 			ZigbeeHandler(&message);
-		} 
+		} else {
+			
+			NorFlashRead(NORFLASH_LIGHT_NUMBER, (short *)tmp, 2);
+			
+			if(tmp[0] == 0)              /*灯参个数*/
+				continue;
+			
+			if(NumOfAddr > tmp[1]){    /*最大ZigBee地址*/
+				NumOfAddr = 0;
+			}		
+
+			NorFlashRead((NORFLASH_BALLAST_BASE + NumOfAddr * NORFLASH_SECTOR_SIZE), (short *)&k, (sizeof(Lightparam) + 1) / 2);
+			
+			NumOfAddr++;
+			
+			if(k.Loop == 0xFF)
+				continue;
+			
+			vTaskDelay(configTICK_RATE_HZ / 5);
+			
+			sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
+			buf = DataSendToBSN("06", ID, NULL, &size);			
+			ZigbTaskSendData((const char *)buf, size);
+		}
 	}
 }
 

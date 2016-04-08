@@ -181,7 +181,7 @@ static void __TimeTask(void *nouse) {
 //	int NowTime, DayTime, DarkTime;
 		 
 	while (1) {
-		 vTaskDelay(configTICK_RATE_HZ / 50);	
+		 vTaskDelay(configTICK_RATE_HZ / 10);	
 		
 		WatchdogFeed();
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {

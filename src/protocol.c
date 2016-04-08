@@ -654,15 +654,6 @@ void __DataFlagJudge(const char *p){
 	unsigned char tmp[5], *ret, *msg;
 	Lightparam k;
 	
-//	msg = DataFalgQueryAndChange(2, 0, 1);
-//	if(*msg == 1){
-//		ret = (unsigned char *)p + 4;
-//	} else if(*msg == 3) {
-//		ret = (unsigned char *)p + 5;
-//	} else if(*msg == 2) {
-//		ret = (unsigned char *)p + 6;
-//	}
-	
 	if(CommandFlag == 1){
 		ret = (unsigned char *)p + 4;
 	} else if(CommandFlag == 3) {
@@ -893,16 +884,6 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*网关回路数据查询*/
 	unsigned char *buf,size, loop;
 	
-//	buf = DataFalgQueryAndChange(5, 0, 1);
-//	while(*buf != 0){
-//		return;
-//	}
-//	
-//	DataFalgQueryAndChange(2, 4, 0);
-//	DataFalgQueryAndChange(6, p[0], 0);
-// // ElecTaskSendData((const char *)(p - sizeof(ProtocolHead)), (sizeof(ProtocolHead) + strlen(p)));
-
-//	DataFalgQueryAndChange(5, 1, 0);
 	loop = p[0];
 
 	buf = ProtocolToElec(head->addr, (unsigned char *)"08", (const char *)&loop, &size);
@@ -1404,7 +1385,7 @@ void BegAverage(int *p){
 		sum += p[i];
 	}
 	
-	__Luxparam.NowLux = sum / 10;
+	__Luxparam.NowLux = sum / 8;
 }
 
 void CalulateLightAddr(void){
@@ -1419,6 +1400,7 @@ void CalulateLightAddr(void){
 	unsigned char *buf, size;
 	int LuxValue, second;
 	DateTime dateTime;
+	short tmp[3];
 	
   sscanf(p, "%8s", msg);
 	LuxValue = atoi((const char *)msg);
@@ -1426,16 +1408,40 @@ void CalulateLightAddr(void){
 	__Luxparam.ArrayOfLuxValue[__Luxparam.count] = LuxValue;
 	__Luxparam.count++;
 	
+	NorFlashRead(NORFLASH_STRATEGY_TYPE, (short *)tmp, 2);
+	if(tmp[0] > 6)
+	 tmp[0] = 4;
+	if(tmp[1] > 6)
+		tmp[1] = 1;
+	
+	__Luxparam.TimeArea = tmp[0];
+	LasrLuxArea = tmp[1];
+	
 	if(__Luxparam.count > 11){
 		second = RtcGetTime();
 		SecondToDateTime(&dateTime, second);
 		
-		DivideTimeArea(dateTime);
-		
+		DivideTimeArea(dateTime);		
 		BegAverage(__Luxparam.ArrayOfLuxValue);
 		DivisiveLightArea(__Luxparam.NowLux);
 		
-		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea) || (DownEnd == 1)){
+		NorFlashRead(NORFLASH_STRATEGY_TYPE, (short *)tmp, 2);
+		if(tmp[0] > 6)
+		 tmp[0] = 0;
+		if(tmp[1] > 6)
+			tmp[1] = 0;
+		
+		LastTimArea = tmp[0];
+		LasrLuxArea = tmp[1];
+		
+		if((LastTimArea != __Luxparam.TimeArea) || (LasrLuxArea != __Luxparam.LuxArea)){
+			DownEnd = 1;
+			tmp[0] = __Luxparam.TimeArea;
+			tmp[1] = __Luxparam.LuxArea;
+			NorFlashWrite(NORFLASH_STRATEGY_TYPE, (short *)tmp, 2);
+		}
+		
+		if(DownEnd == 1){
 			LightCount = 0;
 			memset(LightAddr, 0, 600);
 			__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
@@ -1446,8 +1452,6 @@ void CalulateLightAddr(void){
 		
 		__Luxparam.count = 0;
 		
-		LastTimArea = __Luxparam.TimeArea;
-		LasrLuxArea = __Luxparam.LuxArea;
 	}
 	
 //	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);

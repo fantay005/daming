@@ -316,7 +316,7 @@ static void __gsmTask(void *parameter) {
 //			__handleLux(2, 2);
 //			FirstFlag = 1;
 //		}
-		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 100);
+		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 20);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;
 			for (; map->type != TYPE_NONE; ++map) {

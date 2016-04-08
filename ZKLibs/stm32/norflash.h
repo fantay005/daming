@@ -17,6 +17,7 @@
 #define NORFLASH_STRATEGY_ADDR                  ((uint32_t)0x00006000)/*隧道网关下镇流器统一策略放置地址*/
 
 
+#define NORFLASH_STRATEGY_TYPE                  ((uint32_t)0x00006000)/*隧道内网关当前时域与光域值, 第一个值为时域，第二值为光域*/
 #define NORFLASH_LIGHT_NUMBER                   ((uint32_t)0x00009000)/*第一个short类型数据位下载的灯参数量，即控制的灯总量，第二个short类型数据为最大的zigbee地址*/
 #define NORFLAH_ERASE_BLOCK_BASE                ((uint32_t)0x00010000)/*擦除块起始地址*/
 #define NORFLASH_BALLAST_BASE  				          ((uint32_t)0x00018000)/*Zigbee1 镇流器参数基址*/

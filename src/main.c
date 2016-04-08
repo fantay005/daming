@@ -76,7 +76,6 @@ extern void WatchdogInit(void);
 extern void TimePlanInit(void);
 extern void SHUNCOMInit(void);
 extern void ElectricInit(void);
-extern void POLLSTART(void);
 extern void TIMINGUPLOAD(void);
 
 int main(void) {
@@ -84,12 +83,11 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-	WatchdogInit();
+	//WatchdogInit();
 	GSMInit();	
 	SHUNCOMInit();	
 	TimePlanInit();	
 	ElectricInit();
-	POLLSTART();
 	TIMINGUPLOAD();
 	
 	printf("\n==============================\n");

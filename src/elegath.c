@@ -281,10 +281,10 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if((gath < Lset) && (gath > 10)){
+		} else if((gath < Lset) && (gath >= 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
-		} else {
+		} else if(gath < 100){
 			PhaseLossNumb++;
 		}
 		
@@ -297,10 +297,10 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if((gath < Lset) && (gath > 10)){
+		} else if((gath < Lset) && (gath >= 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
-		} else {
+		}else if(gath < 100){
 			PhaseLossNumb++;
 		}
 		
@@ -313,10 +313,10 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		if(gath > Hset){
 			state |= (1 << 9);
 			state |= (1 << 15);
-		} else if((gath < Lset) && (gath > 10)){
+		} else if((gath < Lset) && (gath >= 100)){
 			state |= (1 << 8);
 			state |= (1 << 15);
-		} else {
+		} else if(gath < 100){
 			PhaseLossNumb++;
 		}
 		
