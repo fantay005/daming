@@ -38,6 +38,8 @@ unsigned char *DayToNight(void){
 	return sunup;
 }
 
+extern void LightenLampSwitch(void);
+
 /*************************
      * 儒略日的计算
      *
@@ -182,10 +184,11 @@ static void __TimeTask(void *nouse) {
 	while (1) {
 		 vTaskDelay(configTICK_RATE_HZ / 10);	
 		
-		WatchdogFeed();
 		 if (!RtcWaitForSecondInterruptOccured(portMAX_DELAY)) {
 			continue;
 		 }	 
+		 
+		 WatchdogFeed();
 		 		 
 		 if(Anti == 0){                         /*网关是否已有经纬度数据*/
 			 NorFlashRead(NORFLASH_MANAGEM_BASE, (short * )&g, (sizeof(GatewayParam1) + 1) / 2);
@@ -208,21 +211,20 @@ static void __TimeTask(void *nouse) {
 		 second = RtcGetTime();
 		 SecondToDateTime(&dateTime, second);
 		 
-		 if(((dateTime.year < 0x10) || (dateTime.month < 0x03) || (dateTime.hour / 2)) && (dateTime.minute < 1) && (dateTime.second < 5)) {  /*时间数据异常，每两小时校验一次*/
-			 unsigned char *buf, size;
-			 
-			 curT = xTaskGetTickCount();
-			 
-			 if((curT - lastT) > configTICK_RATE_HZ * 120){
-				 buf = ProtocolMessage("9999999999", "45", NULL, &size);   /*请求时间*/
-				 GsmTaskSendTcpData((const char *)buf, size);
-				 vPortFree(buf);
-				 lastT = curT;
-			 }
-			 continue;
-		 }
+//		 if(((dateTime.year < 0x10) || (dateTime.month < 0x03) || (dateTime.hour / 2)) && (dateTime.minute < 1) && (dateTime.second < 5)) {  /*时间数据异常，每两小时校验一次*/
+//			 unsigned char *buf, size;
+//			 
+//			 curT = xTaskGetTickCount();
+//			 
+//			 if((curT - lastT) > configTICK_RATE_HZ * 120){
+//				 buf = ProtocolMessage("9999999999", "45", NULL, &size);   /*请求时间*/
+//				 GsmTaskSendTcpData((const char *)buf, size);
+//				 vPortFree(buf);
+//				 lastT = curT;
+//			 }
+//			 continue;
+//		 }
 		 
-//		 printf("%d.\r\n", dateTime.year);
 		 if ((FLAG == 0) && (dateTime.second != 0x00)){
 			
 				jd = -(jd_degrees + jd_seconds / 60) / 180 * M_PI;
@@ -268,7 +270,9 @@ static void __TimeTask(void *nouse) {
 			vTaskDelay(configTICK_RATE_HZ);		
 			
 		} else if(((dateTime.hour == 0) || (dateTime.hour == 12)) && (dateTime.minute == 15) && (dateTime.second == 0)){
+			
 			vTaskDelay(configTICK_RATE_HZ);
+			LightenLampSwitch();
 			NVIC_SystemReset();			
 			
 		} else if(dateTime.hour > 11){

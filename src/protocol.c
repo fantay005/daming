@@ -885,6 +885,10 @@ static char UpdataTimes = 0;
 
 static char DownEnd = 0;
 
+void LightenLampSwitch(void){
+	DownEnd = 1;
+}
+
 static void HandleStrategy(ProtocolHead *head, const char *p){          /*╡ъбтобть*/
 	unsigned char *buf, size, tmp[8], loop, Tim_Zone, Lux_Zone;
 	uint32_t StoreSpace = 0;

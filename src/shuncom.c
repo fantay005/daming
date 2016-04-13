@@ -311,15 +311,14 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 											0x30, 0x30, 0x30, 0x30, 0x34, 0x33, 0x03};
 	char CloseBuf[] = {0xFF, 0xFF, 0x02, 0x46, 0x46, 0x46, 0x46, 0x30, 0x35, 0x30, 0x35, 0x41,
 											0x30, 0x30, 0x30, 0x31, 0x34, 0x32, 0x03};
-
- // buf = DataFalgQueryAndChange(4, 0, 1);    /*查看是否是服务器发来查询指令*/
 			
   msg = ZigbtaskApplyMemory(35);											
 	sscanf((const char *)header, "%*1s%4s", addr);
 	i = atoi((const char *)addr);
 	sscanf(p, "%*9s%34s", msg);
-	sprintf(BSNinfor[i], "%s%s", addr, msg);
-	ZigbTaskFreeMemory(msg);                 /*保存接收到的镇流器数据*/										
+	sprintf(BSNinfor[i], "%s%s", addr, msg);    /*保存接收到的镇流器数据*/	
+											
+	ZigbTaskFreeMemory(msg);                 									
 										
 	
 	sscanf(p, "%*1s%4s", addr);		
@@ -332,7 +331,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 
 	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter) + 1) / 2);	
 	
-	{                       /*网关轮询镇流器数据*/
+	{                                           /*网关轮询镇流器数据*/
 		DateTime dateTime;
 		uint32_t second;
 		unsigned char time_m, time_d, time_w;
@@ -518,29 +517,6 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	
 			return;
 		}
-		
-//		if(((k.InputPower > (compare + 3)) && (k.InputPower < (compare + 15))) ||
-//			 (((k.InputPower + 3) < compare) && ((k.InputPower + 15) > compare))){
-//			Number++;	 
-//			if(Number < 3){
-//				return;
-//			}
-//			Number = 0;
-//			
-//			msg = ZigbtaskApplyMemory(34 + 9);
-//			memcpy(msg, "B000", 4);
-//			memcpy((msg + 4), header->AD, 4);
-//			memcpy((msg + 4 + 4), (p + 9), 34);
-//			msg[38 + 4] = 0;
-//		
-//			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
-//			GsmTaskSendTcpData((const char *)buf, size);
-//			
-//			ZigbTaskFreeMemory(msg);	
-//			k.InputPower = compare;		
-//			NorFlashWrite(NORFLASH_BALLAST_BASE + instd * NORFLASH_SECTOR_SIZE, (const short *)&k, (sizeof(Lightparam) + 1) / 2);	 			 
-//		}
-
 	}
 }
 
