@@ -173,8 +173,6 @@ char HexToAscii(char hex){
 
 static unsigned short Total_Power = 0;
 
-extern void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query);
-
 static char PhaseLossNumb = 0;                       /*电缆缺相个数*/
 
 static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
@@ -393,7 +391,6 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		Cache[2] = 0;
 		NorFlashWrite(NORFLASH_ELEC_UPDATA_TIME, (short *)Cache, 2);
 	}
-	 DataFalgQueryAndChange(5, 0, 0);
 }
 
 static void ElecHandleEGVersQuery(ProtocolHead *header, const char *p){

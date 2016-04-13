@@ -2,6 +2,7 @@
 #include "FreeRTOS.h"
 #include "task.h"
 #include "gsm.h"
+#include "stm32f10x_gpio.h"
 
 
 extern void WatchdogResetSystem(void);
@@ -11,7 +12,7 @@ void vApplicationMallocFailedHook(void) {
 #if defined (__MODEL_DEBUG__)	
 	printf("vApplicationMallocFailedHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
 	while(1){
-		WatchdogResetSystem();	
+		NVIC_SystemReset();	
 	}
 #endif	
 }
@@ -20,7 +21,7 @@ void vApplicationStackOverflowHook( xTaskHandle xTask, signed char *pcTaskName )
 #if defined (__MODEL_DEBUG__)
 	printf("vApplicationStackOverflowHook: %s\n", pcTaskGetTaskName(xTaskGetCurrentTaskHandle()));
 	while(1){
-		WatchdogResetSystem();	
+		NVIC_SystemReset();	
 	}
 #endif	
 }

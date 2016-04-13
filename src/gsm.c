@@ -180,12 +180,6 @@ static inline void __gmsReceiveIPDData(unsigned char data) {
 		lenIPD = 0;
 		return;
 	} 
-	
-//	if((data > 'F') || (data < '0') || (bufferIndex > (lenIPD + 18))) {
-//		isIPD = 0;
-//		bufferIndex = 0;
-//		lenIPD = 0;	
-//	}
 }
 
 void USART3_IRQHandler(void) {
@@ -308,14 +302,14 @@ static char FirstFlag = 0;
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;
 	GsmTaskMessage message;
-
+	short tmp[3];
+	
+	NorFlashRead(NORFLASH_STRATEGY_TYPE, (short *)tmp, 2);
+	if((tmp[0] > 0) && (tmp[0] < 8) && (tmp[1] > 0) && (tmp[1] < 8))
+		__handleLux(tmp[0], tmp[1]);
+	
 	for (;;) {
-//		printf("Gsm: loop again\n");	
 
-//		if(!FirstFlag){
-//			__handleLux(2, 2);
-//			FirstFlag = 1;
-//		}
 		rc = xQueueReceive(__Transqueue, &message, configTICK_RATE_HZ / 20);
 		if (rc == pdTRUE) {
 			const MessageHandlerMap *map = __messageHandlerMaps;

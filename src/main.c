@@ -83,7 +83,7 @@ int main(void) {
 	NorFlashInit();
 	UartDebugInit();
 	RtcInit();
-	WatchdogInit();
+	//WatchdogInit();
 	GSMInit();	
 	SHUNCOMInit();	
 	TimePlanInit();	

@@ -35,10 +35,6 @@ static inline void __uartDebugHardwareInit(void) {
 	GPIO_InitStructure.GPIO_Pin = PIN_PRINT_RX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
 	GPIO_Init(GPIO_RX, &GPIO_InitStructure);
-	
-//	GPIO_InitStructure.GPIO_Pin = TEST_PIN;
-//	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-//	GPIO_Init(GPIO_PRINT, &GPIO_InitStructure);
 
 	USART_InitStructure.USART_BaudRate = 115200;
 	USART_InitStructure.USART_WordLength = USART_WordLength_8b;
@@ -50,7 +46,6 @@ static inline void __uartDebugHardwareInit(void) {
 	USART_ITConfig(COM_PRINT, USART_IT_RXNE, ENABLE);
 	USART_Cmd(COM_PRINT, ENABLE);
 	
-//	USART_ClearFlag(COM_PRINT, USART_FLAG_TC); 
   USART_ClearFlag(COM_PRINT, USART_FLAG_TXE);
 
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);

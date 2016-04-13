@@ -19,8 +19,6 @@
 
 #define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 40)
 
-extern void *DataFalgQueryAndChange(char Obj, char Alter, char Query);
-
 #define COMx      USART1
 #define COMx_IRQn USART1_IRQn
 

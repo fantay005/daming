@@ -429,9 +429,8 @@ static void __ParamWriteToFlash(const char *p){
 		if(len >= 9000){
 			
 		}
-//		sscanf(p, "%*16s%12s", g->LightSourceType);
+
 		g.LightSourceType = p[13];
-//		sscanf(p, "%*16s%12s", g->LoadPhaseLine);
 		g.LoadPhaseLine = p[14];
 		sscanf(p, "%*15s%2s", g.Attribute);
 		
@@ -549,87 +548,15 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 
 static unsigned short SeekAddr[600];              /*´æ´¢ÐèÒª²éÑ¯ZigBeeµØÖ·Êý×é*/
 
-typedef struct{	
-	unsigned short ArrayAddr[600];
-	unsigned char SendFlag;
-	unsigned char ProtectFlag;
-	unsigned char Command;
-	unsigned char NoReply;
-	unsigned char NumberOfLoop;
-	unsigned short Lenth;
-	unsigned char Answer;
-	unsigned char Sort;
-}ReadBSNData;
-
-static ReadBSNData __msg = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 void ProtocolInit(void) {
 	CurcuitContrInit();
 	memset(SeekAddr, 0, 600);
 	
-	memset(__msg.ArrayAddr, 0, 600);
 	if (__ProSemaphore == NULL) {
 		vSemaphoreCreateBinary(__ProSemaphore);
 	}
 	SemaInit();
-}
-
-void *DataFalgQueryAndChange(char Obj, unsigned short Alter, char Query){
-	if (xSemaphoreTake(__ProSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
-		if(Query == 0){
-			switch (Obj){
-				case 1:
-					__msg.ArrayAddr[(__msg.Sort)++] = Alter;
-					break;
-				case 2:
-					__msg.Command = Alter;
-					break;
-				case 3:
-					__msg.NoReply = Alter;
-					break;
-				case 4:
-					__msg.SendFlag = Alter;
-					break;
-				case 5:
-					__msg.ProtectFlag = Alter;
-					break;
-				case 6:
-					__msg.NumberOfLoop = Alter;
-					break;
-				case 7:
-					__msg.Lenth = Alter;
-				case 8:
-					__msg.Sort = 0;
-					break;
-				default:
-					break;
-			}
-		} 
-		xSemaphoreGive(__ProSemaphore);
-		if(Query == 1){
-			switch (Obj){
-				case 1:
-					return __msg.ArrayAddr;
-				case 2:
-					return &(__msg.Command);
-				case 3:
-					return &(__msg.NoReply);
-				case 4:
-					return &(__msg.SendFlag);
-				case 5:
-					return &(__msg.ProtectFlag);
-				case 6:
-					return &(__msg.NumberOfLoop);
-				case 7:
-					return &(__msg.Lenth);
-				case 8:
-					return &(__msg.Answer);
-				default:
-					break;
-			}
-		}
-	}
-	return false;
 }
 
 typedef enum{
@@ -651,7 +578,7 @@ static char CommandFlag = 0;
 
 void __DataFlagJudge(const char *p){
 	int i = 0, j, len = 0, m, n;
-	unsigned char tmp[5], *ret, *msg;
+	unsigned char tmp[5], *ret;
 	Lightparam k;
 	
 	if(CommandFlag == 1){
@@ -665,16 +592,16 @@ void __DataFlagJudge(const char *p){
 	}
 
 	if(p[0] == 'A'){
-		memset(__msg.ArrayAddr, 0, 600);
+		memset(SeekAddr, 0, 600);
 		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			if(k.AddrOfZigbee[0] != 0xff){
 				sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
-				__msg.ArrayAddr[i++] = atoi((const char *)tmp);
+				SeekAddr[i++] = atoi((const char *)tmp);
 			}
 		}
 	} else if(p[0] == '8'){
-		memset(__msg.ArrayAddr, 0, 600);
+		memset(SeekAddr, 0, 600);
 		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 			if(k.Loop == 0xFF){
@@ -692,9 +619,9 @@ void __DataFlagJudge(const char *p){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							
 							#if defined(__HEXADDRESS__)
-									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+									SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 							#else		
-									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+									SeekAddr[i++] = atoi((const char *)tmp);							
 							#endif		
 			
 							break;
@@ -706,9 +633,9 @@ void __DataFlagJudge(const char *p){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							
 							#if defined(__HEXADDRESS__)
-									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+									SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 							#else		
-									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+									SeekAddr[i++] = atoi((const char *)tmp);							
 							#endif		
 							
 							break;
@@ -718,9 +645,9 @@ void __DataFlagJudge(const char *p){
 						sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 					
 							#if defined(__HEXADDRESS__)						
-									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+									SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 							#else		
-									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+									SeekAddr[i++] = atoi((const char *)tmp);							
 							#endif		
 					
 					  break;
@@ -729,7 +656,7 @@ void __DataFlagJudge(const char *p){
 			}
 		}
 	} else if(p[0] == '9'){
-		memset(__msg.ArrayAddr, 0, 600);
+		memset(SeekAddr, 0, 600);
 		for(len = 0; len < 599; len++) {
 			NorFlashRead(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (short *)&k, (sizeof(Lightparam) + 1) / 2);
 		  if(k.Loop == 0xFF){
@@ -747,9 +674,9 @@ void __DataFlagJudge(const char *p){
 							sscanf((const char *)k.AddrOfZigbee, "%4s", tmp);
 							
 							#if defined(__HEXADDRESS__)
-									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+									SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 							#else		
-									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+									SeekAddr[i++] = atoi((const char *)tmp);							
 							#endif		
 							
 							break;
@@ -761,9 +688,9 @@ void __DataFlagJudge(const char *p){
 							sscanf((const char *)(k.AddrOfZigbee), "%4s", tmp);
 							
 							#if defined(__HEXADDRESS__)
-									__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+									SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 							#else		
-									__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+									SeekAddr[i++] = atoi((const char *)tmp);							
 							#endif		
 							
 							break;
@@ -774,24 +701,17 @@ void __DataFlagJudge(const char *p){
 			}
 		}			
 	} else if(p[0] == 'B'){
-		  memset(__msg.ArrayAddr, 0, 600);
+		  memset(SeekAddr, 0, 600);
 			sscanf((const char *)ret, "%4s", tmp);
 		
 			#if defined(__HEXADDRESS__)
-					__msg.ArrayAddr[i++] = strtol((const char *)tmp, NULL, 16);
+					SeekAddr[i++] = strtol((const char *)tmp, NULL, 16);
 			#else		
-					__msg.ArrayAddr[i++] = atoi((const char *)tmp);							
+					SeekAddr[i++] = atoi((const char *)tmp);							
 			#endif		
 		
 	}
-	__msg.ArrayAddr[i] = 0;
-	__msg.Lenth = i;
-	
-	for(i = 0; i < 1000; i++){
-		SeekAddr[i] = __msg.ArrayAddr[i];
-		if(__msg.ArrayAddr[i] == 0)
-			break;
-	}
+	SeekAddr[i] = 0;
 	
 	CommandFlag = 0;
 } 
@@ -807,15 +727,7 @@ unsigned char *__datamessage(void){
 static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	unsigned char *buf, msg[8], *ret, size;
 	
-	ret = DataFalgQueryAndChange(5, 0, 1);
-	while(*ret != 0){
-		return;
-	}
-	
-	DataFalgQueryAndChange(5, 1, 0);
-	
 	CommandFlag = 2;
-//	DataFalgQueryAndChange(2, 2, 0);
 	sscanf(p, "%6s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -828,7 +740,6 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	strcpy((char *)DataMessage, (const char *)ret);
 	vPortFree(ret);
 	
-	DataFalgQueryAndChange(3, 1, 0);
 	__DataFlagJudge(p);
 }
 
@@ -836,15 +747,7 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	unsigned char msg[8];
 	unsigned char *buf, *ret, size;
 	
-	ret = DataFalgQueryAndChange(5, 0, 1);
-	while(*ret != 0){
-		return;
-	}
-	
-	DataFalgQueryAndChange(5, 1, 0);
-	
 	CommandFlag = 3;
-//	DataFalgQueryAndChange(2, 3, 0);
 	sscanf(p, "%5s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -857,22 +760,13 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	strcpy((char *)DataMessage, (const char *)ret);
 	vPortFree(ret);
 	
-	DataFalgQueryAndChange(3, 1, 0);
 	__DataFlagJudge(p);
 }
 
 static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	unsigned char *buf, msg[8], size;	
 	
-//	buf = DataFalgQueryAndChange(5, 0, 1);
-//	while(*buf != 0){
-//		return;
-//	}
-//	
-	DataFalgQueryAndChange(5, 1, 0);
-//	
 	CommandFlag = 1;
-//	DataFalgQueryAndChange(2, 1, 0);
 	sscanf(p, "%4s", msg);
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
@@ -890,16 +784,8 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	ElecTaskSendData((const char *)buf, size);	
 }
 
-static void HandleLightAuto(ProtocolHead *head, const char *p) {
-	unsigned char *buf, size;
-	
-	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
-  GsmTaskSendTcpData((const char *)buf, size);
-}
-
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 	DateTime ServTime;
-	unsigned char *buf, size;
 
 	ServTime.year = (p[0] - '0') * 10 + p[1] - '0';
 	ServTime.month = (p[2] - '0') * 10 + p[3] - '0';
@@ -1140,7 +1026,6 @@ static void HandleBSNUpgrade(ProtocolHead *head, const char *p) {
 	}
 	
 	if(Ballast_Count == Total){
-		DataFalgQueryAndChange(2, 9, 0);
 	}
 }
 
@@ -1152,7 +1037,6 @@ const short *LightZigbAddr(void){
 }
 
 void ActionControl(short addr, short pole, char act, char num){                   /*¸ù¾ÝÖ÷¸¨Í¶ÊôÐÔ¿ØÖÆµ¥¸öµØÖ·*/
-	unsigned char tmp[5], *buf, size, ret[9];
 	char lightFlag = 0;
 	DateTime dateTime;
 	uint32_t second;
@@ -1397,7 +1281,6 @@ void CalulateLightAddr(void){
 
  void HandleLuxGather(ProtocolHead *head, const char *p) {
 	char msg[10]; 
-	unsigned char *buf, size;
 	int LuxValue, second;
 	DateTime dateTime;
 	short tmp[3];
