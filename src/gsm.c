@@ -345,11 +345,6 @@ void USART3_IRQHandler(void) {
 }
 
 void __gsmModemStart(){
-//	GPIO_SetBits(GPIO_GSM, Pin_Restart);
-//	vTaskDelay(configTICK_RATE_HZ / 2);
-//	GPIO_ResetBits(GPIO_GSM, Pin_Restart);
-//	vTaskDelay(configTICK_RATE_HZ / 2);
-
 	GPIO_ResetBits(GPIO_Reset, Pin_Reset);
 	vTaskDelay(configTICK_RATE_HZ * 4);
 	GPIO_SetBits(GPIO_Reset, Pin_Reset);
@@ -357,8 +352,13 @@ void __gsmModemStart(){
 }
 
 static void RemainTCPConnect(void){
+	char tmp[3];
+	GMSParameter g;
+					
+	NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
+	sscanf((const char *)g.GWAddr, "%*7s%3s", tmp);
 	
-	ATCmdSendStr("DM");
+	ATCmdSendStr(tmp);
 }
 
 static void RelinkTCP(void){
@@ -398,7 +398,7 @@ bool __initGsmRuntime(void) {
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
 		ATCommandAndCheckReply("AT\r", "OK", configTICK_RATE_HZ / 2);
-		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ / 2)) {	  //回显模式关闭
+		if (ATCommandAndCheckReply("ATE0\r", "OK", configTICK_RATE_HZ / 2)) {	             //回显模式关闭
 			break;
 		}
 	}
@@ -428,7 +428,7 @@ bool __initGsmRuntime(void) {
 		return false;
 	}
 	
-	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		   //获取本地时间戳
+	if (!ATCommandAndCheckReply("AT+CLTS=1\r", "OK", configTICK_RATE_HZ / 2)) {		        //获取本地时间戳
 		printf("AT+CLTS error\r");
 		return false;
 	}
@@ -568,6 +568,7 @@ void __handleSendTcpDataLowLevel(GsmTaskMessage *msg) {
 }
 
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
+
 extern char StopLuxDataSend(void);
 
 void __handleSIM900RTC(GsmTaskMessage *msg) {

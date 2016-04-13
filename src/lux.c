@@ -134,11 +134,15 @@ void Max_Send_Str(unsigned char *s, int size){
      Max_Send_Byte(s[i]); 
 }
 
+static unsigned int LuxValue = 123456;
+
+unsigned short GetLux(void){
+	return LuxValue;
+}
+
 extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
 
 extern char StopLuxDataSend(void);
-
-static char ResetFlag = 0;             /*发送重启指令标志位*/
 
 static void __MaxTask(void *nouse) {
 	portBASE_TYPE rc;
@@ -171,30 +175,19 @@ static void __MaxTask(void *nouse) {
 					lastT = curT;
 				}
 				
-//				if((curT - RecT) > UART_GET_DATA_TIME * 6){
-//					GMSParameter g;
-//					unsigned char size, *buf, tmp[142] = {0};			
-//					
-//					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
-//					
-//					memset(tmp, '0', 141);
-//					
-//					buf = ProtocolMessage(g.GWAddr, "08", (const char *)tmp, &size);
-//					GsmTaskSendTcpData((const char *)buf, size);
-//					vPortFree(buf);
-//					
-//					ResetFlag = 0;
-//				}
-				
-				
-				if((ResetFlag == 0) && ((curT - RecT) > UART_GET_DATA_TIME * 2)){
-					unsigned char size, *buf;
+				if((curT - RecT) > UART_GET_DATA_TIME * 6){
+					GMSParameter g;
+					unsigned char size, *buf, tmp[8];			
 					
-					buf = ProtocolMessage("9999999999", "46", NULL, &size);
-					TransTaskSendData((const char *)buf, size);
-					vPortFree(buf);
+					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
 					
-					ResetFlag = 1;                      /*已经发送重启指令*/
+					sprintf((char *)tmp, "%05X%s", LuxValue, "0");
+					
+					buf = ProtocolMessage(g.GWAddr, "0F", (const char *)tmp, &size);
+					GsmTaskSendTcpData((const char *)buf, size);
+					vPortFree(buf);	
+
+					RecT = curT;
 				}
 		}
 	}
@@ -202,11 +195,6 @@ static void __MaxTask(void *nouse) {
 
 static char Buffer[9];
 static int Index = 0;
-static unsigned int LuxValue = 0;
-
-unsigned short GetLux(void){
-	return LuxValue;
-}
 
 void USART2_IRQHandler(void)
 { 
