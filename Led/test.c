@@ -12,14 +12,13 @@
 #include "norflash.h"
 #include "protocol.h"
 #include "gsm.h"
-#include "shuncom.h"
 
 #define SHT_TASK_STACK_SIZE	( configMINIMAL_STACK_SIZE + 1024 * 5)
 
 #define DetectionTime  1
 
-#define M_PI 3.14
-#define RAD  (180.0 * 3600 / M_PI)
+#define M_PI  3.14
+#define RAD   (180.0 * 3600 / M_PI)
 
 static double richu;
 static double midDayTime;

@@ -61,8 +61,8 @@ typedef enum{
 	TIMEADJUST = 0x42,      /*校时*/
 	LUXVALUE = 0x43,        /*接收到光强度值*/
 	/*0x40, 隧道网关请求升级包指令*/
-	/*0x45, 隧道网关请求时间数据指令*/
 	/*0x44, 两个板子地址不一致时发送的指令*/
+	/*0x45, 隧道网关请求时间数据指令*/	
 	RESTART = 0x3F,         /*设备复位*/
 	RETAIN,                 /*保留*/
 } GatewayType;
@@ -365,7 +365,6 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		sscanf(p, "%*1s%6s", g.GatewayID);
 		sscanf(p, "%*7s%10s", g.Longitude);
 		sscanf(p, "%*17s%10s", g.Latitude);
-	//	sscanf(p, "%*13s%1s", g->FrequPoint);
 		g.FrequPoint = p[27];
 		sscanf(p, "%*28s%2s", g.IntervalTime);
 		sscanf(p, "%*30s%2s", g.Ratio);
@@ -390,10 +389,10 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 		sscanf(p, "%*45s%4s", g.PhaseCurLimitValL2);
 		sscanf(p, "%*49s%4s", g.PhaseCurLimitValL3);
 		sscanf(p, "%*53s%4s", g.PhaseCurLimitValN);
-//		sscanf(p, "%*16s%2s", g->NumbOfCNBL);
 		g.NumbOfCNBL = p[57];
 		sscanf(p, "%*58s%2s", g.OtherWarn);
 		g.SetWarnFlag = 1;
+		
 //		NorFlashWriteChar(NORFLASH_MANAGEM_WARNING, (const char *)g, sizeof(GatewayParam3));
 		NorFlashWrite(NORFLASH_MANAGEM_WARNING, (const short *)&g, (sizeof(GatewayParam3) + 1) / 2);
 	}
@@ -420,7 +419,6 @@ static void __ParamWriteToFlash(const char *p){
 	sscanf(p, "%4s", g.AddrOfZigbee);
 
 		sscanf(p, "%*4s%4s", g.NorminalPower);
-//		sscanf(p, "%*16s%12s", g->Loop);
 		g.Loop = p[8];
 		
 		sscanf(p, "%*9s%4s", g.LightPole);		
@@ -438,8 +436,6 @@ static void __ParamWriteToFlash(const char *p){
  
 		g.CommState = 0x04;
 		g.InputPower = 0;
-		
-	//	NorFlashWriteChar(NORFLASH_BALLAST_BASE + len * NORFLASH_SECTOR_SIZE, (const char *)g, sizeof(Lightparam));
 		
 		sscanf(p, "%4s",msg);
 	
@@ -509,7 +505,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 			if(g.AddrOfZigbee[0] == 0xFF)
 				continue;
 			
-			sscanf(g.AddrOfZigbee, "%4s", tmp);
+			sscanf((const char *)g.AddrOfZigbee, "%4s", tmp);
 			lenth = atoi((const char *)tmp);
 			
 			if(lenth < 1000)			

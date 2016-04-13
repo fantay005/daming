@@ -17,7 +17,6 @@
 #include "zklib.h"
 #include "norflash.h"
 #include "second_datetime.h"
-#include "elegath.h"
 
 #define BROACAST   "9999999999"
 
@@ -320,6 +319,7 @@ static void __gsmTask(void *parameter) {
 				}
 			}
 		}
+		
 	}
 }
  

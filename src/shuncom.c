@@ -41,7 +41,7 @@ static void SZ05_ADV_Init(void) {
 
 	GPIO_InitStructure.GPIO_Pin = COM_RX;
 	GPIO_InitStructure.GPIO_Mode = GPIO_Mode_IN_FLOATING;
-	GPIO_Init(GPIO_COM, &GPIO_InitStructure);				   //ZIGBEE模块的串口
+	GPIO_Init(GPIO_COM, &GPIO_InitStructure);				                   //ZIGBEE模块的串口
 	
 	NVIC_PriorityGroupConfig(NVIC_PriorityGroup_0);
 	
