@@ -803,9 +803,9 @@ static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*查网关
   GsmTaskSendTcpData((const char *)buf, size);
 }
 
-static int HardLight = 10000;    /*强光值*/
+static int HardLight = 100000;    /*强光值*/
 static int MiddleLight = 500;    /*中光值*/
-static int WeakLight = 50;       /*弱光值*/
+static int WeakLight = 10;       /*弱光值*/
 
 #define OnOffLight     1     /*开关灯时段*/
 #define HaveSun        2     /*白天时段*/
@@ -1182,18 +1182,19 @@ extern unsigned char *DayToSunshine(void);
 
 extern unsigned char *DayToNight(void); 
 
-static void DivideTimeArea(DateTime time){   /*根据当前时间，划分其所属时域*/ 
-	int NowTime, DayTime, DarkTime;
+static void DivideTimeArea(DateTime time){                          /*根据当前时间，划分其所属时域*/ 
+	int NowTime, DayTime, DarkTime, ZeroClock;
 	unsigned char *buf, tmp[6], hour, minute;
 	TimeZoneDog k;
 	
-	NowTime = time.hour * 3600 + time.minute * 60 + time.second;    /*当前时间*/
+	ZeroClock = 24 * 3600;
+	NowTime = time.hour * 3600 + time.minute * 60 + time.second;      /*当前时间*/
 	
 	buf = DayToSunshine();
 	DarkTime = buf[0] * 3600 + buf[1] * 60 + buf[2];                  /*开灯时间*/
 	
 	buf = DayToNight();
-	DayTime = buf[0] * 3600 + buf[1] * 60 + buf[2];                /*关灯时间*/    
+	DayTime = buf[0] * 3600 + buf[1] * 60 + buf[2];                   /*关灯时间*/    
 
 	NorFlashRead(PARAM_TIME_DOG_OFFSET, (short *)&k, (sizeof(TimeZoneDog) + 1) / 2); 
 	
@@ -1237,7 +1238,9 @@ static void DivideTimeArea(DateTime time){   /*根据当前时间，划分其所属时域*/
 	
 	if((NowTime >= (DayTime + AfterOpenOffset )) && (NowTime <= (DarkTime - BeforOpenOffset ))){  /*关灯后偏移，到开灯前偏移*/
 		__Luxparam.TimeArea = HaveSun;	                                  /*定义为白天时段*/
-	} else if((NowTime >= DeepNightStart) && (NowTime <= (DayTime - BeforCloseOffset)) && (NowTime < DeepNightEnd)){ /*深夜开始时间到第二天开灯偏移前或者深夜结束*/
+	} else if((NowTime >= DeepNightStart) && (NowTime <= ZeroClock)){   /*深夜开始时间到半夜12点*/
+		__Luxparam.TimeArea = LateNight;                                  /*定义为少有行人的深夜时段*/
+	} else if((NowTime <= (DayTime - BeforCloseOffset)) && (NowTime < DeepNightEnd)){ /*半夜12点到深夜结束时间，且时间不能超过关灯前偏移*/
 		__Luxparam.TimeArea = LateNight;                                  /*定义为少有行人的深夜时段*/
 	} else if(((NowTime > (DayTime - BeforCloseOffset)) && (NowTime < (DayTime + AfterCloseOffset))) || 
 						((NowTime < (DarkTime + AfterOpenOffset)) && (NowTime > (DarkTime - BeforOpenOffset)))){  /*开灯前偏移到开灯后偏移，或者关灯前偏移到关灯后偏移*/
