@@ -147,18 +147,15 @@ extern char StopLuxDataSend(void);
 static void __MaxTask(void *nouse) {
 	portBASE_TYPE rc;
 	Info_frame frame;
-	portTickType curT, RecT, UpgradeT, lastT = 0; 
+	portTickType curT, UpgradeT = 0xFFFFFFFF, lastT = 0; 
 	unsigned int msg; 
 	
 	Modbusdat(&frame);
-	RecT = xTaskGetTickCount();
 	
 	while (1) {
 		rc = xQueueReceive(__maxQueue, &msg, configTICK_RATE_HZ / 5);
 		if (rc == pdTRUE) {		
 			unsigned char size, *buf, tmp[10];
-			
-			RecT = xTaskGetTickCount();
 	
 			sprintf((char *)tmp, "%08d", msg);
 			buf = ProtocolMessage("9999999999", "43", (const char *)tmp, &size);
@@ -175,9 +172,15 @@ static void __MaxTask(void *nouse) {
 					lastT = curT;
 				}
 				
+				if(UpgradeT == 0xFFFFFFFF){
+					UpgradeT = curT;
+					continue;
+				}
+				
 				if((curT - UpgradeT) > UART_GET_DATA_TIME * 6){
 					GMSParameter g;
 					unsigned char size, *buf, tmp[8];			
+		
 					
 					NorFlashRead(NORFLASH_MANAGEM_ADDR, (short *)&g, (sizeof(GMSParameter)  + 1)/ 2);	
 					

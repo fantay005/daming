@@ -787,11 +787,6 @@ static void __gsmTask(void *parameter) {
 			resetT = curT + configTICK_RATE_HZ * 2;
 		}
 		
-//		if(war3 == 0){
-//			resetT = curT + configTICK_RATE_HZ * 5;
-//			war3 = 1;
-//		}
-		
 		if(curT > resetT){
 			char i;
 			for(i = 0; i < 5; i++){
@@ -801,7 +796,6 @@ static void __gsmTask(void *parameter) {
 			resetT = 0xFFFFFFFF;
 			if(i >= 5)
 				NVIC_SystemReset();
-//			war3 = 0;
 		}
 	}
 }

@@ -7,7 +7,7 @@
 #define __SPEAKER__                     1
 #define __SPEAKER_V3__                  1
 
-#define __TARGET_STRING__               "A03"
+#define __TARGET_STRING__               "A04"
 
 #else
 #  error "Preinclude file can only be included once in command line with --preinclude=xxxx"
