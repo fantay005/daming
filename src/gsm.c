@@ -26,8 +26,6 @@
 /// GSM task message queue.
 static xQueueHandle __Transqueue;
 
-static GMSParameter __gsmRuntimeParameter;
-
 void ATCmdSendChar(char c) {
 	USART_SendData(USART3, c);
 	while (USART_GetFlagStatus(USART3, USART_FLAG_TXE) == RESET);
@@ -295,8 +293,6 @@ static const MessageHandlerMap __messageHandlerMaps[] = {
 };
 
 extern void __handleLux(char tim, char lux);
-
-static char FirstFlag = 0;
 
 static void __gsmTask(void *parameter) {
 	portBASE_TYPE rc;

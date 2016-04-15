@@ -193,7 +193,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 	int i, j;
 	unsigned short addr;
 	char hextable[] = "0123456789ABCDEF";
-	unsigned char *buf, tmp[5], *ret, size;
+	unsigned char *buf, tmp[5], size;
 	Lightparam k;
 	char build[4] = {'B', '0' , '0' , '0'};
 	GMSParameter g;
@@ -288,7 +288,6 @@ static void ZigbeeHandleStrategy(FrameHeader *header, unsigned char CheckByte, c
 }
 
 static char Have_Param_Flag = 0;
-static char Number = 0;
 
 extern const short *LightZigbAddr(void);
 
@@ -299,7 +298,7 @@ extern unsigned char *DayToNight(void);
 static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte, const char *p){
 	int i, instd, hexAddr;
 	unsigned char *buf, space[3], addr[5], SyncFlag[13], *msg, size;
-	unsigned short *ret, fitcount = 0, compare, *smt;
+	unsigned short *ret, compare;
 	GMSParameter g;
 	Lightparam k;
 	StrategyParam s;
