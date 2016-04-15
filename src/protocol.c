@@ -1165,15 +1165,17 @@ static void DivisiveLightArea(int lux){     /*根据当前光照度，区分其所在区域*/
 	}
 	
 	if(state != __Luxparam.LuxArea)
-		val = abs(lux - __Luxparam.LastLux);
+		val = abs(lux - __Luxparam.LastLux);    /*取前一分钟光强的平均值与当前一分钟的光强的绝对值*/
 	
 	if(__Luxparam.LastLux > 300){
-		if((__Luxparam.LastLux / val) < 4)
+		if((__Luxparam.LastLux / val) < 4)      /**/
 			__Luxparam.LuxArea = state;
-	} else {
+	} else if((__Luxparam.LastLux > 20) && (__Luxparam.LastLux <= 300)){
 		if((__Luxparam.LastLux / val) < 2)
+			__Luxparam.LuxArea = state;	
+	} else {
+		if(val > 5)
 			__Luxparam.LuxArea = state;
-		
 	}
 		
 }
@@ -1273,13 +1275,6 @@ void BegAverage(int *p){
 	}
 	
 	__Luxparam.NowLux = sum / 8;
-}
-
-void CalulateLightAddr(void){
-
-	memset(LightAddr, 0, 600);
-	__handleLux(__Luxparam.TimeArea, __Luxparam.LuxArea);	
-	
 }
 
  void HandleLuxGather(ProtocolHead *head, const char *p) {
