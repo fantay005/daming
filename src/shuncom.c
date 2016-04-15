@@ -566,12 +566,12 @@ void __handleIOTRecieve(ZigbTaskMsg *p) {
 void __handleIOTSend(ZigbTaskMsg *p){
 	int i;
 	char *dat = __ZigbGetMsgData(p);
-
+	
 	for(i = 0; i < p->length; i++){
 		SZ05SendChar(*dat++);
 	}
 	
-	vTaskDelay(configTICK_RATE_HZ * 2);
+	vTaskDelay(configTICK_RATE_HZ);
 }
 
 static void __handleLampParamDown(ZigbTaskMsg *p){
@@ -651,11 +651,12 @@ static void ZIGBEETask(void *parameter) {
 			if(k.Loop == 0xFF)
 				continue;
 			
-			vTaskDelay(configTICK_RATE_HZ / 5);
+			vTaskDelay(configTICK_RATE_HZ / 10);
 			
 			sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 			buf = DataSendToBSN("06", ID, NULL, &size);			
 			ZigbTaskSendData((const char *)buf, size);
+			
 		}
 	}
 }
