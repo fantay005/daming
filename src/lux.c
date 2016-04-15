@@ -147,7 +147,7 @@ extern char StopLuxDataSend(void);
 static void __MaxTask(void *nouse) {
 	portBASE_TYPE rc;
 	Info_frame frame;
-	portTickType curT, RecT, lastT = 0; 
+	portTickType curT, RecT, UpgradeT, lastT = 0; 
 	unsigned int msg; 
 	
 	Modbusdat(&frame);
@@ -175,7 +175,7 @@ static void __MaxTask(void *nouse) {
 					lastT = curT;
 				}
 				
-				if((curT - RecT) > UART_GET_DATA_TIME * 6){
+				if((curT - UpgradeT) > UART_GET_DATA_TIME * 6){
 					GMSParameter g;
 					unsigned char size, *buf, tmp[8];			
 					
@@ -187,7 +187,7 @@ static void __MaxTask(void *nouse) {
 					GsmTaskSendTcpData((const char *)buf, size);
 					vPortFree(buf);	
 
-					RecT = curT;
+					UpgradeT = curT;
 				}
 		}
 	}
