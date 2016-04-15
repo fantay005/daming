@@ -570,6 +570,8 @@ void __handleIOTSend(ZigbTaskMsg *p){
 	for(i = 0; i < p->length; i++){
 		SZ05SendChar(*dat++);
 	}
+	
+	vTaskDelay(configTICK_RATE_HZ * 2);
 }
 
 static void __handleLampParamDown(ZigbTaskMsg *p){

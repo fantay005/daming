@@ -13,7 +13,6 @@ typedef enum{
 	POWER_ENABLE,
 }SEND_STATUS;
 
-SEND_STATUS ZigbTaskSendData(const char *dat, int len);
 
 extern char BSNinfor[600][40];           /*保存所有镇流器当前数据*/
 
