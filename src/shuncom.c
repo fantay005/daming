@@ -412,41 +412,40 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			Have_Param_Flag = 1;
 		}
 
-		if((strncmp((const char *)s.SYNCTINE, (const char *)SyncFlag, 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
-			NorFlashRead(NORFLASH_STRATEGY_ADDR, (short *)&s, (sizeof(StrategyParam) + 1) / 2);
+		if((strncmp((const char *)s.SYNCTINE, (const char *)"160315000000", 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
 			msg = ZigbtaskApplyMemory(47 + 1);
 			
-			sscanf((const char *)s.SYNCTINE, "%12s", msg);
-			sscanf((const char *)s.SchemeType, "%2s", msg + 12);
-			msg[14] = s.DimmingNOS;
+			sscanf((const char *)"160315000000", "%12s", msg);
+			sscanf((const char *)"01", "%2s", msg + 12);
+			msg[14] = '1';
 		
-			sscanf((const char *)s.FirstDCTime, "%4s", msg + 15);
-			sscanf((const char *)s.FirstDPVal, "%2s", msg + 19);
+			sscanf((const char *)"0FFF", "%4s", msg + 15);
+			sscanf((const char *)"64", "%2s", msg + 19);
 			msg[21] = 0;
 		
-			if ((s.DimmingNOS - '0') == 2){
-				sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
-				sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
-				msg[27] = 0;
-			}
-			
-			if ((s.DimmingNOS - '0') == 3){
-				sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
-				sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
-				msg[33] = 0;
-			}
-			
-			if ((s.DimmingNOS - '0') == 4){
-				sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
-				sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
-				msg[39] = 0;
-			}
-					
-			if ((s.DimmingNOS - '0') == 5){
-				sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
-				sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
-				msg[45] = 0;
-			}
+//			if ((s.DimmingNOS - '0') == 2){
+//				sscanf((const char *)s.SecondDCTime, "%4s", msg + 21);
+//				sscanf((const char *)s.SecondDPVal, "%2s", msg + 25);	
+//				msg[27] = 0;
+//			}
+//			
+//			if ((s.DimmingNOS - '0') == 3){
+//				sscanf((const char *)s.ThirdDCTime, "%4s", msg + 27);
+//				sscanf((const char *)s.ThirdDPVal, "%2s", msg + 31);
+//				msg[33] = 0;
+//			}
+//			
+//			if ((s.DimmingNOS - '0') == 4){
+//				sscanf((const char *)s.FourthDCTime, "%4s", msg + 33);
+//				sscanf((const char *)s.FourthDPVal, "%2s", msg + 37);
+//				msg[39] = 0;
+//			}
+//					
+//			if ((s.DimmingNOS - '0') == 5){
+//				sscanf((const char *)s.FifthDCTime, "%4s", msg + 39);
+//				sscanf((const char *)s.FifthDPVal, "%2s", msg + 43);
+//				msg[45] = 0;
+//			}
 			
 			buf = DataSendToBSN((unsigned char *)"03", "FFFF", (const char *)msg, &size);
 			ZigbTaskFreeMemory(msg);
