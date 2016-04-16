@@ -134,7 +134,7 @@ void Max_Send_Str(unsigned char *s, int size){
      Max_Send_Byte(s[i]); 
 }
 
-static unsigned int LuxValue = 123456;
+static unsigned int LuxValue = 0;
 
 unsigned short GetLux(void){
 	return LuxValue;
