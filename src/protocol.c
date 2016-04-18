@@ -182,7 +182,6 @@ extern bool GsmTaskSendAtCommand(const char *atcmd);
 extern void SwitchCommand(void);
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p){             
-	const char *remoteFile = "STM32.PAK";
 	unsigned short port = 21;
 	FirmwareUpdaterMark *mark;
 	char host[16], tmp[5];
@@ -202,13 +201,13 @@ static void HandleGWUpgrade(ProtocolHead *head, const char *p){
 	SwitchCommand();
 	
 	if(strncasecmp(tmp, "A", 1) == 0){
-		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 1)){    //光照传感器DTU，FTP远程升级
+		if (FirmwareUpdateSetMark(mark, host, port, "DTU.PAK", 1)){    //光照传感器DTU，FTP远程升级
 			NVIC_SystemReset();
 		}
 	}
 	
 	if(strncasecmp(tmp, "B", 1) == 0){
-		if (FirmwareUpdateSetMark(mark, host, port, remoteFile, 2)){     //隧道内网关，FTP远程升级
+		if (FirmwareUpdateSetMark(mark, host, port, "GW.PAK", 2)){     //隧道内网关，FTP远程升级
 			NVIC_SystemReset();
 		}
 	}
