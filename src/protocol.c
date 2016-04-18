@@ -1116,7 +1116,7 @@ void __handleLux(char tim, char lux){            /*¸ù¾Ý»ØÂ·£¬¹âÇ¿Óò£¬Ê±¼äÓòÊµÐÐ²
 		}
 		NoneStrategy(k.Loop, tim, Zigb, LightPara);
 	}
-	
+
 }
 
 typedef struct{
@@ -1177,7 +1177,6 @@ static void DivisiveLightArea(int lux){     /*¸ù¾Ýµ±Ç°¹âÕÕ¶È£¬Çø·ÖÆäËùÔÚÇøÓò*/
 		if(val > 5)
 			__Luxparam.LuxArea = state;
 	}
-		
 }
 
 extern unsigned char *DayToSunshine(void);

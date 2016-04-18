@@ -412,7 +412,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			Have_Param_Flag = 1;
 		}
 
-		if((strncmp((const char *)s.SYNCTINE, (const char *)"160315000000", 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
+		if((strncmp((const char *)SyncFlag, (const char *)"160315000000", 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
 			msg = ZigbtaskApplyMemory(47 + 1);
 			
 			sscanf((const char *)"160315000000", "%12s", msg);

@@ -272,10 +272,14 @@ static void __TimeTask(void *nouse) {
 		} else if(((dateTime.hour == 0) || (dateTime.hour == 12)) && (dateTime.minute == 15) && (dateTime.second == 0)){
 			
 			vTaskDelay(configTICK_RATE_HZ);
-			LightenLampSwitch();
 			NVIC_SystemReset();			
 			
-		} else if(dateTime.hour > 11){
+		} else if(((dateTime.hour == 0) || (dateTime.hour == 12)) && (dateTime.minute == 40) && (dateTime.second == 0)){
+			
+			vTaskDelay(configTICK_RATE_HZ);
+			LightenLampSwitch();
+			
+		}else if(dateTime.hour > 11){
 			if(GPIO_ReadOutputDataBit(GPIO_CTRL_1, PIN_CTRL_1) != 1){
 				GPIO_SetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 				GPIO_SetBits(GPIO_CTRL_1, PIN_CTRL_1);
