@@ -602,11 +602,13 @@ void __handleSIM900RTC(GsmTaskMessage *msg) {
 	sscanf(p, "%*[^,]%*c%*[^,]%*c%*[^,]%*c%*[^,]%*c%*[^,]%*c%[^,]", tmp);
 	dateTime.second = atoi((const char *)tmp);
 	
+	i = 0;                    /*定义为一年的第几天*/    
+	
 	if(dateTime.hour >= 24) {
 		i += 1;
 		dateTime.hour = dateTime.hour - 24;
 		dateTime.date += 1;
-		if( 0 == dateTime.year / 4){
+		if( 0 == dateTime.year % 4){
 			i += Leap_Year[dateTime.month - 1];
 			if(i > Leap_Year[dateTime.month]){
 				dateTime.date = 1;

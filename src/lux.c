@@ -197,7 +197,7 @@ static void __MaxTask(void *nouse) {
 }
 
 static char Buffer[9];
-static int Index = 0;
+static int Index = 200;
 
 void USART2_IRQHandler(void)
 { 
