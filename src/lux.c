@@ -134,7 +134,7 @@ void Max_Send_Str(unsigned char *s, int size){
      Max_Send_Byte(s[i]); 
 }
 
-static unsigned int LuxValue = 200;
+static unsigned int LuxValue = 200000;
 
 unsigned short GetLux(void){
 	return LuxValue;
@@ -172,7 +172,7 @@ static void __MaxTask(void *nouse) {
 					lastT = curT;
 				}
 				
-				if(UpgradeT == 0xFFFFFFFF){
+				if((UpgradeT == 0xFFFFFFFF) || (LuxValue == 200000)){
 					UpgradeT = curT;
 					continue;
 				}
@@ -197,7 +197,7 @@ static void __MaxTask(void *nouse) {
 }
 
 static char Buffer[9];
-static int Index = 200;
+static int Index = 0;
 
 void USART2_IRQHandler(void)
 { 
