@@ -242,7 +242,7 @@ void USART2_IRQHandler(void)
 }
 
 static inline void __maxCreateTask(void) {
-	__maxQueue = xQueueCreate(5, sizeof( int ));
+	__maxQueue = xQueueCreate(8, sizeof( int ));
 	xTaskCreate(__MaxTask, (signed portCHAR *) "MAX485", MAX_TASK_STACK_SIZE, NULL, tskIDLE_PRIORITY + 5, NULL);
 }
 
