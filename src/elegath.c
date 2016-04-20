@@ -229,6 +229,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 		
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
+		vPortFree(buf);
 
 		return;
 	}
@@ -276,6 +277,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
+		vPortFree(buf);
 
 	} else {
 	
@@ -392,6 +394,7 @@ static void ElecHandleGWDataQuery(ProtocolHead *header, const char *p){
 
 		buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 		GsmTaskSendTcpData((const char *)buf, size);
+		vPortFree(buf);
 	}	
 	
 	if(p[0] == '0'){		
@@ -414,6 +417,7 @@ static void ElecHandleEGVersQuery(ProtocolHead *header, const char *p){
 	
 	buf = (char *)ProtocolRespond(header->addr, header->contr, msg, &size);
 	GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static void ElecHandleEGUpgrade(ProtocolHead *header, const char *p){
@@ -521,6 +525,7 @@ static void EleGathTask(void *parameter) {
 			if((UpFalg) && (dateTime.minute == 59)){          /*定点上传镇流器数据*/
 				buf = ProtocolToElec(g.GWAddr, (unsigned char *)"08", (const char *)"0", &size);
 				ElecTaskSendData((const char *)buf, size); 
+				vPortFree(buf);
 				UpFalg = 0;
 			}
 		}

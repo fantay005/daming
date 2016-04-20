@@ -185,8 +185,6 @@ void ZigBeeSendStrLen(char *str, unsigned char lenth){
 		SZ05SendChar(*str++);
 }
 
-extern unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
-
 char BSNinfor[600][40];           /*保存所有镇流器当前数据*/
 
 SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
@@ -272,6 +270,7 @@ SEND_STATUS ZigbTaskSendData(const char *dat, int len) {
 			
 			buf = ProtocolRespond(g.GWAddr, (unsigned char *)(dat + 7), (const char *)mess, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
+			vPortFree(buf);
 			
 			WAITFLAG = 0;
 			return COM_FAIL;
@@ -366,6 +365,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 			buf = DataSendToBSN((unsigned char *)"02", addr, (const char *)msg, &size);
 			ZigbTaskFreeMemory(msg);
+			ZigbTaskFreeMemory(buf);
 	
 			message.type = TYPE_IOT_SEND_DATA;
 			message.length = size;
@@ -449,6 +449,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 			
 			buf = DataSendToBSN((unsigned char *)"03", "FFFF", (const char *)msg, &size);
 			ZigbTaskFreeMemory(msg);
+			ZigbTaskFreeMemory(buf);
 	
 			message.type = TYPE_IOT_SEND_DATA;
 			message.length = size;
@@ -478,6 +479,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 					
 			buf = DataSendToBSN((unsigned char *)"0B", (unsigned char *)"FFFF", (const char *)msg, &size);
 			ZigbTaskFreeMemory(msg);
+			ZigbTaskFreeMemory(buf);
 
 			message.type = TYPE_IOT_SEND_DATA;
 			message.length = size;
@@ -506,6 +508,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		
 			buf = ProtocolRespond(g.GWAddr, (unsigned char *)"06", (const char *)msg, &size);
 			GsmTaskSendTcpData((const char *)buf, size);
+			vPortFree(buf);
 			
 			ZigbTaskFreeMemory(msg);
 			
@@ -655,7 +658,7 @@ static void ZIGBEETask(void *parameter) {
 			sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
 			buf = DataSendToBSN("06", ID, NULL, &size);			
 			ZigbTaskSendData((const char *)buf, size);
-			
+			ZigbTaskFreeMemory(buf);		
 		}
 	}
 }

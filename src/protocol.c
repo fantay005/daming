@@ -198,7 +198,9 @@ unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2]
 	return ret;
 }
 
-static unsigned char *BSNRespondBuf[240];
+#if 0
+
+static unsigned char BSNRespondBuf[240];
 
 void BsnFuntion(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
 	unsigned char i;
@@ -246,15 +248,77 @@ void BsnFuntion(unsigned char control[2], unsigned char address[4], const char *
 	*p = 0;
 }
 
-unsigned char *DataSendToBSN(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+unsigned char *DataSendToBSN(unsigned char type[2], unsigned char  address[4], const char *msg, unsigned char *size) {
 	if (xSemaphoreTake(__BSNSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
 		
-		BsnFuntion(address, type, msg, size);
+		BsnFuntion(type, address, msg, size);
 		xSemaphoreGive(__BSNSemaphore);
 		
 		return (unsigned char *)BSNRespondBuf;
 	}
 }
+
+#endif
+
+#if 1
+
+unsigned char *DataSendToBSN(unsigned char control[2], unsigned char address[4], const char *msg, unsigned char *size) {
+	unsigned char i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret, tmp[5];
+	unsigned char hexTable[] = "0123456789ABCDEF";
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	*size = 9 + len + 3 + 2;
+	
+	ret = pvPortMalloc(*size + 1);
+	
+	
+	if(strncmp((const char *)address, "FFFF", 4) == 0){
+		*ret = 0xFF;
+		*(ret + 1) = 0xFF;
+	} else {
+		
+#if defined (__HEXADDRESS__)	
+		sscanf((const char *)address, "%4s", tmp);
+		verify = strtol((const char *)tmp, NULL, 16);
+		*ret = verify >> 8;
+		*(ret + 1) = verify & 0xFF;
+#else		
+		*ret = (address[0] << 4) | (address[1] & 0x0f);
+		*(ret + 1) = (address[2] << 4) | (address[3] & 0x0f);
+#endif		
+	}
+	{
+		FrameHeader *h = (FrameHeader *)(ret + 2);
+		h->FH = 0x02;	
+		strcpy((char *)&(h->AD[0]), (const char *)address);
+		h->CT[0] = control[0];
+		h->CT[1] = control[1];
+		h->LT[0] = hexTable[(len >> 4) & 0x0F];
+		h->LT[1] = hexTable[len & 0x0F];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 11), msg);
+	}
+	
+	p = ret + 2;
+	
+	verify = 0;
+	for (i = 0; i < (len + 9); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
+}
+
+#endif
+
+#if 0
 
 static unsigned char RespondBuf[240];
 
@@ -309,6 +373,57 @@ unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2]
 	}
 }
 
+#endif
+
+
+#if 1
+
+unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	unsigned char i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	unsigned char hexTable[] = "0123456789ABCDEF";
+	
+	*size = 15 + len + 3;
+	if(type[1] > '9'){
+		i = (unsigned char)(type[0] << 4) | (type[1] - 'A' + 10);
+	} else{
+		i = (unsigned char)(type[0] << 4) | (type[1] & 0x0f);
+	}
+	i = i | 0x80;
+	ret = pvPortMalloc(*size + 1);
+	{
+		ProtocolHead *h = (ProtocolHead *)ret;
+		h->header = 0x02;	
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = hexTable[i >> 4];
+		h->contr[1] = hexTable[i & 0x0F];
+		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
+		h->lenth[1] = hexTable[len & 0x0F];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 15), msg);
+	}
+	
+	p = ret;
+	for (i = 0; i < (len + 15); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
+}
+
+#endif
+
+
+#if 0
+
 static unsigned char ElecRespondBuf[240];
 
 void NoRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
@@ -356,6 +471,49 @@ unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2],
 	}
 }
 
+#endif
+
+#if 1
+
+unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
+	int i;
+	unsigned int verify = 0;
+	unsigned char *p, *ret;
+	unsigned char hexTable[] = "0123456789ABCDEF";
+	unsigned char len = ((msg == NULL) ? 0 : strlen(msg));
+	
+	*size = 15 + len + 3;
+	i = (unsigned char)(type[0] << 4) + (type[1] & 0x0f);
+	
+	ret = pvPortMalloc(*size + 1);
+	{
+		ProtocolHead *h = (ProtocolHead *)ret;
+		h->header = 0x02;
+		strcpy((char *)h->addr, (const char *)address);
+		h->contr[0] = hexTable[i >> 4];
+		h->contr[1] = hexTable[i & 0x0F];
+		h->lenth[0] = hexTable[(len >> 4) & 0x0F];
+		h->lenth[1] = hexTable[len & 0x0F];
+	}
+
+	if (msg != NULL) {
+		strcpy((char *)(ret + 15), msg);
+	}
+	
+	p = ret;
+	for (i = 0; i < (len + 15); ++i) {
+		verify ^= *p++;
+	}
+	
+	*p++ = hexTable[(verify >> 4) & 0x0F];
+	*p++ = hexTable[verify & 0x0F];
+	*p++ = 0x03;
+	*p = 0;
+	return ret;
+}
+
+#endif
+
 static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	unsigned char size;
 	unsigned char *buf, msg[2];
@@ -401,6 +559,7 @@ static void HandleGatewayParam(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static unsigned short MaxZigbeeAdress = 0;       /*Íø¹ØÏÂ×î´óµÄZigBeeµØÖ·*/
@@ -540,6 +699,7 @@ static void HandleLightParam(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static unsigned short SeekAddr[600];              /*´æ´¢ÐèÒª²éÑ¯ZigBeeµØÖ·Êý×é*/
@@ -728,6 +888,7 @@ static void HandleLightDimmer(ProtocolHead *head, const char *p){
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 	
 	ret = pvPortMalloc(strlen(p) + 1);
 	strcpy((char *)ret, p);
@@ -748,6 +909,7 @@ static void HandleLightOnOff(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 	
 	ret = pvPortMalloc(strlen(p) + 1);
 	strcpy((char *)ret, p);
@@ -767,6 +929,7 @@ static void HandleReadBSNData(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond(head->addr, head->contr, (const char *)msg, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 	
 	__DataFlagJudge(p);
 }
@@ -777,7 +940,8 @@ static void HandleGWDataQuery(ProtocolHead *head, const char *p) {     /*Íø¹Ø»ØÂ
 	loop = p[0];
 
 	buf = ProtocolToElec(head->addr, (unsigned char *)"08", (const char *)&loop, &size);
-	ElecTaskSendData((const char *)buf, size);	
+	ElecTaskSendData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
@@ -794,6 +958,7 @@ static void HandleAdjustTime(ProtocolHead *head, const char *p) {    /*Ð£Ê±*/
 	
 //	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
 //  GsmTaskSendTcpData((const char *)buf, size);
+//  vPortFree(buf);
 }
 
 static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*²éÍø¹ØÈí¼þ°æ±¾ºÅ*/
@@ -801,6 +966,7 @@ static void HandleGWVersQuery(ProtocolHead *head, const char *p) {      /*²éÍø¹Ø
 	
 	buf = ProtocolRespond(head->addr, head->contr, __TARGET_STRING__, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static int HardLight = 100000;    /*Ç¿¹âÖµ*/
@@ -857,6 +1023,7 @@ static void HandleSetParamDog(ProtocolHead *head, const char *p){         /*ÉèÖÃ
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static uint32_t RealAddr = 0;
@@ -943,6 +1110,7 @@ static void HandleStrategy(ProtocolHead *head, const char *p){          /*²ßÂÔÏÂ
 	
 	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
   GsmTaskSendTcpData((const char *)buf, size);
+	vPortFree(buf);
 	
 	UpdataTimes++;
 	if(UpdataTimes == 6){
@@ -956,6 +1124,7 @@ static void HandleEGVersQuery(ProtocolHead *head, const char *p) {
 	
 	buf = ProtocolRespond((unsigned char *)"9999999999", head->contr, NULL, &size);
 	ElecTaskSendData((const char *)buf, size);
+	vPortFree(buf);
 }
 
 static void HandleGWUpgrade(ProtocolHead *head, const char *p) {             //FTPÔ¶³ÌÉý¼¶
@@ -1336,6 +1505,7 @@ void BegAverage(int *p){
 	
 //	buf = ProtocolRespond(head->addr, head->contr, NULL, &size);
 //  GsmTaskSendTcpData((const char *)buf, size);
+//  vPortFree(buf);	
 }
 
 static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸´Î»*/
@@ -1345,8 +1515,9 @@ static void HandleRestart(ProtocolHead *head, const char *p){            /*Éè±¸¸
 		NVIC_SystemReset();
 	} else if(p[0] == '3'){
 		sscanf(p, "%10s", msg);
-		buf = ProtocolRespond("9999999999", head->contr, (const char *)msg, &size);
+		buf = ProtocolRespond((unsigned char *)"9999999999", head->contr, (const char *)msg, &size);
 		ElecTaskSendData((const char *)buf, size);
+		vPortFree(buf);
 	}
 }
 
