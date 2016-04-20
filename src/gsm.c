@@ -20,7 +20,7 @@
 
 #define BROACAST   "9999999999"
 
-#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 35)
+#define GSM_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 25)
 
 #define RELAY_EXTI          EXTI15_10_IRQn
 /// GSM task message queue.

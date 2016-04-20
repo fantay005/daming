@@ -17,7 +17,7 @@
 #include "norflash.h"
 #include "gsm.h"
 
-#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 40)
+#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
 
 #define COMx      USART1
 #define COMx_IRQn USART1_IRQn
@@ -415,7 +415,7 @@ static void ZigbeeHandleReadBSNData(FrameHeader *header, unsigned char CheckByte
 		if((strncmp((const char *)SyncFlag, (const char *)"160315000000", 12) != 0) && (Have_Param_Flag == 1)){     /*策略同步标识比较*/
 			msg = ZigbtaskApplyMemory(47 + 1);
 			
-			sscanf((const char *)"160315000000", "%12s", msg);
+			sscanf((const char *)"160316000000", "%12s", msg);
 			sscanf((const char *)"01", "%2s", msg + 12);
 			msg[14] = '1';
 		
