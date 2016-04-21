@@ -346,9 +346,9 @@ void USART3_IRQHandler(void) {
 
 void __gsmModemStart(){
 	GPIO_ResetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 4);
+	vTaskDelay(configTICK_RATE_HZ * 5);
 	GPIO_SetBits(GPIO_Reset, Pin_Reset);
-	vTaskDelay(configTICK_RATE_HZ * 3);		
+	vTaskDelay(configTICK_RATE_HZ * 2);		
 }
 
 static void RemainTCPConnect(void){
@@ -453,7 +453,7 @@ bool __initGsmRuntime(void) {
 		return false;
 	}	
 	
-	if (!ATCommandAndCheckReply("AT+CIPCCFG=5,3,1024,1\r", "OK", configTICK_RATE_HZ / 2)) {
+	if (!ATCommandAndCheckReply("AT+CIPCCFG=5,2,1024,3\r", "OK", configTICK_RATE_HZ / 2)) {
 		printf("AT+CIPCCFG error\r");
 		return false;
 	}	
