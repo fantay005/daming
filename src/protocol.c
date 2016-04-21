@@ -157,6 +157,7 @@ void CurcuitContrInit(void){
 	GPIO_ResetBits(GPIO_CTRL_EN, PIN_CRTL_EN);
 }
 
+/*网关主动发出信息指针*/
 unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	unsigned char i;
 	unsigned int verify = 0;
@@ -247,6 +248,8 @@ void BsnFuntion(unsigned char control[2], unsigned char address[4], const char *
 	*p++ = 0x03;
 	*p = 0;
 }
+
+/*网关向镇流器发出信息指针*/
 
 unsigned char *DataSendToBSN(unsigned char type[2], unsigned char  address[4], const char *msg, unsigned char *size) {
 	if (xSemaphoreTake(__BSNSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
@@ -361,7 +364,7 @@ void NoRenntry(unsigned char address[10], unsigned char  type[2], const char *ms
 	*p = 0;
 }
 
-
+/*网关向DTU发送的回应信息指针*/
 
 unsigned char *ProtocolRespond(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	if (xSemaphoreTake(__TransSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {
@@ -460,6 +463,8 @@ void NoRespond(unsigned char address[10], unsigned char  type[2], const char *ms
 	*p++ = 0x03;
 	*p = 0;
 }
+
+/*网关向电量板发送的查询信息指针*/
 
 unsigned char *ProtocolToElec(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size) {
 	if (xSemaphoreTake(__ElecSemaphore, configTICK_RATE_HZ * 5) == pdTRUE) {

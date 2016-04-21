@@ -164,8 +164,6 @@ double sunRiseTime(double date, double lo, double la, double tz) {
 		return date - degree(H - H0) / M_PI / 2 + tz; /*日出时间，函数返回值*/
 }
 
-extern unsigned char *ProtocolMessage(unsigned char address[10], unsigned char  type[2], const char *msg, unsigned char *size);
-
 extern void WatchdogFeed(void);
 
 static void __TimeTask(void *nouse) {

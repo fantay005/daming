@@ -17,7 +17,7 @@
 #include "norflash.h"
 #include "gsm.h"
 
-#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 20)
+#define ZIGBEE_TASK_STACK_SIZE			     (configMINIMAL_STACK_SIZE + 1024 * 30)
 
 #define COMx      USART1
 #define COMx_IRQn USART1_IRQn
@@ -656,9 +656,10 @@ static void ZIGBEETask(void *parameter) {
 			vTaskDelay(configTICK_RATE_HZ / 10);
 			
 			sscanf((const char *)k.AddrOfZigbee, "%4s", ID);
-			buf = DataSendToBSN("06", ID, NULL, &size);			
+			
+			buf = DataSendToBSN((unsigned char *)"06", ID, NULL, &size);			
 			ZigbTaskSendData((const char *)buf, size);
-			ZigbTaskFreeMemory(buf);		
+			ZigbTaskFreeMemory(buf);	
 		}
 	}
 }
