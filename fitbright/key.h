@@ -113,11 +113,12 @@ typedef enum{
 
 typedef enum{
 	Pro_Null,
-	Pro_BinHu,
-	Pro_ChanYeYuan,
-	Pro_DaMing,
-	Pro_YaoHai,
-	Pro_JingKai,
+	Pro_BinHu,         /*滨湖项目*/
+	Pro_ChanYeYuan,    /*蜀山产业园项目*/
+	Pro_DaMing,        /*大明公司项目*/
+	Pro_YaoHai,        /*瑶海项目*/
+	Pro_JingKai,       /*经开项目*/
+	Pro_XinZhan,       /*新站项目*/
 }pro;
 
 extern pro Project;                 //初始化项目为无
